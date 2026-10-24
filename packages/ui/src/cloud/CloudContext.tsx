@@ -186,18 +186,22 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [error, setError] = useState<CloudErrorKind | null>(null);
-  const [binding, setBinding] = useState<Binding | null>(null);
+  // Each drive file open has its own claim on Save, which its tab keeps
+  // while another tab shows: the binding is the live tab's claim's file.
+  const [claims] = useState(() => new WeakMap<SaveTarget, { current: Binding }>());
+  const [claimed, setClaimed] = useState(0);
+  const { saveClaim } = services;
+  const binding = useMemo(() => {
+    void claimed;
+    return saveClaim ? (claims.get(saveClaim)?.current ?? null) : null;
+  }, [saveClaim, claims, claimed]);
   // Async work reads the latest of these through refs, never a stale closure.
-  const bindingRef = useRef<Binding | null>(null);
   const sheetRef = useRef<Sheet | null>(null);
-  useEffect(() => {
-    bindingRef.current = binding;
-  }, [binding]);
   useEffect(() => {
     sheetRef.current = sheet;
   }, [sheet]);
-  // A drive file being opened: it becomes the binding once the app has it open.
-  const pending = useRef<Binding | null>(null);
+  // Drive files being opened, by the `File` each is opened as: each claims Save once the app has it open.
+  const pending = useRef(new WeakMap<File, Binding>());
   const abort = useRef<AbortController | null>(null);
   const answer = useRef<((choice: string) => void) | null>(null);
 
@@ -236,20 +240,6 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
     [dispatch],
   );
 
-  // The binding follows the document: set when the drive file opened is the
-  // one open, dropped when another file takes its place or it is closed.
-  const openedFile = services.openedFile;
-  useEffect(() => {
-    const waiting = pending.current;
-    if (waiting && openedFile === waiting.file) {
-      pending.current = null;
-      setBinding(waiting);
-      return;
-    }
-    if (openedFile && waiting) pending.current = null;
-    setBinding((current) => (current && current.file !== openedFile ? null : current));
-  }, [openedFile]);
-
   // The first page of a drive file, for its tile on the home screen (never a protected one).
   const { document: remote, documentPassword } = services;
   const info = state.document;
@@ -276,7 +266,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
         const opened = await drive(provider).open(entry.key);
         const file = new File([opened.bytes], opened.name, { type: 'application/pdf' });
         const { bytes: _bytes, ...saved } = opened;
-        pending.current = { ...saved, provider, file };
+        pending.current.set(file, { ...saved, provider, file });
         setActivity(null);
         setSheet(null);
         setRecent(addCloudRecent({ provider, key: opened.key, name: opened.name, openedAt: Date.now() }));
@@ -298,12 +288,81 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
     });
   }, []);
 
-  const adopt = useCallback((provider: ProviderId, saved: Saved, file: File | null) => {
-    if (!file) return;
-    const next: Binding = { ...saved, provider, file };
-    bindingRef.current = next;
-    setBinding(next);
-  }, []);
+  // Save, for a file that came from a drive: a new revision, checked against
+  // the version it was opened at; a conflict is the person's to decide. Each
+  // file has a claim of its own, so a tab keeps saving to its own file.
+  const { claimSave } = services;
+  const claim = useCallback(
+    (first: Binding) => {
+      const held = { current: first };
+      const target: SaveTarget = {
+        save: async (bytes) => {
+          const bound = held.current;
+          const body = wholeBuffer(bytes);
+          const done = (saved: Saved) => {
+            held.current = { ...saved, provider: bound.provider, file: bound.file };
+            setClaimed((count) => count + 1);
+            return { saved: true as const, toast: `cloud.saved.${bound.provider}` as TKey };
+          };
+          setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
+          try {
+            try {
+              return done(await drive(bound.provider).saveRevision(bound.key, body, bound.version));
+            } catch (error) {
+              if (kindOf(error) !== 'conflict') throw error;
+            }
+            setActivity(null);
+            const choice = await ask<'copy' | 'replace' | 'cancel'>({ kind: 'conflict', provider: bound.provider, name: bound.name });
+            if (choice === 'replace') {
+              setSheet(null);
+              setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
+              return done(await drive(bound.provider).saveRevision(bound.key, body, null));
+            }
+            if (choice === 'copy') {
+              setSheet({
+                kind: 'browse',
+                provider: bound.provider,
+                mode: 'saveAs',
+                folder: bound.parentKey ? { key: bound.parentKey, name: bound.parentName ?? null } : undefined,
+                name: copyName(bound.name, t('cloud.copyWord')),
+              });
+            } else setSheet(null);
+            return { saved: false };
+          } catch (error) {
+            if (kindOf(error) === 'signedOut') signInAgain(bound.provider, { kind: 'save' });
+            else {
+              setSheet(null);
+              dispatch({ type: 'DOCUMENT_FAILED', error: errorKey(kindOf(error)) });
+            }
+            return { saved: false };
+          } finally {
+            setActivity(null);
+          }
+        },
+      };
+      claims.set(target, held);
+      claimSave(target);
+    },
+    [claims, claimSave, drive, ask, t, signInAgain, dispatch],
+  );
+
+  // A drive file, once open, claims Save; its tab keeps the claim while
+  // parked, and gives it back when the tab is live again.
+  const openedFile = services.openedFile;
+  useEffect(() => {
+    const waiting = openedFile ? pending.current.get(openedFile) : undefined;
+    if (!openedFile || !waiting) return;
+    pending.current.delete(openedFile);
+    claim(waiting);
+  }, [openedFile, claim]);
+
+  /** The live document is the drive file `saved`: a save of it goes back there. */
+  const adopt = useCallback(
+    (provider: ProviderId, saved: Saved, file: File | null) => {
+      if (file) claim({ ...saved, provider, file });
+    },
+    [claim],
+  );
 
   const saveInto = useCallback(
     async (provider: ProviderId, folderKey: string | null, name: string) => {
@@ -354,73 +413,28 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
     [services, drive, ask, adopt, state.document, dispatch, signInAgain, report],
   );
 
-  // Save, for a file that came from a drive: a new revision, checked against
-  // the version it was opened at; a conflict is the person's to decide.
-  const target = useMemo<SaveTarget>(
-    () => ({
-      save: async (bytes) => {
-        const bound = bindingRef.current;
-        if (!bound) return { saved: false };
-        const body = wholeBuffer(bytes);
-        const done = (saved: Saved) => {
-          adopt(bound.provider, saved, bound.file);
-          return { saved: true as const, toast: `cloud.saved.${bound.provider}` as TKey };
-        };
-        setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
-        try {
-          try {
-            return done(await drive(bound.provider).saveRevision(bound.key, body, bound.version));
-          } catch (error) {
-            if (kindOf(error) !== 'conflict') throw error;
-          }
-          setActivity(null);
-          const choice = await ask<'copy' | 'replace' | 'cancel'>({ kind: 'conflict', provider: bound.provider, name: bound.name });
-          if (choice === 'replace') {
-            setSheet(null);
-            setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
-            return done(await drive(bound.provider).saveRevision(bound.key, body, null));
-          }
-          if (choice === 'copy') {
-            setSheet({
-              kind: 'browse',
-              provider: bound.provider,
-              mode: 'saveAs',
-              folder: bound.parentKey ? { key: bound.parentKey, name: bound.parentName ?? null } : undefined,
-              name: copyName(bound.name, t('cloud.copyWord')),
-            });
-          } else setSheet(null);
-          return { saved: false };
-        } catch (error) {
-          if (kindOf(error) === 'signedOut') signInAgain(bound.provider, { kind: 'save' });
-          else {
-            setSheet(null);
-            dispatch({ type: 'DOCUMENT_FAILED', error: errorKey(kindOf(error)) });
-          }
-          return { saved: false };
-        } finally {
-          setActivity(null);
-        }
-      },
-    }),
-    [drive, adopt, ask, t, signInAgain, dispatch],
-  );
-
-  const { claimSave } = services;
-  useEffect(() => {
-    if (!binding) return;
-    claimSave(target);
-    return () => claimSave(null);
-  }, [binding, target, claimSave]);
-
   const openRecentNow = useCallback((entry: CloudRecent) => void openEntry(entry.provider, entry), [openEntry]);
 
   const carryOn = useCallback(
     async (provider: ProviderId, next: Next, params: Record<string, string>) => {
       switch (next.kind) {
         case 'open': {
-          const picked = provider === 'gdrive' ? pickedIds(params)[0] : undefined;
-          if (picked) await openEntry(provider, { key: picked, name: '' });
-          else setSheet({ kind: 'browse', provider, mode: 'open' });
+          // Google's picker: every PDF picked opens, each in a tab; a folder
+          // picked opens in the sheet, to open what is in it.
+          const ids = provider === 'gdrive' ? pickedIds(params) : [];
+          let picked: Entry[];
+          try {
+            picked = ids.length > 0 ? ((await drive(provider).picked?.(ids)) ?? []) : [];
+          } catch (error) {
+            if (kindOf(error) === 'signedOut') return signInAgain(provider, next);
+            setSheet({ kind: 'browse', provider, mode: 'open' });
+            report(error);
+            return;
+          }
+          for (const entry of picked) if (entry.kind === 'pdf') await openEntry(provider, entry);
+          const folder = picked.find((entry) => entry.kind === 'folder');
+          if (folder) setSheet({ kind: 'browse', provider, mode: 'open', folder: { key: folder.key, name: folder.name } });
+          else if (!picked.some((entry) => entry.kind === 'pdf')) setSheet({ kind: 'browse', provider, mode: 'open' });
           return;
         }
         case 'saveAs':
@@ -441,7 +455,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
           return;
       }
     },
-    [openEntry, saveInto, openRecentNow, services],
+    [drive, openEntry, saveInto, openRecentNow, services, signInAgain, report],
   );
 
   const begin = useCallback(

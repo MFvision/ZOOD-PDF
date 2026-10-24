@@ -60,10 +60,13 @@ export function googleServer(config: GoogleConfig): AuthServer {
   };
 }
 
-/** Google's picker in the consent screen: PDFs to open, or a folder to save into. */
+/**
+ * Google's picker in the consent screen: PDFs and folders to open, as many
+ * as the person likes, or one folder to save into.
+ */
 export function googlePicker(purpose: 'open' | 'folder'): Record<string, string> {
   return purpose === 'open'
-    ? { trigger_onepick: 'true', mimetypes: 'application/pdf' }
+    ? { trigger_onepick: 'true', allow_multiple: 'true', allow_folder_selection: 'true', mimetypes: 'application/pdf,application/vnd.google-apps.folder' }
     : { trigger_onepick: 'true', allow_folder_selection: 'true', mimetypes: 'application/vnd.google-apps.folder' };
 }
 

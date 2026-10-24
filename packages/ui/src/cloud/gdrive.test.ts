@@ -23,16 +23,47 @@ const file = (headRevisionId: string, extra: object = {}) => ({
 });
 
 describe('Google Drive, as drive.file lets the app see it', () => {
-  it('lists the PDFs the app may open, searched by name with the text quoted', async () => {
-    const { gdrive, seen } = drive(() => reply(200, { files: [file('r1', { size: '2048' })], nextPageToken: 'p2' }));
-    const listing = await gdrive.list("O'Brien\\");
+  it('lists the PDFs and folders the app may open, searched by name with the text quoted', async () => {
+    const folder = { id: '0FolderIdAbcdef', name: 'زود', mimeType: 'application/vnd.google-apps.folder' };
+    const { gdrive, seen } = drive(() => reply(200, { files: [folder, file('r1', { size: '2048' })], nextPageToken: 'p2' }));
+    const listing = await gdrive.list({ text: "O'Brien\\" });
     const url = new URL(seen[0]?.url ?? '');
     expect(url.origin + url.pathname).toBe(`${DRIVE}/files`);
-    expect(url.searchParams.get('q')).toBe("mimeType = 'application/pdf' and trashed = false and name contains 'O\\'Brien\\\\'");
-    expect(listing).toEqual({ entries: [{ key: ID, name: 'عقد.pdf', kind: 'pdf', size: 2048, modified: undefined }], next: 'p2' });
-    await gdrive.list(null, 'p2');
+    expect(url.searchParams.get('q')).toBe(
+      "(mimeType = 'application/pdf' or mimeType = 'application/vnd.google-apps.folder') and trashed = false and name contains 'O\\'Brien\\\\'",
+    );
+    expect(listing).toEqual({
+      entries: [
+        { key: '0FolderIdAbcdef', name: 'زود', kind: 'folder', modified: undefined },
+        { key: ID, name: 'عقد.pdf', kind: 'pdf', size: 2048, modified: undefined },
+      ],
+      next: 'p2',
+    });
+    await gdrive.list({}, 'p2');
     expect(new URL(seen[1]?.url ?? '').searchParams.get('pageToken')).toBe('p2');
     expect(queryString('a')).toBe("'a'");
+  });
+
+  it('lists what it may see in a picked folder, and refuses a malformed folder ID', async () => {
+    const { gdrive, seen } = drive(() => reply(200, { files: [] }));
+    await gdrive.list({ folder: '0FolderIdAbcdef' });
+    expect(new URL(seen[0]?.url ?? '').searchParams.get('q')).toContain("and '0FolderIdAbcdef' in parents");
+    await expect(gdrive.list({ folder: "x' or '1'='1" })).rejects.toMatchObject({ kind: 'notFound' });
+    expect(seen).toHaveLength(1);
+  });
+
+  it('turns what the picker gave back into PDFs and folders, in the order picked, leaving out anything else', async () => {
+    const byId: Record<string, object> = {
+      '0FolderIdAbcdef': { id: '0FolderIdAbcdef', name: 'Contracts', mimeType: 'application/vnd.google-apps.folder' },
+      [ID]: file('r1'),
+      '1SheetIdAbcdefgh': { id: '1SheetIdAbcdefgh', name: 'Budget', mimeType: 'application/vnd.google-apps.spreadsheet' },
+      '1TrashedIdAbcdef': { ...file('r1'), id: '1TrashedIdAbcdef', trashed: true },
+    };
+    const { gdrive } = drive((request) => reply(200, byId[new URL(request.url).pathname.split('/').pop() ?? ''] ?? {}));
+    expect(await gdrive.entries(['0FolderIdAbcdef', '1SheetIdAbcdefgh', ID, '1TrashedIdAbcdef'])).toEqual([
+      { key: '0FolderIdAbcdef', name: 'Contracts', kind: 'folder' },
+      { key: ID, name: 'عقد.pdf', kind: 'pdf' },
+    ]);
   });
 
   it('opens a PDF: metadata for its revision, then its bytes (alt=media), both with the token', async () => {

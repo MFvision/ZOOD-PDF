@@ -437,6 +437,8 @@ export const GOOGLE_CLIENT_ID = '123456789012-e2etestclientid00.apps.googleuserc
 export const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 export const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 
+const FOLDER_TYPE = 'application/vnd.google-apps.folder';
+
 export interface GoogleFile {
   id: string;
   name: string;
@@ -461,7 +463,8 @@ export class FakeGoogle extends Authority {
   readonly log: FakeRequest[] = [];
   readonly revoked: string[] = [];
   /** What the person picks in the picker the consent screen shows, by name. */
-  pick: string | null = null;
+  /** What the person picks in the picker, by name: one, or several (taken only with allow_multiple). */
+  pick: string | readonly string[] | null = null;
 
   constructor() {
     super();
@@ -473,7 +476,7 @@ export class FakeGoogle extends Authority {
   }
 
   addFolder(name: string, id = this.nextId()): string {
-    this.files.set(id, { id, name, mimeType: 'application/vnd.google-apps.folder', parents: [], bytes: Buffer.alloc(0), version: 1, head: '', modified: new Date().toISOString(), granted: false });
+    this.files.set(id, { id, name, mimeType: FOLDER_TYPE, parents: [], bytes: Buffer.alloc(0), version: 1, head: '', modified: new Date().toISOString(), granted: false });
     return id;
   }
 
@@ -533,11 +536,14 @@ export class FakeGoogle extends Authority {
     if (p.get('trigger_onepick') === 'true') {
       if (p.get('prompt') !== 'consent') return back({ error: 'invalid_request', state });
       const wanted = (p.get('mimetypes') ?? '').split(',');
-      const picked = [...this.files.values()].find((file) => file.name === this.pick && wanted.includes(file.mimeType));
-      if (picked) {
-        picked.granted = true;
-        params.picked_file_ids = picked.id;
-      }
+      const folders = p.get('allow_folder_selection') === 'true';
+      const names = this.pick === null ? [] : typeof this.pick === 'string' ? [this.pick] : this.pick;
+      const picked = names
+        .map((name) => [...this.files.values()].find((file) => file.name === name && wanted.includes(file.mimeType)))
+        .filter((file): file is GoogleFile => file !== undefined && (folders || file.mimeType !== FOLDER_TYPE))
+        .slice(0, p.get('allow_multiple') === 'true' ? undefined : 1);
+      for (const file of picked) file.granted = true;
+      if (picked.length > 0) params.picked_file_ids = picked.map((file) => file.id).join(',');
     }
     params.code = this.issueCode({ challenge, method: 'S256', redirectUri, scope, used: false });
     return back(params);
@@ -583,7 +589,15 @@ export class FakeGoogle extends Authority {
     if (!upload && request.method === 'GET' && path === '/files') {
       const q = url.searchParams.get('q') ?? '';
       const name = /name contains '((?:[^'\\]|\\.)*)'/.exec(q)?.[1]?.replace(/\\(.)/g, '$1');
-      const found = [...this.files.values()].filter((file) => file.granted && file.mimeType === 'application/pdf' && (!name || file.name.includes(name)));
+      const parent = /'([^']+)' in parents/.exec(q)?.[1];
+      // drive.file: only what was picked or made by the app, whatever folder it is in.
+      const found = [...this.files.values()].filter(
+        (file) =>
+          file.granted &&
+          (file.mimeType === 'application/pdf' || file.mimeType === FOLDER_TYPE) &&
+          (!parent || file.parents.includes(parent)) &&
+          (!name || file.name.includes(name)),
+      );
       return json(200, { files: found.map((file) => this.fileJson(file)) });
     }
     const one = /^\/files\/([^/]+)$/.exec(path);

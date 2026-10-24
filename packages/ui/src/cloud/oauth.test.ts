@@ -48,7 +48,9 @@ describe('the authorization request', () => {
       access_type: 'offline',
       prompt: 'consent',
       trigger_onepick: 'true',
-      mimetypes: 'application/pdf',
+      allow_multiple: 'true',
+      allow_folder_selection: 'true',
+      mimetypes: 'application/pdf,application/vnd.google-apps.folder',
       code_challenge_method: 'S256',
       redirect_uri: 'http://127.0.0.1:50001/callback',
     });

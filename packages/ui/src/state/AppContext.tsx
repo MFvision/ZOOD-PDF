@@ -368,6 +368,8 @@ export interface AppServices {
   bytesForSave: () => Promise<Uint8Array<ArrayBuffer> | null>;
   /** Where Save writes while `target` claims it; `null` gives Save back to the device. */
   claimSave: (target: SaveTarget | null) => void;
+  /** What claims Save for the live document (a drive file's own claim, kept by its tab), or `null`. */
+  saveClaim: SaveTarget | null;
 }
 
 const StateContext = createContext<AppState | null>(null);
@@ -491,6 +493,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const liveBytes = useRef<() => Promise<ArrayBuffer | null>>(async () => null);
   // A file opened from a cloud drive is saved back to it (`cloud/`).
   const saveTarget = useRef<SaveTarget | null>(null);
+  // The same, for what renders: who claims Save follows the live tab.
+  const [saveClaim, setSaveClaim] = useState<SaveTarget | null>(null);
+  const setSaveTarget = useCallback((target: SaveTarget | null) => {
+    saveTarget.current = target;
+    setSaveClaim(target);
+  }, []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   // What the hidden input was last opened for: Open (a PDF) or Create PDF (anything it reads).
   const inputPurpose = useRef<'open' | 'create'>('open');
@@ -620,7 +628,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const back = tabList.find((tab) => tab.key === switching)!;
           tabList = tabList.map((tab) => (tab.key === switching ? { ...tab, parked: null } : tab));
           live = switching;
-          saveTarget.current = back.save;
+          setSaveTarget(back.save);
           if (back.page > 1) requestPage(back.page);
         } else {
           live = nextTabKey.current++;
@@ -637,7 +645,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             edited: false,
             save: null,
           });
-          saveTarget.current = null;
+          setSaveTarget(null);
         }
         commitTabs(tabList, live);
         void documentRef.current?.free();
@@ -680,7 +688,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
       }
     },
-    [client, forgetLayerView, commitTabs],
+    [client, forgetLayerView, commitTabs, setSaveTarget],
   );
 
   const unlockFile = useCallback(
@@ -771,8 +779,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDocumentPassword(undefined);
     setOpenedFile(null);
     forgetLayerView();
-    saveTarget.current = null;
-  }, [forgetLayerView]);
+    setSaveTarget(null);
+  }, [forgetLayerView, setSaveTarget]);
 
   const activateTab = useCallback(
     (key: number) => {
@@ -1970,9 +1978,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : doc.save();
   }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
-  const claimSave = useCallback((target: SaveTarget | null) => {
-    saveTarget.current = target;
-  }, []);
+  const claimSave = useCallback((target: SaveTarget | null) => setSaveTarget(target), [setSaveTarget]);
 
   /** The live tab's changes are saved: it shows as unchanged again. */
   const markLiveSaved = useCallback(() => {
@@ -2130,6 +2136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveToDevice,
       bytesForSave,
       claimSave,
+      saveClaim,
     }),
     [
       client,
@@ -2203,6 +2210,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveToDevice,
       bytesForSave,
       claimSave,
+      saveClaim,
     ],
   );
 

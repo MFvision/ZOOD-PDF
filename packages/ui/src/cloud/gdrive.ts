@@ -1,6 +1,7 @@
 import { CloudError } from './errors';
 import { failure, jsonOf, ok } from './http';
 import type { Api } from './http';
+import { MAX_TABS } from '../state/tabs';
 import { randomToken } from './pkce';
 import type { Account, Entry, Listing, Opened, Saved } from './drive';
 
@@ -23,6 +24,8 @@ export const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const FIELDS = 'id,name,mimeType,size,version,headRevisionId,modifiedTime,parents,trashed';
 const PDF = 'application/pdf';
 const FOLDER = 'application/vnd.google-apps.folder';
+/** Most items one pick opens: each PDF opens in a tab, and there are only so many tabs. */
+export const MAX_PICKED = MAX_TABS;
 
 interface DriveFile {
   id: string;
@@ -108,14 +111,20 @@ export class GoogleDrive {
     return { name: user?.displayName ?? '', email: user?.emailAddress ?? '' };
   }
 
-  /** The PDFs the app can open (picked or saved from it), newest first, whose name contains `text` if given. */
-  async list(text: string | null, next?: string | null): Promise<Listing> {
-    const terms = [`mimeType = '${PDF}'`, 'trashed = false'];
-    if (text) terms.push(`name contains ${queryString(text)}`);
+  /**
+   * The PDFs and folders the app can open (picked or saved from it), newest
+   * first: everywhere, or in the folder `where.folder`, and whose name
+   * contains `where.text` if given. A folder's contents are listed as far
+   * as drive.file lets the app see them.
+   */
+  async list(where: { text?: string | null; folder?: string | null }, next?: string | null): Promise<Listing> {
+    const terms = [`(mimeType = '${PDF}' or mimeType = '${FOLDER}')`, 'trashed = false'];
+    if (where.folder) terms.push(`${queryString(checkedId(where.folder))} in parents`);
+    if (where.text) terms.push(`name contains ${queryString(where.text)}`);
     const params = new URLSearchParams({
       q: terms.join(' and '),
       fields: `nextPageToken,files(${FIELDS})`,
-      orderBy: 'modifiedTime desc',
+      orderBy: 'folder,modifiedTime desc',
       pageSize: '100',
       spaces: 'drive',
       supportsAllDrives: 'true',
@@ -125,13 +134,11 @@ export class GoogleDrive {
     const response = await this.api({ method: 'GET', url: `${DRIVE}/files?${params}` });
     if (!ok(response)) throw failure(response, 'list');
     const body = jsonOf<{ files?: DriveFile[]; nextPageToken?: string }>(response);
-    const entries: Entry[] = (body.files ?? []).map((file) => ({
-      key: file.id,
-      name: file.name,
-      kind: 'pdf',
-      size: file.size ? Number(file.size) : undefined,
-      modified: file.modifiedTime,
-    }));
+    const entries: Entry[] = (body.files ?? []).map((file) =>
+      file.mimeType === FOLDER
+        ? { key: file.id, name: file.name, kind: 'folder', modified: file.modifiedTime }
+        : { key: file.id, name: file.name, kind: 'pdf', size: file.size ? Number(file.size) : undefined, modified: file.modifiedTime },
+    );
     return { entries, next: typeof body.nextPageToken === 'string' ? body.nextPageToken : null };
   }
 
@@ -194,5 +201,17 @@ export class GoogleDrive {
   /** Whether an ID the picker gave back is a folder the app may save into. */
   async isFolder(id: string): Promise<boolean> {
     return (await this.metadata(id)).mimeType === FOLDER;
+  }
+
+  /** What the picker gave back, as entries: its PDFs and folders, in the order picked; anything else left out. */
+  async entries(ids: readonly string[]): Promise<Entry[]> {
+    const found: Entry[] = [];
+    for (const id of ids.slice(0, MAX_PICKED)) {
+      const file = await this.metadata(id);
+      if (file.trashed) continue;
+      if (file.mimeType === FOLDER) found.push({ key: file.id, name: file.name, kind: 'folder' });
+      else if (file.mimeType === PDF) found.push({ key: file.id, name: file.name, kind: 'pdf' });
+    }
+    return found;
   }
 }
