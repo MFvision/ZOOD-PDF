@@ -21,6 +21,16 @@ html.ring-page.ring-waiting body {
 }
 
 .ring {
+  --glass-hi: rgb(255 255 255 / 88%);
+  --glass-lo: rgb(236 238 244 / 70%);
+  --rim-hi: rgb(255 255 255 / 95%);
+  --rim-mid: rgb(255 255 255 / 25%);
+  --rim-lo: rgb(0 0 0 / 14%);
+  --ring-ink: var(--label, #1c1c1e);
+  --ring-ink-soft: var(--secondary-label, rgb(60 60 67 / 60%));
+  --armed-hi: color-mix(in srgb, var(--accent) 78%, white);
+  --armed-lo: var(--accent);
+
   /* The drawing fills the window, whatever size the screen's scale made it. */
   inline-size: 100vw;
   block-size: 100vh;
@@ -50,16 +60,55 @@ html.ring-page.ring-waiting body {
   font-weight: 600;
 }
 
-.ring-shadow {
-  fill: rgb(0 0 0 / 18%);
-  filter: blur(6px);
+/*
+ * Liquid glass. The window is transparent, and a webview cannot blur the
+ * desktop behind it, so the glass is drawn: a light, see-through body lit
+ * from the top left, a sheen, a bright rim, and a soft shadow under it.
+ * Dark mode is smoked glass.
+ */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ring {
+    --glass-hi: rgb(72 74 82 / 78%);
+    --glass-lo: rgb(28 29 34 / 72%);
+    --rim-hi: rgb(255 255 255 / 40%);
+    --rim-mid: rgb(255 255 255 / 8%);
+    --rim-lo: rgb(255 255 255 / 4%);
+  }
 }
 
-.ring-segment > path {
-  fill: var(--elevated-background, #fff);
-  stroke: var(--separator, rgb(0 0 0 / 12%));
-  stroke-width: 1;
-  transition: fill 80ms ease;
+:root[data-theme="dark"] .ring {
+  --glass-hi: rgb(72 74 82 / 78%);
+  --glass-lo: rgb(28 29 34 / 72%);
+  --rim-hi: rgb(255 255 255 / 40%);
+  --rim-mid: rgb(255 255 255 / 8%);
+  --rim-lo: rgb(255 255 255 / 4%);
+}
+
+.ring-glass-hi { stop-color: var(--glass-hi); }
+.ring-glass-lo { stop-color: var(--glass-lo); }
+.ring-rim-hi { stop-color: var(--rim-hi); }
+.ring-rim-mid { stop-color: var(--rim-mid); }
+.ring-rim-lo { stop-color: var(--rim-lo); }
+.ring-armed-hi { stop-color: var(--armed-hi); }
+.ring-armed-lo { stop-color: var(--armed-lo); }
+
+.ring-shadow {
+  fill: rgb(0 0 0 / 22%);
+  filter: blur(9px);
+}
+
+.ring-segment,
+.ring-sub {
+  transition: transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+.ring-segment > path,
+.ring-sub > path {
+  fill: url("#ring-glass");
+  stroke: url("#ring-rim");
+  stroke-width: 1.2;
+  transition: fill 90ms ease, filter 120ms ease;
 }
 
 .ring-segment svg {
@@ -68,34 +117,85 @@ html.ring-page.ring-waiting body {
   pointer-events: none;
 }
 
-.ring-segment text {
-  fill: var(--label);
+.ring-segment text,
+.ring-sub text {
+  fill: var(--ring-ink);
   pointer-events: none;
   font-size: 12px;
   font-weight: 600;
 }
 
-.ring-segment-over > path {
-  fill: var(--accent);
+/* A group's second line: how many formats its half circle holds. */
+.ring-segment .ring-segment-sub {
+  fill: var(--ring-ink-soft);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+.ring-segment-over > path,
+.ring-sub-over > path {
+  fill: url("#ring-armed");
+  filter: drop-shadow(0 3px 8px color-mix(in srgb, var(--accent) 45%, transparent));
 }
 
 .ring-segment-over svg {
   color: var(--accent-contrast, #fff);
 }
 
-.ring-segment-over text {
+.ring-segment-over text,
+.ring-segment-over .ring-segment-sub,
+.ring-sub-over text {
   fill: var(--accent-contrast, #fff);
 }
 
+/* The half circle: its formats fan out from behind the group, one after another. */
+.ring-sub text {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ring-sub {
+  animation: ring-sub-in 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+.ring-sub-over {
+  transform: scale(1.035);
+}
+
+@keyframes ring-sub-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
 .ring-hub {
-  fill: var(--window-background, #f5f5f7);
-  stroke: var(--separator, rgb(0 0 0 / 12%));
+  fill: url("#ring-glass");
+  stroke: url("#ring-rim");
+  stroke-width: 1.2;
 }
 
 .ring-hub-text {
-  fill: var(--secondary-label);
-  font-size: 11px;
+  fill: var(--ring-ink);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ring-hub-hint {
+  fill: var(--ring-ink-soft);
+  font-size: 9.5px;
   font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-segment,
+  .ring-sub {
+    transition: none;
+    animation: none;
+  }
 }
 
 /* A tool running on the ring: the tools fade, and the progress goes round. */

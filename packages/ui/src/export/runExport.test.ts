@@ -79,6 +79,13 @@ function fakeDocument(name: string, log: string[], failOn?: 'extract_text'): Exp
         return { result: { items } as T, blobs: [] };
       }
       if (op === 'export.lines') return { result: { lines: linesOf(pages[page]!.text) } as T, blobs: [] };
+      if (op === 'export.image') {
+        // The core's JPEG or WebP: its first bytes are enough to tell them apart.
+        const { format, scale } = args as { format: string; scale: number };
+        log[log.length - 1] = `export.image ${page} ${format} at ${scale.toFixed(4)}`;
+        const head = format === 'jpeg' ? [0xff, 0xd8, 0xff] : [...new TextEncoder().encode('RIFF....WEBP')];
+        return { result: { width: 2, height: 2 } as T, blobs: [new Uint8Array(head).buffer] };
+      }
       // `export.picture`: the page without its text, 2 by 2 and white.
       return { result: { width: 2, height: 2, textHidden: name === 'scan' } as T, blobs: [new Uint8Array(16).fill(255).buffer] };
     },
@@ -229,5 +236,20 @@ describe('page images', () => {
     expect((5000 * scale) ** 2).toBeLessThanOrEqual(MAX_PAGE_PIXELS * 1.001);
     expect(scale).toBeLessThan(300 / 72);
     expect(result?.reduced).toBe(true);
+  });
+
+  it('writes JPG and WebP pages with the core, named and zipped the same way', async () => {
+    const { src, log } = source('redacted');
+    const result = await exportCurrentFile(src, request('jpg', { dpi: 300 }));
+    expect(log.filter((entry) => entry.startsWith('export.image'))).toEqual(['export.image 0 jpeg at 4.1667', 'export.image 1 jpeg at 4.1667']);
+    const files = unzipSync(result!.bytes);
+    expect(Object.keys(files)).toEqual(['فاتورة-1.jpg', 'فاتورة-2.jpg']);
+    expect([...files['فاتورة-1.jpg']!.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+
+    const { src: poster } = source('poster');
+    const webp = await exportCurrentFile(poster, request('webp', { dpi: 72 }));
+    expect(webp?.fileName).toBe('فاتورة.webp');
+    expect(webp?.kind.mime).toBe('image/webp');
+    expect(strFromU8(webp!.bytes.subarray(8, 12))).toBe('WEBP');
   });
 });

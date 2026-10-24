@@ -14,6 +14,8 @@ describe('the quick tools', () => {
       'powerpoint',
       'text',
       'images',
+      'jpg',
+      'webp',
       'ocr',
       'rotate',
       'split',
@@ -38,6 +40,8 @@ describe('the quick tools', () => {
   it('starts each tool on its step with its own options', () => {
     expect(startingOptions(findQuickTool('word')!)).toMatchObject({ format: 'docx' });
     expect(startingOptions(findQuickTool('images')!)).toMatchObject({ format: 'png' });
+    expect(startingOptions(findQuickTool('jpg')!)).toMatchObject({ format: 'jpg' });
+    expect(startingOptions(findQuickTool('webp')!)).toMatchObject({ format: 'webp' });
     expect(startingOptions(findQuickTool('compress')!)).toMatchObject({ level: 'balanced' });
     expect(startingOptions(findQuickTool('extract')!)).toMatchObject({ pages: { which: 'list', list: '1-' } });
     expect(findQuickTool('format-disk')).toBeUndefined();
@@ -50,7 +54,7 @@ describe('the quick tools', () => {
 
   it('has every name and suffix in both languages', () => {
     for (const tool of QUICK_TOOLS) {
-      const keepsName = ['word', 'excel', 'powerpoint', 'text', 'images', 'topdf', 'sign'].includes(tool.id);
+      const keepsName = ['word', 'excel', 'powerpoint', 'text', 'images', 'jpg', 'webp', 'topdf', 'sign'].includes(tool.id);
       for (const key of [tool.labelKey, tool.noteKey, ...(keepsName ? [] : [`quick.suffix.${tool.id}`])]) {
         expect(key in en, key).toBe(true);
         expect(key in ar, key).toBe(true);
@@ -65,6 +69,16 @@ describe('the quick tools', () => {
     expect(findQuickTool('excel')).toMatchObject({ mode: 'instant', step: 'export', options: { format: 'xlsx' } });
     expect(startingOptions(findQuickTool('numbers')!)).toMatchObject({ form: { section: 'pageNumber' } });
     expect(startingOptions(findQuickTool('watermark')!)).toMatchObject({ form: { section: 'watermark', watermarkText: '' } });
+  });
+
+  it('puts every format in one Convert slot, whose half circle holds them', () => {
+    const ring = ringToolsFor(['a.pdf'], []);
+    expect(ring.map((item) => item.id)).toEqual(['compress', 'convert', 'ocr', 'split', 'rotate', 'sign', 'protect']);
+    expect(ring[1]!.members!.map((tool) => tool.makes)).toEqual(['DOCX', 'XLSX', 'PPTX', 'TXT', 'PNG', 'JPG', 'WEBP']);
+    // Pictures have no formats to convert to but PDF: no group, To PDF alone.
+    expect(ringToolsFor(['a.png'], ['convert', 'topdf']).map((item) => item.id)).toEqual(['topdf']);
+    // The person's own ring can hold Convert, or single formats.
+    expect(ringToolsFor(['a.pdf'], ['webp', 'convert']).map((item) => item.id)).toEqual(['webp', 'convert']);
   });
 
   it('keeps the ring to a few tools', () => {

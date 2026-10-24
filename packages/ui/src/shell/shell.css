@@ -764,19 +764,49 @@
   font-weight: 600;
 }
 
+/* About: the app's face, what it does in six lines, and how it treats your files. */
+.about-dialog {
+  inline-size: min(calc(100vw - 32px), 560px);
+}
+
 .about {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: var(--space-5);
+  align-items: stretch;
   text-align: center;
 }
 
 .about p {
-  margin-block: 0 var(--space-4);
+  margin: 0;
+}
+
+.about-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  padding-block: var(--space-4) var(--space-2);
+}
+
+/* A soft glow of the brand behind the icon. */
+.about-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-block-start: 0;
+  inline-size: 220px;
+  block-size: 140px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 28%, transparent), transparent);
+  filter: blur(8px);
 }
 
 .about-icon {
-  margin-block-end: var(--space-4);
+  margin-block-end: var(--space-2);
+  border-radius: 22%;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 22%), 0 1px 0 rgb(255 255 255 / 30%) inset;
+  animation: about-rise 420ms var(--spring, ease-out) backwards;
 }
 
 .about-name {
@@ -790,9 +820,112 @@
 }
 
 .about-version {
+  align-self: center;
+  margin-block-start: var(--space-2) !important;
+  padding-block: 3px;
+  padding-inline: var(--space-4);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 999px;
+}
+
+.about-lead {
+  max-inline-size: 44ch;
+  margin-inline: auto !important;
+  line-height: 1.5;
+}
+
+.about-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: start;
+}
+
+.about-features li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--label) 4%, transparent);
+  border: 0.5px solid var(--separator);
+  border-radius: var(--radius-12, 12px);
+  animation: about-rise 360ms var(--spring, ease-out) backwards;
+  animation-delay: calc(80ms + var(--i, 0) * 40ms);
+}
+
+.about-feature-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-radius: 9px;
+}
+
+.about-feature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.about-feature-text strong {
+  font-size: var(--text-subheadline);
+  font-weight: 650;
+}
+
+.about-feature-text span {
+  font-size: var(--text-footnote);
+  line-height: 1.4;
+  color: var(--secondary-label);
+}
+
+.about-private {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
   font-size: var(--text-callout);
   color: var(--secondary-label);
-  font-variant-numeric: tabular-nums;
+}
+
+.about-private svg {
+  flex: none;
+  color: var(--green, #2f9e55);
+}
+
+.about-footer {
+  font-size: var(--text-footnote);
+  color: var(--tertiary-label, var(--secondary-label));
+}
+
+@keyframes about-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (width <= 520px) {
+  .about-features {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-icon,
+  .about-features li {
+    animation: none;
+  }
 }
 
 .about-update {
@@ -960,4 +1093,9 @@
 
 :dir(rtl) .context-menu.menu-list {
   transform-origin: top right;
+}
+
+/* An odd one out spans the row, so the grid never ends on a gap. */
+.about-features li:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }

@@ -180,7 +180,7 @@ $side = $ring.Right - $ring.Left
 Check ($side -gt 0) "the ring opened for a Ctrl+drag (ring $($ring.Left),$($ring.Top) side $side)"
 if ($side -gt 0) {
   $cx = $ring.Left + $side / 2; $cy = $ring.Top + $side / 2
-  $middle = $side * 97 / 300   # between the hub and the outer edge
+  $middle = $side * 97 / 420   # between the hub and the outer edge
   DragTo $cx ($cy - $middle)
   Shot 'ring-1-over-compress.png'
   [Input]::Mouse($cx, $cy - $middle, 0x0004); [Input]::Key(0x11, $true)
@@ -201,7 +201,7 @@ $side = $ring.Right - $ring.Left
 Check ($side -gt 0) 'the ring opened for a Shift+drag'
 if ($side -gt 0) {
   $cx = $ring.Left + $side / 2; $cy = $ring.Top + $side / 2
-  $middle = $side * 97 / 300
+  $middle = $side * 97 / 420
   DragTo $cx $cy
   [Input]::Mouse($cx, $cy, 0x0004); [Input]::Key(0x10, $true)
   Start-Sleep -Seconds 1
@@ -254,7 +254,7 @@ if ($found.Count -gt 0) {
   $m = $found[$found.Count - 1]
   $side = [int]$m.Groups[3].Value
   $cx = [int]$m.Groups[1].Value + $side / 2; $cy = [int]$m.Groups[2].Value + $side / 2
-  $middle = $side * 97 / 300
+  $middle = $side * 97 / 420
   [Input]::Mouse($cx, $cy - $middle, 0); Start-Sleep -Milliseconds 300
   [Input]::Mouse($cx, $cy - $middle, 0x0002); Start-Sleep -Milliseconds 80
   [Input]::Mouse($cx, $cy - $middle, 0x0004)

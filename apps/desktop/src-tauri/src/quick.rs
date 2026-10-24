@@ -43,6 +43,8 @@ pub const TOOLS: &[&str] = &[
     "powerpoint",
     "text",
     "images",
+    "jpg",
+    "webp",
     "ocr",
     "combine",
     "protect",

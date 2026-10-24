@@ -13,6 +13,10 @@
 //!   behind the slide's editable text boxes; and whether the page's text was
 //!   invisible to begin with (a scan with a text layer), in which case the
 //!   picture is the page as it is.
+//! - `export.image` (Images as JPG or WebP): the page drawn and written as
+//!   that kind of picture here, so every host makes the same file (a
+//!   webview's canvas cannot write WebP everywhere). PNG stays with the
+//!   interface's own writer (`export/png.ts`).
 use serde::Deserialize;
 use serde_json::{json, Value};
 use warraq_pdf::LinkTarget;
@@ -39,6 +43,64 @@ struct Lines {
 struct Picture {
     page: usize,
     scale: f32,
+}
+
+#[derive(Deserialize)]
+struct Image {
+    page: usize,
+    scale: f32,
+    /// `jpeg` or `webp`.
+    format: String,
+    /// JPEG's quality, 1 to 100; WebP is written without loss.
+    #[serde(default = "default_quality")]
+    quality: u8,
+}
+
+fn default_quality() -> u8 {
+    90
+}
+
+/// A drawn page (RGBA, already over white) as a JPEG or a lossless WebP.
+pub(crate) fn encode_image(
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+    format: &str,
+    quality: u8,
+) -> Result<Vec<u8>, CoreError> {
+    use image::ImageEncoder;
+    let pixels = (width as usize) * (height as usize);
+    if width == 0 || height == 0 || rgba.len() < pixels * 4 {
+        return Err(CoreError::Args("export.image: no picture to write".into()));
+    }
+    let mut out = Vec::new();
+    let failed = |e: image::ImageError| CoreError::Args(format!("export.image: {e}"));
+    match format {
+        "jpeg" | "jpg" => {
+            // JPEG has no transparency: the page is opaque already, so the alpha goes.
+            let rgb: Vec<u8> = rgba[..pixels * 4]
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .flat_map(|p| [p[0], p[1], p[2]])
+                .collect();
+            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, quality.clamp(1, 100))
+                .write_image(&rgb, width, height, image::ExtendedColorType::Rgb8)
+                .map_err(failed)?;
+        }
+        "webp" => {
+            image::codecs::webp::WebPEncoder::new_lossless(&mut out)
+                .write_image(
+                    &rgba[..pixels * 4],
+                    width,
+                    height,
+                    image::ExtendedColorType::Rgba8,
+                )
+                .map_err(failed)?;
+        }
+        other => return Err(CoreError::Args(format!("export.image: no {other} writer"))),
+    }
+    Ok(out)
 }
 
 fn dir(d: Direction) -> &'static str {
@@ -126,7 +188,59 @@ pub fn call(
             }))?
             .with_blob(bitmap.rgba))
         }
+        "image" => {
+            let a: Image = args(json)?;
+            let bitmap = doc.render_page(a.page, a.scale)?;
+            let bytes = encode_image(
+                bitmap.width,
+                bitmap.height,
+                &bitmap.rgba,
+                &a.format,
+                a.quality,
+            )?;
+            Ok(
+                Reply::of(&serde_json::json!({ "width": bitmap.width, "height": bitmap.height }))?
+                    .with_blob(bytes),
+            )
+        }
         _ => Err(CoreError::UnknownOp(format!("export.{name}"))),
+    }
+}
+
+#[cfg(test)]
+mod image_tests {
+    use super::encode_image;
+
+    fn page() -> Vec<u8> {
+        // 4 by 3, white with one red pixel.
+        let mut rgba = vec![255u8; 4 * 3 * 4];
+        rgba[4..8].copy_from_slice(&[255, 0, 0, 255]);
+        rgba
+    }
+
+    #[test]
+    fn writes_a_jpeg() {
+        let bytes = encode_image(4, 3, &page(), "jpeg", 90).unwrap();
+        assert_eq!(&bytes[..3], &[0xff, 0xd8, 0xff]);
+        let back = image::load_from_memory(&bytes).unwrap();
+        assert_eq!((back.width(), back.height()), (4, 3));
+    }
+
+    #[test]
+    fn writes_a_lossless_webp() {
+        let bytes = encode_image(4, 3, &page(), "webp", 90).unwrap();
+        assert_eq!(&bytes[..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WEBP");
+        let back = image::load_from_memory(&bytes).unwrap().to_rgba8();
+        assert_eq!(back.get_pixel(1, 0).0, [255, 0, 0, 255]);
+        assert_eq!(back.get_pixel(0, 0).0, [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn refuses_what_it_cannot_write() {
+        assert!(encode_image(4, 3, &page(), "gif", 90).is_err());
+        assert!(encode_image(0, 3, &page(), "jpeg", 90).is_err());
+        assert!(encode_image(40, 30, &page(), "webp", 90).is_err());
     }
 }
 

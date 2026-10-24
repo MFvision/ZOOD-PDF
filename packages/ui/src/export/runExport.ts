@@ -5,7 +5,7 @@ import type { FileKind } from '../state/saveFile';
 import { buildDocx, readsRtl } from './docx';
 import { buildLayoutDocx } from './docxLayout';
 import { FILE_KINDS } from './formats';
-import type { ExportFormat } from './formats';
+import type { ExportFormat, ImageFormat } from './formats';
 import { paragraphsOf, trimLine } from './paragraphs';
 import { encodePng, zipImages } from './png';
 import { buildPptx } from './pptx';
@@ -99,6 +99,8 @@ export async function exportDocument(doc: ExportableDocument, request: ExportReq
   if (doc.pageCount < 1) return null;
   switch (request.format) {
     case 'png':
+    case 'jpg':
+    case 'webp':
       return exportImages(doc, request);
     case 'xlsx':
       return exportSheets(doc, request);
@@ -370,7 +372,7 @@ function utf8(text: string): Uint8Array<ArrayBuffer> {
 
 async function exportText(
   doc: ExportableDocument,
-  format: Exclude<ExportFormat, 'png' | 'xlsx' | 'pptx'>,
+  format: Exclude<ExportFormat, ImageFormat | 'xlsx' | 'pptx'>,
   request: ExportRequest,
 ): Promise<ExportResult | null> {
   const pages = await readPages(doc, request.onProgress);
@@ -388,8 +390,16 @@ async function exportText(
   return { bytes, fileName: exportFileName(request.name, format), kind: FILE_KINDS[format], reduced: false };
 }
 
-/** Every page drawn by the core and written as a PNG; one page is one image, more are a zip. */
+/** JPG's quality: pages of text stay crisp, at about a third of a PNG's size. */
+export const JPEG_QUALITY = 88;
+
+/**
+ * Every page drawn by the core and written as a picture; one page is one
+ * image, more are a zip. PNG is written here; JPG and WebP by the core
+ * (`export.image`), as a webview's canvas cannot write WebP everywhere.
+ */
 async function exportImages(doc: ExportableDocument, request: ExportRequest): Promise<ExportResult> {
+  const format: ImageFormat = request.format === 'jpg' || request.format === 'webp' ? request.format : 'png';
   const total = doc.pageCount;
   const wanted = request.dpi / 72;
   const images: Uint8Array<ArrayBuffer>[] = [];
@@ -399,13 +409,19 @@ async function exportImages(doc: ExportableDocument, request: ExportRequest): Pr
     const fits = Math.sqrt(MAX_PAGE_PIXELS / Math.max(1, width * wanted * height * wanted));
     const scale = fits < 1 ? wanted * fits : wanted;
     if (fits < 1) reduced = true;
-    const page = await doc.render_page(index, scale);
-    images.push(encodePng(page.width, page.height, page.rgba, scale * 72));
+    if (format === 'png') {
+      const page = await doc.render_page(index, scale);
+      images.push(encodePng(page.width, page.height, page.rgba, scale * 72));
+    } else {
+      const { blobs } = await doc.call('export.image', { page: index, scale, format: format === 'jpg' ? 'jpeg' : 'webp', quality: JPEG_QUALITY });
+      if (!blobs[0]) throw new Error('E_IMAGE: the core wrote no picture');
+      images.push(new Uint8Array(blobs[0]));
+    }
     request.onProgress?.(index + 1, total);
   }
   if (images.length === 1) {
-    return { bytes: images[0]!, fileName: exportFileName(request.name, 'png'), kind: FILE_KINDS.png, reduced };
+    return { bytes: images[0]!, fileName: exportFileName(request.name, format), kind: FILE_KINDS[format], reduced };
   }
-  const bytes = zipImages(images.map((png, index) => ({ name: pageImageName(request.name, index + 1, total), bytes: png })));
+  const bytes = zipImages(images.map((image, index) => ({ name: pageImageName(request.name, index + 1, total, format), bytes: image })));
   return { bytes, fileName: pagesArchiveName(request.name, request.pagesWord), kind: FILE_KINDS.zip, reduced };
 }
