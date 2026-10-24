@@ -3,7 +3,7 @@ import { CloudError } from './errors';
 import { authorised, hostTransport, unauthorised } from './http';
 import type { CloudRequest } from './http';
 import { oneDriveServer, Session } from './oauth';
-import { GRAPH, OneDrive, UPLOAD_RANGE, entryOf, oneDriveName, refOfKey, searchUrl } from './onedrive';
+import { GRAPH, OneDrive, UPLOAD_RANGE, entryOf, oneDriveKey, oneDriveName, refOfKey, searchUrl } from './onedrive';
 import { bytesOf, countingBroker, recording, reply } from './testing';
 
 const server = oneDriveServer({ clientId: '0b3f6a2e-1c1d-4c55-9d5e-2a9f5e0c1d22', tenant: 'common' });
@@ -68,6 +68,28 @@ describe('listing and searching OneDrive', () => {
     expect(refOfKey('me!root')).toEqual({ driveId: null, itemId: 'root' });
     expect(refOfKey('nokey')).toBeNull();
     expect(refOfKey('!x')).toBeNull();
+  });
+
+  it('reads back keys of personal and of work or school drives, whose IDs both carry "!"', () => {
+    // Personal: the drive ID has none, the item ID has one.
+    const personal = { driveId: '8a2f1c0de4b3a9f0', itemId: '8A2F1C0DE4B3A9F0!1234' };
+    expect(refOfKey(oneDriveKey(personal))).toEqual(personal);
+    // Work or school (SharePoint): the drive ID starts "b!", the item ID has none.
+    const work = { driveId: 'b!xX9_a-Rk2E2Qm5hYk3pT0wV7nL8sZ1cD4fG6hJ9kLmNoPqRsTuVwXyZ0123456', itemId: '01ABCDEFGHIJKLMNOPQRSTUVWXYZ234567' };
+    expect(refOfKey(oneDriveKey(work))).toEqual(work);
+    expect(refOfKey('b!')).toBeNull();
+  });
+
+  it('lists a work or school folder in its own drive', async () => {
+    const urls: string[] = [];
+    const { onedrive } = drive((request) => {
+      urls.push(request.url);
+      return reply(200, { value: [] });
+    });
+    const driveId = 'b!xX9_a-Rk2E2Qm5hYk3pT0wV7nL8sZ1cD4fG6hJ9kLmNoPqRsTuVwXyZ0123456';
+    const top = entryOf({ id: '01FOLDER', name: 'zood brochure بروفايل زود', folder: { childCount: 3 }, parentReference: { driveId } })!;
+    await onedrive.list(top.key);
+    expect(urls[0]).toBe(`${GRAPH}/drives/${encodeURIComponent(driveId)}/items/01FOLDER/children?$select=${'id,name,size,file,folder,package,remoteItem,parentReference,lastModifiedDateTime,eTag'}&$top=200`);
   });
 });
 

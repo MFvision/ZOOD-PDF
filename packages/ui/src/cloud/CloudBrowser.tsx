@@ -22,8 +22,9 @@ interface Place {
 /**
  * A drive's folders and PDFs, to open one or to choose where to save. OneDrive
  * is walked folder by folder, with a search over the whole drive; Google
- * Drive, with drive.file, lists the PDFs the app may open, and its own picker
- * — part of Google's consent screen — is where the rest are chosen. Every
+ * Drive, with drive.file, lists the PDFs and folders the app may open, and
+ * its own picker — part of Google's consent screen — is where the rest are
+ * chosen, many at once or a whole folder. Every
  * listing follows the person's click (opening this sheet, a folder, Search,
  * Show More).
  */
@@ -45,8 +46,9 @@ export function CloudBrowser({
   const walks = drive.folders;
   const driveName = t(`cloud.name.${provider}`);
   const [path, setPath] = useState<Place[]>(() => [
-    { key: null, name: t('cloud.browse.top') },
-    ...(folder && walks ? [{ key: folder.key, name: folder.name ?? '…' }] : []),
+    { key: null, name: t(walks ? 'cloud.browse.top' : 'cloud.browse.googleList') },
+    // Save As starts beside the file; Google's picker can hand over a folder to open.
+    ...(folder && (walks || mode === 'open') ? [{ key: folder.key, name: folder.name ?? '…' }] : []),
   ]);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState<string | null>(null);
@@ -180,7 +182,7 @@ export function CloudBrowser({
             {walks ? t('cloud.browse.back') : t('cloud.browse.googleList')}
           </button>
         </div>
-      ) : walks ? (
+      ) : walks || path.length > 1 ? (
         <nav aria-label={t('cloud.browse.path')}>
           <ol className="cloud-path">
             {path.map((place, index) => (
@@ -240,7 +242,13 @@ export function CloudBrowser({
       )}
       {!loading && !failed && entries.length === 0 && (
         <p className="cloud-status">
-          {searching !== null ? t('cloud.browse.emptySearch') : walks ? t('cloud.browse.empty') : t('cloud.browse.googleEmpty')}
+          {searching !== null
+            ? t('cloud.browse.emptySearch')
+            : walks
+              ? t('cloud.browse.empty')
+              : here.key
+                ? t('cloud.browse.googleFolderEmpty')
+                : t('cloud.browse.googleEmpty')}
         </p>
       )}
       {failed && (
@@ -302,9 +310,15 @@ export function CloudBrowser({
                 {t('cloud.browse.saveBeside')}
               </button>
             )}
-            <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={busy} onClick={() => void cloud.saveInto(provider, null, safeName)}>
-              {t('cloud.browse.saveMyDrive')}
-            </button>
+            {here.key ? (
+              <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={busy} onClick={() => void cloud.saveInto(provider, here.key, safeName)}>
+                {t('cloud.browse.saveHere')}
+              </button>
+            ) : (
+              <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={busy} onClick={() => void cloud.saveInto(provider, null, safeName)}>
+                {t('cloud.browse.saveMyDrive')}
+              </button>
+            )}
           </>
         )}
         {mode === 'saveAs' && walks && (

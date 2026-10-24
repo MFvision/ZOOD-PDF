@@ -53,13 +53,19 @@ function itemPath(ref: ItemRef): string {
   return ref.driveId ? `/drives/${enc(ref.driveId)}/items/${enc(ref.itemId)}` : `/me/drive/items/${enc(ref.itemId)}`;
 }
 
-/** An item's key for the app's own lists: the drive and the item. */
+/** An item's key for the app's own lists: the drive and the item, read back by `refOfKey`. */
 export function oneDriveKey(ref: ItemRef): string {
   return `${ref.driveId ?? 'me'}!${ref.itemId}`;
 }
 
+/**
+ * The key's drive and item. A personal drive's ID has no "!" and its items'
+ * IDs do ("A1B2!103"), so the first "!" ends the drive; a work or school
+ * drive's ID is "b!" and more, and its items' IDs have none, so there the
+ * last one does.
+ */
 export function refOfKey(key: string): ItemRef | null {
-  const at = key.indexOf('!');
+  const at = key.startsWith('b!') ? key.lastIndexOf('!') : key.indexOf('!');
   if (at < 1 || at === key.length - 1) return null;
   const driveId = key.slice(0, at);
   return { driveId: driveId === 'me' ? null : driveId, itemId: key.slice(at + 1) };

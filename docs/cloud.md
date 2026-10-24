@@ -29,8 +29,14 @@ it does afterwards.
   browser, in your own browser on the desktop. محرر PDF never sees the
   password.
 * **Opening** browses OneDrive folder by folder, with a search over the whole
-  drive. For Google Drive, Google's own file picker appears as part of signing
-  in, and the app afterwards lists the files it is allowed to see.
+  drive (work or school drives too: their drive IDs start `b!`, which the
+  item keys allow for). For Google Drive, Google's own file picker appears as
+  part of signing in (`allow_multiple`, `allow_folder_selection`): every PDF
+  picked opens in a tab of its own, and a folder picked opens in the sheet
+  with whatever of it `drive.file` lets the app see. The app afterwards lists
+  the files and folders it is allowed to see.
+* **Each tab saves to its own file**: a drive file's claim on Save stays with
+  its tab, so several files opened from a drive each save back to their own.
 * **Saving** writes a new revision of the file it opened, checked against the
   version it had at the time. If someone else saved it meanwhile, the person is
   asked: *Save as a Copy…*, *Replace*, or *Cancel* — never a silent overwrite.
