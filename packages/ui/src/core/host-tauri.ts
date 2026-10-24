@@ -3,6 +3,7 @@ import { decodeFrame, encodeFrame } from './frame';
 import type { CoreStatus, DocumentMetadata, PageSize, ParagraphData, TextLineData } from './types';
 import { parseReplaceResult } from './handlers';
 import { note } from '../support/log';
+import type { FileLook as SortFileLook, SortFile } from '../sort/plan';
 
 /**
  * Desktop host adapter: routes the core protocol to the natively linked
@@ -397,6 +398,8 @@ export interface RingSettings {
   shortcut: string;
   /** The key held while dragging that opens the ring; `any` is Ctrl or Shift (Option or Command on a Mac). */
   dragKey: RingDragKey;
+  /** Files dragged with no key bring ZOOD's drop zone down from the top of the screen (`sort.rs`). */
+  dropZone: boolean;
 }
 
 export type RingDragKey = 'any' | 'ctrl' | 'shift' | 'alt' | 'meta';
@@ -407,7 +410,77 @@ export async function ringSettings(): Promise<RingSettings | null> {
 }
 
 export async function configureRing(settings: RingSettings): Promise<RingSettings> {
-  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut, dragKey: settings.dragKey })) as RingSettings;
+  return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut, dragKey: settings.dragKey, dropZone: settings.dropZone })) as RingSettings;
+}
+
+/* --------------------------------------------------------------------- sort */
+
+const hasParam = (name: string) => {
+  if (!internals()) return false;
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '').has(name);
+  } catch {
+    return false;
+  }
+};
+
+/** True in a Sort window (`src-tauri/src/sort.rs`): files thrown on ZOOD, to sort. */
+export const isSortWindow = () => hasParam('sort');
+/** True in ZOOD's drop zone at the top of the screen. */
+export const isDropZoneWindow = () => hasParam('dropzone');
+
+/** The drop zone's look: a pill at first, open when the pointer comes near, `over` with files on it. */
+export const DROP_ZONE_EVENT = 'drop://state';
+/** Words Ask ZOOD heard for this Sort window. */
+export const SORT_SAY_EVENT = 'sort://say';
+/** Files dragged over the ZOOD bubble (true) or away (false). */
+export const BUBBLE_DRAG_EVENT = 'bubble://drag';
+
+export interface SortJob {
+  folder: string;
+  folderName: string;
+  files: SortFile[];
+}
+
+export interface SortStep {
+  file: number;
+  folder?: string | null;
+  name?: string | null;
+}
+
+export async function sortJob(): Promise<SortJob | null> {
+  return ((await invoke('sort_job')) as SortJob | null) ?? null;
+}
+
+export function sortLook(index: number): Promise<SortFileLook> {
+  return invoke('sort_look', { index }) as Promise<SortFileLook>;
+}
+
+/** Files this window wrote (merged, split): they join the sort, and Undo removes them. */
+export function sortMade(paths: readonly string[]): Promise<SortJob> {
+  return invoke('sort_made', { paths }) as Promise<SortJob>;
+}
+
+export function sortApply(steps: readonly SortStep[]): Promise<SortJob> {
+  return invoke('sort_apply', { steps }) as Promise<SortJob>;
+}
+
+export function sortUndo(): Promise<SortJob> {
+  return invoke('sort_undo') as Promise<SortJob>;
+}
+
+export function sortClose(): Promise<void> {
+  return invoke('sort_close').then(() => undefined);
+}
+
+/** Ask ZOOD listens, and what is said comes to this window. */
+export function sortListen(): Promise<void> {
+  return invoke('sort_listen').then(() => undefined);
+}
+
+/** From Ask ZOOD: the words go to a Sort window when one is waiting for them (true). */
+export function sortVoice(words: string): Promise<boolean> {
+  return invoke('sort_voice', { words }).then((sent) => sent === true, () => false);
 }
 
 /* ---------------------------------------------------------------- system */

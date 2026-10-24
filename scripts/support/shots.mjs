@@ -25,6 +25,30 @@ const FILES = {
 };
 const desktop = (lang) => desktopHost(PEOPLE[lang], FILES[lang]);
 
+/** Files thrown on ZOOD, and what the host read in them, for the Sort window's pictures. */
+const SORTED = {
+  ar: {
+    names: ['مسح 1.pdf', 'مسح 2.pdf', 'فواتير.pdf', 'IMG_2034.jpg', 'Document (3).pdf', 'السيرة الذاتية.pdf'],
+    texts: [['عقد إيجار\nبين الطرف الأول والطرف الثاني'], ['التوقيعات'], ['فاتورة ضريبية رقم: 1001\nمكتبة جرير', 'تابع', 'فاتورة ضريبية رقم: 2207\nمكتبة جرير'], null, ['كشف حساب\nمصرف الراجحي'], ['السيرة الذاتية\nمحمد']],
+  },
+  en: {
+    names: ['scan 1.pdf', 'scan 2.pdf', 'bills.pdf', 'IMG_2034.jpg', 'Document (3).pdf', 'CV Mohammed.pdf'],
+    texts: [['Lease contract\nBetween the first party and the second party'], ['Signatures'], ['Tax Invoice No: 1001\nJarir Bookstore', 'continued', 'Tax Invoice No: 2207\nJarir Bookstore'], null, ['Bank statement\nAl Rajhi Bank'], ['Curriculum vitae\nMohammed']],
+  },
+};
+function sorting(lang) {
+  const { names, texts } = SORTED[lang];
+  const folder = 'C:\\Users\\Mohammed\\Downloads';
+  const files = names.map((name, index) => ({ index, name, path: `${folder}\\${name}`, size: 200000 + index * 37000, day: '2026-10-21', kind: name.endsWith('.jpg') ? 'images' : 'pdf', made: false }));
+  const byIndex = texts.map((pages) => (pages ? { pages: pages.length, texts: pages, title: '', locked: false } : { pages: 0, texts: [], title: '', locked: false }));
+  return desktopHost(PEOPLE[lang], FILES[lang], {
+    sort_job: { folder, folderName: lang === 'ar' ? 'التنزيلات' : 'Downloads', files },
+    sort_look: { byIndex },
+    // Moving files: the stand-in moves nothing and keeps the same job.
+    sort_apply: { folder, folderName: lang === 'ar' ? 'التنزيلات' : 'Downloads', files },
+  });
+}
+
 /** A page of the desktop app's Settings, with one part of it to light up. */
 function desktopSetting(section, part) {
   return {
@@ -310,6 +334,34 @@ export const SHOTS = {
   'quick-ring-setting': desktopSetting('quick', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('quick.settings.ring') }).first()),
 
   'quick-ring-key': desktopSetting('quick', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('prefs.ringDragKey') }).first()),
+
+  // Desktop: Sort with ZOOD
+  'sort-zone': {
+    host: desktop,
+    window: { width: 400, height: 168, query: '?dropzone', ready: '.zood-drop', transparent: true },
+    async run(s) {
+      await s.page.evaluate(() => globalThis.__shotEmit('drop://state', { look: 'over' }));
+      await s.page.waitForTimeout(700);
+      return { mark: s.page.locator('.zood-drop') };
+    },
+  },
+  'sort-window': {
+    host: sorting,
+    window: { width: 760, height: 660, query: '?sort', ready: '.sort-card' },
+    run: async (s) => ({ mark: s.page.locator('.sort-foot .icon-btn-primary').first() }),
+  },
+  'sort-voice': {
+    host: sorting,
+    window: { width: 760, height: 660, query: '?sort', ready: '.sort-card' },
+    async run(s) {
+      const words = s.lang === 'ar' ? 'رتّبها في مجلدات ولا تغيّر الأسماء' : 'put them in folders but don’t rename';
+      await s.page.evaluate((said) => globalThis.__shotEmit('sort://say', { words: said }), words);
+      await s.page.locator('.sort-heard').waitFor();
+      await s.page.waitForTimeout(500);
+      return { mark: [s.page.locator('.sort-heard'), s.page.locator('.sort-foot .icon-btn').first()] };
+    },
+  },
+  'sort-setting': desktopSetting('quick', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('quick.settings.dropZone') }).first()),
 
   // Desktop: Ask ZOOD
   'ask-keys': desktopSetting('ai', (s, dialog) => dialog.locator('.prefs-row', { hasText: s.t('ask.settings.keys') }).first()),

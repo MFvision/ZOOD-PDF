@@ -374,7 +374,8 @@ pub type PostForm<'a> = &'a dyn Fn(String) -> Result<(u16, Vec<u8>), String>;
 ///
 /// The form is the interface's (client id, code, verifier, redirect, scope)
 /// and may carry no refresh token and no secret: a refresh token is added
-/// here from the store, and there is no secret. The answer goes back to the
+/// here from the store, and Google's installed-app secret, when the build has
+/// one, by `cloud_token` (see `with_installed_secret`). The answer goes back to the
 /// interface without its refresh token. A new sign-in replaces whatever was
 /// kept, even when it brings no refresh token of its own — it may be a
 /// different account; a refresh keeps the old one unless a new one comes.
@@ -874,6 +875,31 @@ pub fn cloud_auth_cancel(state: State<'_, CloudState>) -> Result<(), String> {
     Ok(())
 }
 
+/// Google's "client secret" for its Desktop app client, from the build's
+/// environment (`WARRAQ_GOOGLE_CLIENT_SECRET`, an Actions secret; never in
+/// the repository). Google's token endpoint asks a desktop client for it even
+/// with PKCE, and says itself that for an installed app it "is not treated as
+/// a secret": it ships in every copy. The owner allowed it on 2026-10-24.
+/// It is added here, by the host, so the window never holds it; OneDrive's
+/// public client sends none.
+const GOOGLE_INSTALLED_SECRET: Option<&str> = option_env!("WARRAQ_GOOGLE_CLIENT_SECRET");
+
+/// The token request's body, with Google's installed-app secret appended
+/// when the build has one. Any other provider, or no secret, leaves it as is.
+fn with_installed_secret(provider: Provider, body: String, secret: Option<&str>) -> String {
+    match secret.map(str::trim) {
+        Some(secret) if provider == Provider::GoogleDrive && !secret.is_empty() => {
+            let extra = form_encode([("client_secret", secret)]);
+            if body.is_empty() {
+                extra
+            } else {
+                format!("{body}&{extra}")
+            }
+        }
+        _ => body,
+    }
+}
+
 /// A code redeemed, or a refresh, at `provider`'s token endpoint (`url`);
 /// the refresh token is kept in the credential store, the rest answered as
 /// JSON (see [`token`]).
@@ -899,7 +925,10 @@ pub fn cloud_token(
         form.get("grant_type").map(String::as_str).unwrap_or("?")
     ));
     let answer = token(state.secrets.as_ref(), provider, form, &|body: String| {
-        post_form(&uri, body)
+        post_form(
+            &uri,
+            with_installed_secret(provider, body, GOOGLE_INSTALLED_SECRET),
+        )
     })?;
     Ok(answer.to_string())
 }
@@ -1497,6 +1526,27 @@ mod tests {
             assert!(error.starts_with("E_ARGS"), "{error}");
         }
         assert!(seen.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn only_google_gets_the_installed_app_secret_and_only_when_built_with_one() {
+        let body = "grant_type=authorization_code&code=c".to_string();
+        assert_eq!(
+            with_installed_secret(Provider::GoogleDrive, body.clone(), Some("GOCSPX-a+b")),
+            "grant_type=authorization_code&code=c&client_secret=GOCSPX-a%2Bb"
+        );
+        assert_eq!(
+            with_installed_secret(Provider::OneDrive, body.clone(), Some("s")),
+            body
+        );
+        assert_eq!(
+            with_installed_secret(Provider::GoogleDrive, body.clone(), None),
+            body
+        );
+        assert_eq!(
+            with_installed_secret(Provider::GoogleDrive, body.clone(), Some(" ")),
+            body
+        );
     }
 
     #[test]

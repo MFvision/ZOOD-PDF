@@ -637,6 +637,7 @@ export function QuickPage() {
             }}
           />
           <Toggle label={t('quick.settings.background')} hint={t('quick.settings.backgroundNote')} checked={ring.background} onChange={(on) => changeRing({ background: on })} />
+          <Toggle label={t('quick.settings.dropZone')} hint={t('quick.settings.dropZoneNote')} checked={ring.dropZone !== false} onChange={(on) => changeRing({ dropZone: on })} />
         </Group>
       )}
       <Group title={t('prefs.resultsGroup')}>

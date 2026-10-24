@@ -31,7 +31,7 @@ export function desktopHost(name, files = [], extra = {}) {
     core_version: '0.4.4',
     core_engine: 'native',
     shell_menu_state: { kind: 'registry', on: true },
-    ring_settings: { ring: true, background: true, scale: 1, shortcut: 'CommandOrControl+Alt+Z', dragKey: 'any' },
+    ring_settings: { ring: true, background: true, scale: 1, shortcut: 'CommandOrControl+Alt+Z', dragKey: 'any', dropZone: true },
     ask_settings: { enabled: true, shortcut: 'CommandOrControl+Shift+Space', sees: true, taps: true, tapKey: 'Control', tapToType: true, tapSpeaks: true, glow: true },
     ask_access: { applies: false, accessibility: true, screen: true, microphone: 'allowed', input: true },
     presence_settings: { bubble: true, lang: 'ar' },
@@ -65,6 +65,8 @@ export function desktopHost(name, files = [], extra = {}) {
       convertFileSrc: (path) => path,
       async invoke(cmd, args) {
         if (cmd === 'plugin:event|listen') listeners.set(args.event, [...(listeners.get(args.event) ?? []), args.handler]);
+        // An answer that depends on which one is asked for (sort_look's file).
+        if (answers[cmd] && answers[cmd].byIndex) return answers[cmd].byIndex[args?.index] ?? null;
         return cmd in answers ? answers[cmd] : null;
       },
     };

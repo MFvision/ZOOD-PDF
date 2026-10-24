@@ -11,6 +11,7 @@
 //! every window and never taking the keyboard, so the app in front stays the
 //! one Ask ZOOD helps with. A click starts Ask ZOOD; it can be dragged
 //! anywhere, and stays where it was left. Off until the person turns it on.
+//! Files dropped on it are sorted (`sort.rs`).
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -283,6 +284,30 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
         });
         let _ = window.show();
     });
+}
+
+/// The bubble's look while files are dragged over it (`Bubble.tsx`).
+pub const BUBBLE_DRAG_EVENT: &str = "bubble://drag";
+
+/// Files dragged onto the bubble: it opens its arms, and files let go on it
+/// are sorted (`sort.rs`), so the bubble is a place to throw messy files.
+pub fn on_drag<R: Runtime>(window: &tauri::Window<R>, event: &tauri::DragDropEvent) {
+    match event {
+        tauri::DragDropEvent::Enter { .. } => {
+            let _ = window.emit_to(BUBBLE_LABEL, BUBBLE_DRAG_EVENT, true);
+        }
+        tauri::DragDropEvent::Leave => {
+            let _ = window.emit_to(BUBBLE_LABEL, BUBBLE_DRAG_EVENT, false);
+        }
+        tauri::DragDropEvent::Drop { paths, .. } => {
+            let _ = window.emit_to(BUBBLE_LABEL, BUBBLE_DRAG_EVENT, false);
+            let files = crate::sort::files_of(paths);
+            if !files.is_empty() {
+                crate::sort::open(window.app_handle(), files);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// The bubble was clicked.

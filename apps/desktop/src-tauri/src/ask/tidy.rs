@@ -230,7 +230,7 @@ pub fn plan_moves(folder: &Path, entries: &[Entry], how: How, names: &Names) -> 
 }
 
 /// A folder name the interface gave, made a single safe path part.
-fn safe_folder(name: &str) -> String {
+pub(crate) fn safe_folder(name: &str) -> String {
     let clean: String = name
         .chars()
         .filter(|c| !c.is_control() && !"/\\:*?\"<>|".contains(*c))
@@ -245,7 +245,7 @@ fn safe_folder(name: &str) -> String {
 }
 
 /// `path`, or "name (2).ext", "name (3).ext"… when it is taken on disk or in `taken`.
-fn free_name(path: &Path, taken: &HashSet<PathBuf>) -> PathBuf {
+pub(crate) fn free_name(path: &Path, taken: &HashSet<PathBuf>) -> PathBuf {
     let free = |p: &Path| !p.exists() && !taken.contains(p);
     if free(path) {
         return path.to_path_buf();
@@ -266,7 +266,7 @@ fn free_name(path: &Path, taken: &HashSet<PathBuf>) -> PathBuf {
 }
 
 /// The day a file was last changed, on this computer's calendar.
-fn day_of(meta: &std::fs::Metadata) -> String {
+pub(crate) fn day_of(meta: &std::fs::Metadata) -> String {
     let time = meta
         .modified()
         .unwrap_or_else(|_| std::time::SystemTime::now());
@@ -416,7 +416,7 @@ fn place_folder<R: Runtime>(
 }
 
 /// The folder may be tidied: an ordinary folder inside the person's home.
-fn may_tidy<R: Runtime>(app: &AppHandle<R>, folder: &Path) -> Result<(), String> {
+pub(crate) fn may_tidy<R: Runtime>(app: &AppHandle<R>, folder: &Path) -> Result<(), String> {
     let home = app
         .path()
         .home_dir()

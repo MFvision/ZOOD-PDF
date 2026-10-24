@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import './bubble.css';
 import { ZoodMark } from '../components/ZoodMark';
-import { invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
+import { BUBBLE_DRAG_EVENT, invokeHost, isTauriHost, onHostEvent } from '../core/host-tauri';
 import { applyAppearance } from '../settings/SettingsEffects';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useT } from '../i18n/useT';
@@ -24,7 +24,8 @@ const DRAG_FROM = 4;
  * screen, above every window. A click starts Ask ZOOD (as a tap of its
  * key); a drag moves it, and the host keeps where it was left. It glows
  * while Ask ZOOD listens. It never takes the keyboard, so the app in front
- * stays the one Ask ZOOD helps with.
+ * stays the one Ask ZOOD helps with. Files dropped on it are sorted
+ * (`sort/`): with files over it, it opens up to take them.
  */
 export function AskBubbleApp() {
   return (
@@ -37,6 +38,7 @@ export function AskBubbleApp() {
 function AskBubble() {
   const t = useT();
   const [listening, setListening] = useState(false);
+  const [filesOver, setFilesOver] = useState(false);
   const pressed = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
@@ -46,6 +48,7 @@ function AskBubble() {
     const stops = [
       onHostEvent<unknown>('ask://listen', () => setListening(true)),
       onHostEvent<unknown>('ask://heard', () => setListening(false)),
+      onHostEvent<boolean>(BUBBLE_DRAG_EVENT, (over) => setFilesOver(over)),
     ];
     return () => {
       for (const stop of stops) stop();
@@ -55,9 +58,9 @@ function AskBubble() {
   return (
     <button
       type="button"
-      className={listening ? 'ask-bubble is-listening' : 'ask-bubble'}
-      aria-label={t('ask.bubble')}
-      title={t('ask.bubble')}
+      className={['ask-bubble', listening ? 'is-listening' : '', filesOver ? 'is-taking' : ''].filter(Boolean).join(' ')}
+      aria-label={filesOver ? t('sort.zone.letGo') : t('ask.bubble')}
+      title={filesOver ? t('sort.zone.letGo') : t('ask.bubble')}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         pressed.current = { x: event.screenX, y: event.screenY };

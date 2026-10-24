@@ -379,6 +379,27 @@ export const ARTICLES: readonly Article[] = [
     guide: { steps: [{ say: { ar: 'من هنا تختار الأدوات التي تظهر.', en: 'Here you choose which tools appear.' }, run: 'settings:quick' }] },
   },
   {
+    id: 'sort-files',
+    category: 'desktop',
+    title: { ar: 'ارمِ ملفاتك على زود ليرتّبها', en: 'Throw files on ZOOD to sort them' },
+    summary: { ar: 'اسحب ملفات مبعثرة إلى أعلى الشاشة، ويقترح زود دمجها أو فصلها أو ترتيبها في مجلدات أو تسميتها، على جهازك.', en: 'Drag messy files to the top of the screen, and ZOOD suggests merging, splitting, folders or names, on your computer.' },
+    steps: [
+      { ar: 'حدّد الملفات في سطح المكتب أو التنزيلات واسحبها بدون أي مفتاح نحو أعلى منتصف الشاشة. ينزل زود من الأعلى: أفلتها عليه.', en: 'Select files on your Desktop or in Downloads and drag them, with no key held, to the top middle of the screen. ZOOD comes down from the top: let go on it.', pic: 'sort-zone' },
+      { ar: 'تفتح نافذة «رتّب مع زود» وتقرأ الملفات على جهازك، ثم تقترح: دمج الصفحات المتسلسلة، فصل ملف فيه عدة مستندات، أسماء واضحة، ومجلدات حسب المحتوى. اضغط «نفّذ» على اقتراح أو «نفّذ الكل».', en: 'The Sort with ZOOD window reads the files on your computer and suggests: merge pages in a series, split a file holding several documents, clear names, and folders by what each file is. Press Do it on one, or Do all.', pic: 'sort-window' },
+      { ar: 'أو اضغط «تكلّم» وقل مثلًا: «ادمجها ولا تغيّر الأسماء». يرد زود وينفّذ.', en: 'Or press Speak and say, for example, “merge them but don’t rename”. ZOOD answers and does it.', pic: 'sort-voice' },
+      { ar: '«تراجع» يرجّع كل ملف إلى مكانه. لا يُحذف أي ملف لك ولا يُكتب فوقه: أصول الملفات المدموجة تنتقل إلى مجلد «الأصلية».', en: 'Undo puts every file back. None of your files is deleted or written over: the originals of merged files move to an Originals folder.' },
+      { ar: 'من الإعدادات › الأدوات السريعة شغّل «رمي الملفات على زود لترتيبها» أو أوقفه، وشغّل «إبقاء الأدوات السريعة جاهزة» ليبقى زود جاهزًا حتى لو أغلقت نوافذه.', en: 'In Settings › Quick tools, turn “Drop files on ZOOD to sort them” on or off, and keep the quick tools ready so ZOOD is there even with its windows closed.', pic: 'sort-setting' },
+    ],
+    tips: [
+      { ar: 'تستطيع أيضًا إفلات الملفات على فقاعة زود، أو سحبها مع Ctrl واختيار «رتّب» من الحلقة.', en: 'You can also drop files on the ZOOD bubble, or drag them with Ctrl held and pick Sort on the ring.' },
+      { ar: 'إن كان نموذج زود على جهازك محمّلًا، يتعرّف على نوع المستندات التي لا تذكر نوعها في اسمها.', en: 'With ZOOD’s on-device model downloaded, it also recognises documents whose names do not say what they are.' },
+    ],
+    keywords: ['sort', 'organize', 'organise', 'tidy', 'drop', 'drag', 'merge', 'split', 'rename', 'folders', 'رتب', 'ترتيب', 'نظم', 'تنظيم', 'افلات', 'اسحب', 'دمج', 'فصل', 'تسميه', 'مجلدات'],
+    tour: 'sort',
+    desktopOnly: true,
+    guide: { steps: [{ say: { ar: 'من هنا تشغّل منطقة الإفلات أو توقفها.', en: 'Here you turn the drop zone on or off.' }, run: 'settings:quick' }] },
+  },
+  {
     id: 'phone-remote',
     category: 'desktop',
     title: { ar: 'التحكم من الجوال', en: 'Control it from your phone' },
