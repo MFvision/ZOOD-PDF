@@ -2142,29 +2142,16 @@ XCFramework and the app's build need several), so it is not in this branch. B an
 3. Nastaliq Urdu in files without a ToUnicode map; Acrobat verification on a machine that has it.
 
 ## Decisions needed from you
-1. **Register the cloud apps** (and one thing to check). The drives are built
-   and proven, but no build offers them until you register an app with each
-   provider and build with its client ID; `docs/cloud.md` is the step-by-step,
-   with the redirect URIs, the scopes and the consent screens. Two parts are
-   yours to decide:
-   * **OneDrive** — one Microsoft app registration serves the web build (a
-     single-page-app redirect URI) and the desktop app (a loopback one). No
-     secret, and none may be added. Nothing else is needed.
-   * **Google Drive** — a "Desktop app" client, scope `drive.file` only (a
-     non-sensitive scope: basic verification, no security assessment). Its
-     documentation calls the client secret optional for installed apps
-     redeeming a code with PKCE, which is what the app does — but developers
-     have reported through August 2026 that Google answers "client_secret is
-     missing." all the same. **Sign in once in the built app after
-     registering.** If Google refuses, either leave the Google client ID unset
-     (no Google control appears) or decide to ship the value Google calls a
-     secret and itself says "is not treated as a secret" for installed apps —
-     which would change the rule *no client secrets in binaries*, so it is
-     yours, not the app's. Google Drive is not offered in a browser at all:
-     Google redeems no web client's code without a secret, and its
-     browser-only alternative (the implicit grant, with Google's scripts in
-     the page) is neither what was asked for nor what the security policy
-     allows.
+1. **Cloud apps — registered (2026-10-24).** OneDrive: ZOOD's Entra app
+   (client ID in `docs/cloud.md`, used by the desktop workflows); its Manifest
+   must also list `http://127.0.0.1/callback` (InstalledClient). Google Drive:
+   a Desktop app client; the owner decided to ship Google's installed-app
+   "secret" (Google says it is not secret for desktop apps), which lives only in
+   the `WARRAQ_GOOGLE_CLIENT_SECRET` Actions secret and is added by the Rust
+   host; without that secret the build leaves Google out. Still to do by hand:
+   one real sign-in to each drive in a built app, and the Google consent screen
+   on `drive.file` only before publishing. Google Drive is not offered in a
+   browser at all (Google redeems no web client's code without a secret).
 2. **GitHub organization** — nothing has been pushed: `gh repo create <org>/warraq --private --source . --push`.
 3. **Xcode license** — `/usr/bin/cc` and the system `python3` refuse to run until `sudo xcodebuild -license accept` (needs your password). Builds work because they are pointed at Xcode's clang directly.
 4. **Phone apps (Tauri 2 mobile)** — tried on 2026-09-19 and stopped, as it should, at tools this Mac does not have. Since 2026-09-21 iOS is no longer this route: the owner asked for a native SwiftUI app, which is `apps/ios` (above), simulator only until an **Apple Developer team** is set in `apps/ios/project.yml` for a device or TestFlight. The notes below stand for Android. What they need, all installs outside this project:

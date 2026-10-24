@@ -111,17 +111,27 @@ only* below.
 7. While the consent screen is unpublished, add the Google accounts that may
    sign in under **Test users**.
 
-> **Check this once, before you ship Google Drive.** Google's documentation
-> lists `client_secret` as *optional* when a desktop app redeems a code with
-> PKCE, and that is what محرر PDF does. Developers have reported (through
-> August 2026) that the token endpoint answers `invalid_request` —
-> "client_secret is missing." — for Desktop app clients all the same. Sign in
-> once in the built app after registering: if Google refuses, the app says so
-> in the sheet, in its own words. Then either leave `WARRAQ_GOOGLE_CLIENT_ID`
-> unset (no Google control appears at all) or decide to ship the value Google
-> calls a secret — which is a change to the rule *no client secrets in
-> binaries*, and so your decision, not the app's. It is recorded as an open
-> decision in `docs/STATUS.md`.
+> **Google asks a desktop client for its secret all the same.** Google's
+> documentation lists `client_secret` as optional with PKCE, but its token
+> endpoint answers `invalid_request` — "client_secret is missing." — without
+> it. The owner decided (2026-10-24) to ship it: Google itself says that for an
+> installed app it "is not treated as a secret". It is the one exception to the
+> rule *no client secrets in binaries*, and it is kept as narrow as it can be:
+>
+> * it lives only in the repository's **Actions secret**
+>   `WARRAQ_GOOGLE_CLIENT_SECRET` (Settings → Secrets and variables → Actions
+>   → *Secrets*), never in the repository;
+> * it is compiled into the Rust host (`option_env!` in `src-tauri/src/cloud.rs`)
+>   and added there to Google's token requests only, so the window never holds it;
+> * without it the workflows leave Google Drive out of the build entirely, rather
+>   than ship a Google button that cannot sign in.
+>
+> ZOOD's Google client is `808968607590-d1urs760af3bgfpgph8rhaaujk5tce50.apps.googleusercontent.com`
+> (a Desktop app client, created 2026-10-24); the workflows use it when no
+> `WARRAQ_GOOGLE_CLIENT_ID` variable is set. While its consent screen is in
+> *Testing*, only the listed test users can sign in. Ask for the
+> `drive.file` scope only: the app needs nothing more, and the full `drive`
+> scope is *restricted*, which means a paid security assessment before publishing.
 
 ---
 
@@ -162,6 +172,13 @@ next build has the drive; nothing else changes. Both
 Once a drive is in the build it appears on the home screen under
 **Folders → Cloud drives**, as a folder beside the person's own, and in the
 File menu.
+
+ZOOD's own OneDrive app (registered 2026-10-24, *ZOOD PDF*, any organization and
+personal accounts) has the client ID `4c561684-3bf8-48e7-b4dc-ca1d7c8f9472`; the
+two workflows use it when the repository sets no variable of their own. The
+desktop app comes back to `http://127.0.0.1:<port>/callback`, so that address
+must be in the registration's Manifest (`replyUrlsWithType`, type
+`InstalledClient`) beside `http://localhost/callback` — step 6 above.
 
 ---
 

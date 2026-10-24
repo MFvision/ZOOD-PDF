@@ -1,4 +1,6 @@
 fn main() {
+    // Google's installed-app secret is read at compile time (src/cloud.rs).
+    println!("cargo:rerun-if-env-changed=WARRAQ_GOOGLE_CLIENT_SECRET");
     link_clang_runtime();
     tauri_build::build()
 }
