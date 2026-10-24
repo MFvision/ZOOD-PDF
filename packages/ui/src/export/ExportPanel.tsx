@@ -1,12 +1,13 @@
 import { useId, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Download, FileOutput } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { saveBytes } from '../state/saveFile';
-import { DEFAULT_RESOLUTION, EXPORT_FORMATS, RESOLUTIONS } from './formats';
-import type { ExportFormat } from './formats';
+import { DEFAULT_RESOLUTION, EXPORT_FORMATS, IMAGE_FORMATS, RESOLUTIONS, isImageFormat } from './formats';
+import type { ExportFormat, ImageFormat } from './formats';
 import { exportCurrentFile } from './runExport';
 import type { SlideMode, WordMode } from './runExport';
 import type { SheetMode } from './tables';
@@ -27,6 +28,8 @@ export function ExportPanel() {
   const id = useId();
   const [format, setFormat] = useState<ExportFormat>('docx');
   const [dpi, setDpi] = useState<number>(DEFAULT_RESOLUTION);
+  // Page images are one choice in the list, with their kind of picture beside it.
+  const [picture, setPicture] = useState<ImageFormat>('png');
   const [sheets, setSheets] = useState<SheetMode>('page');
   const [slides, setSlides] = useState<SlideMode>('picture');
   const [words, setWords] = useState<WordMode>('layout');
@@ -104,27 +107,55 @@ export function ExportPanel() {
       <p className="tool-panel-note">{t('export.intro')}</p>
       <fieldset className="export-formats" disabled={running}>
         <legend>{t('export.format')}</legend>
-        {EXPORT_FORMATS.map((info) => (
-          <label key={info.id} className="export-format">
-            <input
-              type="radio"
-              name={`${id}-format`}
-              value={info.id}
-              checked={format === info.id}
-              onChange={() => setFormat(info.id)}
-              aria-labelledby={`${id}-${info.id}`}
-              aria-describedby={`${id}-${info.id}-note`}
-            />
-            <span id={`${id}-${info.id}`} className="export-format-name">
-              {t(info.labelKey)}
-            </span>
-            <span id={`${id}-${info.id}-note`} className="export-format-note">
-              {t(info.noteKey)}
-            </span>
-          </label>
-        ))}
+        {EXPORT_FORMATS.filter((info) => !isImageFormat(info.id) || info.id === 'png').map((info) => {
+          // The page images' entry speaks for the kind of picture chosen.
+          const shown = info.id === 'png' ? (EXPORT_FORMATS.find((one) => one.id === picture) ?? info) : info;
+          return (
+            <label key={info.id} className="export-format">
+              <input
+                type="radio"
+                name={`${id}-format`}
+                value={shown.id}
+                checked={format === shown.id}
+                onChange={() => setFormat(shown.id)}
+                aria-labelledby={`${id}-${info.id}`}
+                aria-describedby={`${id}-${info.id}-note`}
+              />
+              <span id={`${id}-${info.id}`} className="export-format-name">
+                {t(shown.labelKey)}
+              </span>
+              <span id={`${id}-${info.id}-note`} className="export-format-note">
+                {t(shown.noteKey)}
+              </span>
+            </label>
+          );
+        })}
       </fieldset>
-      {format === 'png' && (
+      {isImageFormat(format) && (
+        <div className="export-picture" role="radiogroup" aria-label={t('export.imageType')}>
+          <span className="export-picture-label">{t('export.imageType')}</span>
+          <span className="export-picture-switch" style={{ '--at': IMAGE_FORMATS.indexOf(picture) } as CSSProperties}>
+            {IMAGE_FORMATS.map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                role="radio"
+                aria-checked={picture === kind}
+                className="export-picture-choice"
+                disabled={running}
+                onClick={() => {
+                  setPicture(kind);
+                  setFormat(kind);
+                }}
+              >
+                {kind.toUpperCase()}
+              </button>
+            ))}
+          </span>
+          <span className="export-picture-hint">{t('export.imageTypeHint')}</span>
+        </div>
+      )}
+      {isImageFormat(format) && (
         <label className="export-resolution">
           <span>{t('export.resolution')}</span>
           <select className="select" value={dpi} disabled={running} onChange={(event) => setDpi(Number(event.target.value))}>

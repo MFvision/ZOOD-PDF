@@ -18,6 +18,10 @@ warraq-sign = { path = "../warraq-sign" }
 # Search-and-redact's patterns (src/tools/patterns.rs): matching in linear
 # time, so no pattern and no page can make it run away. MIT/Apache-2.0.
 regex = { version = "1", default-features = false, features = ["std", "unicode", "perf-cache", "perf-dfa"] }
+# Export's page images (src/tools/export.rs, `export.image`): JPEG and WebP.
+# Already in the graph through warraq-pdf, with the same features, so nothing
+# new joins it. MIT/Apache-2.0.
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 # The Library's index (src/tools/library): a content hash that tells two files
 # apart for certain, and the eight bytes of checksum that refuse a damaged
 # index. Pinned to the version warraq-pdf's security handler already pulls in,
@@ -45,7 +49,7 @@ console_error_panic_hook = "0.1"
 js-sys = "0.3"
 
 [dev-dependencies]
-image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 # Tests edit a file the way another program would (already in the graph
 # through warraq-pdf).
 lopdf.workspace = true

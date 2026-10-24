@@ -32,8 +32,9 @@ use tauri_plugin_fs::FsExt;
 
 pub const BACKGROUND_FLAG: &str = "--background";
 pub const LABEL: &str = "ring";
-/// The ring's side, in points.
-const SIDE: f64 = 300.0;
+/// The ring's side, in points: the ring and, round it, the half circle a
+/// group opens (`ringGeometry.ts`, RING_SIZE).
+const SIDE: f64 = 420.0;
 /// How far the pointer moves, in pixels, before a press is a drag.
 pub const DRAG_START: i32 = 8;
 /// After the button is let go, how long a drop on the ring has to arrive.

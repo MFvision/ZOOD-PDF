@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
+import { Disc3, FolderOpen, PencilLine, Repeat2, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { Icon } from '../components/Icon';
+import { ABOUT } from '../settings/about';
 import { isTauriHost } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
@@ -7,7 +11,7 @@ import { useI18n, useT } from '../i18n/useT';
 import { askAvailable, onMac, readAskPreferences, tapKeyLabel, voiceAvailable } from '../ask/settings';
 import { openTourAt } from '../tour/openAt';
 import { UpdateCheck } from '../updates/UpdateBanner';
-import { canUpdate } from '../updates/updates';
+import { appVersion, canUpdate } from '../updates/updates';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { formatShortcut } from './menuModel';
@@ -215,27 +219,60 @@ function AskShortcutRows({ onPractise }: { onPractise: () => void }) {
   );
 }
 
+/** What the About sheet shows ZOOD PDF can do: the desktop app's, and the browser's smaller set. */
+const ABOUT_FEATURES: { icon: LucideIcon; title: TKey; line: TKey; desktop?: boolean }[] = [
+  { icon: PencilLine, title: 'about.f.edit', line: 'about.f.editLine' },
+  { icon: Repeat2, title: 'about.f.convert', line: 'about.f.convertLine' },
+  { icon: Sparkles, title: 'about.f.ai', line: 'about.f.aiLine' },
+  { icon: Disc3, title: 'about.f.ring', line: 'about.f.ringLine', desktop: true },
+  { icon: Smartphone, title: 'about.f.phone', line: 'about.f.phoneLine', desktop: true },
+  { icon: FolderOpen, title: 'about.f.folders', line: 'about.f.foldersLine', desktop: true },
+];
+
 export function AboutDialog() {
-  const { dialog, core } = useAppState();
+  const { dialog } = useAppState();
   const dispatch = useAppDispatch();
-  const t = useT();
-  const engine =
-    core?.kind === 'mock' ? t('status.mockCore') : core?.engine ? t('status.coreEngine', { engine: core.engine }) : null;
+  const { t, lang } = useI18n();
+  const desktop = isTauriHost();
+  const [version, setVersion] = useState<string | null>(null);
+  const open = dialog === 'about';
+  useEffect(() => {
+    if (open && desktop) void appVersion().then(setVersion);
+  }, [open, desktop]);
+  const features = ABOUT_FEATURES.filter((feature) => desktop || !feature.desktop);
   return (
-    <Dialog open={dialog === 'about'} title={t('help.about')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
+    <Dialog open={open} title={t('help.about')} className="about-dialog" onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
       <div className="about">
-        <img className="about-icon" src={APP_ICON} alt="" width={96} height={96} />
-        <p className="about-name">
-          <bdi>{t('app.name')}</bdi>
-        </p>
-        <p className="about-tagline">{t('app.tagline')}</p>
-        <p>{t('about.body')}</p>
-        <p className="about-version">
-          {t('app.phase')}
-          {core && core.kind !== 'mock' ? ` · ${t('status.core', { version: core.version })}` : ''}
-          {engine ? ` · ${engine}` : ''}
+        <div className="about-hero">
+          <img className="about-icon" src={APP_ICON} alt="" width={88} height={88} />
+          <p className="about-name">
+            <bdi>{t('app.name')}</bdi>
+          </p>
+          <p className="about-tagline">{t('app.tagline')}</p>
+          <p className="about-version" dir="auto">
+            {desktop ? t('prefs.aboutVersion', { version: version ?? ABOUT.version }) : t('about.webEdition')}
+          </p>
+        </div>
+        <p className="about-lead">{t(desktop ? 'about.lead' : 'about.leadWeb')}</p>
+        <ul className="about-features">
+          {features.map((feature, index) => (
+            <li key={feature.title} style={{ '--i': index } as CSSProperties}>
+              <span className="about-feature-icon" aria-hidden="true">
+                <Icon of={feature.icon} size={18} />
+              </span>
+              <span className="about-feature-text">
+                <strong>{t(feature.title)}</strong>
+                <span>{t(feature.line)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="about-private">
+          <Icon of={ShieldCheck} size={16} />
+          <span>{t(desktop ? 'about.private' : 'about.privateWeb')}</span>
         </p>
         {canUpdate() && <UpdateCheck />}
+        <p className="about-footer">{t('about.footer', { year: new Date().getFullYear(), builder: ABOUT.builder[lang] })}</p>
       </div>
     </Dialog>
   );

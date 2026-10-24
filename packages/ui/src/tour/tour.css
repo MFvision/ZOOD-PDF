@@ -1350,6 +1350,40 @@ html[data-look="mono"] .tour-glow {
   fill: var(--accent-contrast);
 }
 
+.practice-segment {
+  transition: transform 180ms var(--spring);
+}
+
+/* Convert's half circle, fanned out behind it. */
+.practice-sub > path {
+  fill: var(--elevated-background);
+  stroke: var(--separator);
+  stroke-width: 1;
+  transition: fill 80ms ease;
+}
+
+.practice-sub[role="button"] {
+  cursor: pointer;
+  outline: 0;
+}
+
+.practice-sub text {
+  font-size: 11.5px;
+  font-weight: 700;
+  fill: var(--label);
+  pointer-events: none;
+}
+
+.practice-sub.is-over > path,
+.practice-sub[role="button"]:focus-visible > path {
+  fill: var(--accent);
+}
+
+.practice-sub.is-over text,
+.practice-sub[role="button"]:focus-visible text {
+  fill: var(--accent-contrast);
+}
+
 .practice-ring.is-working .practice-segment {
   opacity: 0.35;
   transition: opacity 120ms ease;
@@ -1867,6 +1901,11 @@ html[data-look="mono"] .tour-glow {
     animation-delay: calc(var(--i) * 22ms);
   }
 
+  .practice-sub {
+    animation: practice-sub-in 240ms var(--spring) backwards;
+    animation-delay: calc(var(--i) * 22ms);
+  }
+
   .tour-done-tick circle {
     --len: 190;
 
@@ -2049,6 +2088,13 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
   from {
     opacity: 0;
     transform: scale(0.7);
+  }
+}
+
+@keyframes practice-sub-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
   }
 }
 

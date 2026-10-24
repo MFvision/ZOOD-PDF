@@ -29,7 +29,7 @@ import { ABOUT, openMail, openSourceNotices, supportMail } from './about';
 import { clearRecovery, clearVersions } from '../history/versions';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
-import { QUICK_TOOLS } from '../quick/plan';
+import { QUICK_GROUPS, QUICK_TOOLS, RING_DEFAULT, findQuickGroup } from '../quick/plan';
 import { readQuickPreferences, writeQuickPreferences } from '../quick/QuickSettings';
 import { formatShortcut, hasNativeMenuBar, isApplePlatform, toAccelerator, useMenuModel } from '../shell/menuModel';
 import type { MenuItemModel } from '../shell/menuModel';
@@ -511,7 +511,7 @@ export function QuickPage() {
   }, [desktop]);
 
   const nameOf = useCallback((id: string) => {
-    const tool = QUICK_TOOLS.find((one) => one.id === id);
+    const tool = QUICK_TOOLS.find((one) => one.id === id) ?? findQuickGroup(id);
     return tool ? t(tool.labelKey) : id;
   }, [t]);
 
@@ -527,8 +527,9 @@ export function QuickPage() {
 
   const menuOrder = settings.shellMenuTools.length ? [...settings.shellMenuTools, ...MENU_TOOLS.filter((id) => !settings.shellMenuTools.includes(id))] : MENU_TOOLS;
   const menuHidden = settings.shellMenuTools.length ? MENU_TOOLS.filter((id) => !settings.shellMenuTools.includes(id)) : [];
-  const ringDefault = QUICK_TOOLS.filter((tool) => tool.ring).map((tool) => tool.id as string);
-  const ringAll = QUICK_TOOLS.map((tool) => tool.id as string);
+  // Convert is one slot whose half circle holds every format; the formats can also go on the ring alone.
+  const ringDefault = [...RING_DEFAULT];
+  const ringAll = [...QUICK_GROUPS.map((group) => group.id as string), ...QUICK_TOOLS.map((tool) => tool.id as string)];
   const ringChosen = settings.ringTools.length ? settings.ringTools : ringDefault;
   const ringOrder = [...ringChosen, ...ringAll.filter((id) => !ringChosen.includes(id))];
   const ringHidden = ringAll.filter((id) => !ringChosen.includes(id));

@@ -1,7 +1,15 @@
 import type { TKey } from '../i18n/messages';
 import type { FileKind } from '../state/saveFile';
 
-export type ExportFormat = 'docx' | 'xlsx' | 'pptx' | 'txt' | 'md' | 'html' | 'png';
+export type ExportFormat = 'docx' | 'xlsx' | 'pptx' | 'txt' | 'md' | 'html' | ImageFormat;
+
+/** The kinds of page picture Images writes; PNG first, the one that loses nothing and opens everywhere. */
+export type ImageFormat = 'png' | 'jpg' | 'webp';
+export const IMAGE_FORMATS: readonly ImageFormat[] = ['png', 'jpg', 'webp'];
+
+export function isImageFormat(format: string): format is ImageFormat {
+  return (IMAGE_FORMATS as readonly string[]).includes(format);
+}
 
 export interface ExportFormatInfo {
   id: ExportFormat;
@@ -19,6 +27,8 @@ export const EXPORT_FORMATS: readonly ExportFormatInfo[] = [
   { id: 'md', labelKey: 'export.markdown', noteKey: 'export.markdownNote' },
   { id: 'html', labelKey: 'export.html', noteKey: 'export.htmlNote' },
   { id: 'png', labelKey: 'export.images', noteKey: 'export.imagesNote' },
+  { id: 'jpg', labelKey: 'export.imagesJpg', noteKey: 'export.imagesJpgNote' },
+  { id: 'webp', labelKey: 'export.imagesWebp', noteKey: 'export.imagesWebpNote' },
 ];
 
 /** Page image resolutions, in dots per inch: screen, everyday, print. */
@@ -43,5 +53,7 @@ export const FILE_KINDS: Record<ExportFormat | 'zip', FileKind> = {
   md: { mime: 'text/markdown;charset=utf-8', filter: { name: 'Markdown', extensions: ['md'] } },
   html: { mime: 'text/html;charset=utf-8', filter: { name: 'HTML', extensions: ['html'] } },
   png: { mime: 'image/png', filter: { name: 'PNG', extensions: ['png'] } },
+  jpg: { mime: 'image/jpeg', filter: { name: 'JPEG', extensions: ['jpg', 'jpeg'] } },
+  webp: { mime: 'image/webp', filter: { name: 'WebP', extensions: ['webp'] } },
   zip: { mime: 'application/zip', filter: { name: 'ZIP', extensions: ['zip'] } },
 };

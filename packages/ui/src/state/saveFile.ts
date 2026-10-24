@@ -37,8 +37,8 @@ export function splitArchiveName(name: string, word: string): string {
 }
 
 /** One page image in that zip, numbered to sort in page order: `report-03.png` of twelve. */
-export function pageImageName(name: string, page: number, total: number): string {
-  return `${documentStem(name)}-${String(page).padStart(String(total).length, '0')}.png`;
+export function pageImageName(name: string, page: number, total: number, extension = 'png'): string {
+  return `${documentStem(name)}-${String(page).padStart(String(total).length, '0')}.${extension}`;
 }
 
 /**

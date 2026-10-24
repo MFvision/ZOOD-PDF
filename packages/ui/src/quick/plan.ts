@@ -8,10 +8,13 @@ import {
   FileText,
   FileType,
   Hash,
+  ImageDown,
+  ImagePlay,
   LayoutGrid,
   Lock,
   LockOpen,
   Presentation,
+  Repeat2,
   Ratio,
   RotateCw,
   ScanText,
@@ -42,6 +45,8 @@ export type QuickToolId =
   | 'powerpoint'
   | 'text'
   | 'images'
+  | 'jpg'
+  | 'webp'
   | 'ocr'
   | 'combine'
   | 'protect'
@@ -78,31 +83,68 @@ export interface QuickTool {
   /** At least this many files. */
   min?: number;
   mode: QuickMode;
-  /** On the ring (the rest are under "All tools" there). */
-  ring?: boolean;
+  /** On the ring, its short name is the file type it makes ("DOCX", "WEBP"), as in a group's half circle. */
+  makes?: string;
 }
 
 /** In the order the window shows them (the ring's order too). */
 export const QUICK_TOOLS: readonly QuickTool[] = [
-  { id: 'compress', labelKey: 'quick.tool.compress', noteKey: 'quick.note.compress', icon: Shrink, step: 'compress', takes: 'pdf', mode: 'instant', ring: true },
-  { id: 'word', labelKey: 'quick.tool.word', noteKey: 'quick.note.word', icon: FileText, step: 'export', options: { format: 'docx' }, takes: 'pdf', mode: 'instant', ring: true },
-  { id: 'excel', labelKey: 'quick.tool.excel', noteKey: 'quick.note.excel', icon: FileSpreadsheet, step: 'export', options: { format: 'xlsx' }, takes: 'pdf', mode: 'instant', ring: true },
-  { id: 'powerpoint', labelKey: 'quick.tool.powerpoint', noteKey: 'quick.note.powerpoint', icon: Presentation, step: 'export', options: { format: 'pptx' }, takes: 'pdf', mode: 'instant', ring: true },
-  { id: 'text', labelKey: 'quick.tool.text', noteKey: 'quick.note.text', icon: FileType, step: 'export', options: { format: 'txt' }, takes: 'pdf', mode: 'instant' },
-  { id: 'images', labelKey: 'quick.tool.images', noteKey: 'quick.note.images', icon: FileImage, step: 'export', options: { format: 'png' }, takes: 'pdf', mode: 'instant' },
-  { id: 'ocr', labelKey: 'quick.tool.ocr', noteKey: 'quick.note.ocr', icon: ScanText, step: 'ocr', takes: 'pdf', mode: 'instant', ring: true },
-  { id: 'combine', labelKey: 'quick.tool.combine', noteKey: 'quick.note.combine', icon: Combine, takes: 'pdf', min: 2, mode: 'instant', ring: true },
-  { id: 'rotate', labelKey: 'quick.tool.rotate', noteKey: 'quick.note.rotate', icon: RotateCw, step: 'rotate', takes: 'pdf', mode: 'instant', ring: true },
-  { id: 'split', labelKey: 'quick.tool.split', noteKey: 'quick.note.split', icon: SquareSplitVertical, takes: 'pdf', mode: 'ask', ring: true },
+  { id: 'compress', labelKey: 'quick.tool.compress', noteKey: 'quick.note.compress', icon: Shrink, step: 'compress', takes: 'pdf', mode: 'instant' },
+  { id: 'word', labelKey: 'quick.tool.word', noteKey: 'quick.note.word', icon: FileText, step: 'export', options: { format: 'docx' }, takes: 'pdf', mode: 'instant', makes: 'DOCX' },
+  { id: 'excel', labelKey: 'quick.tool.excel', noteKey: 'quick.note.excel', icon: FileSpreadsheet, step: 'export', options: { format: 'xlsx' }, takes: 'pdf', mode: 'instant', makes: 'XLSX' },
+  { id: 'powerpoint', labelKey: 'quick.tool.powerpoint', noteKey: 'quick.note.powerpoint', icon: Presentation, step: 'export', options: { format: 'pptx' }, takes: 'pdf', mode: 'instant', makes: 'PPTX' },
+  { id: 'text', labelKey: 'quick.tool.text', noteKey: 'quick.note.text', icon: FileType, step: 'export', options: { format: 'txt' }, takes: 'pdf', mode: 'instant', makes: 'TXT' },
+  { id: 'images', labelKey: 'quick.tool.images', noteKey: 'quick.note.images', icon: FileImage, step: 'export', options: { format: 'png' }, takes: 'pdf', mode: 'instant', makes: 'PNG' },
+  { id: 'jpg', labelKey: 'quick.tool.jpg', noteKey: 'quick.note.jpg', icon: ImageDown, step: 'export', options: { format: 'jpg' }, takes: 'pdf', mode: 'instant', makes: 'JPG' },
+  { id: 'webp', labelKey: 'quick.tool.webp', noteKey: 'quick.note.webp', icon: ImagePlay, step: 'export', options: { format: 'webp' }, takes: 'pdf', mode: 'instant', makes: 'WEBP' },
+  { id: 'ocr', labelKey: 'quick.tool.ocr', noteKey: 'quick.note.ocr', icon: ScanText, step: 'ocr', takes: 'pdf', mode: 'instant' },
+  { id: 'combine', labelKey: 'quick.tool.combine', noteKey: 'quick.note.combine', icon: Combine, takes: 'pdf', min: 2, mode: 'instant' },
+  { id: 'rotate', labelKey: 'quick.tool.rotate', noteKey: 'quick.note.rotate', icon: RotateCw, step: 'rotate', takes: 'pdf', mode: 'instant' },
+  { id: 'split', labelKey: 'quick.tool.split', noteKey: 'quick.note.split', icon: SquareSplitVertical, takes: 'pdf', mode: 'ask' },
   { id: 'extract', labelKey: 'quick.tool.extract', noteKey: 'quick.note.extract', icon: Scissors, step: 'extractPages', takes: 'pdf', mode: 'ask' },
   { id: 'resize', labelKey: 'quick.tool.resize', noteKey: 'quick.note.resize', icon: Ratio, step: 'resize', takes: 'pdf', mode: 'ask' },
   { id: 'numbers', labelKey: 'quick.tool.numbers', noteKey: 'quick.note.numbers', icon: Hash, step: 'pageMarks', takes: 'pdf', mode: 'instant' },
   { id: 'watermark', labelKey: 'quick.tool.watermark', noteKey: 'quick.note.watermark', icon: Droplets, step: 'pageMarks', takes: 'pdf', mode: 'ask' },
-  { id: 'sign', labelKey: 'quick.tool.sign', noteKey: 'quick.note.sign', icon: Signature, takes: 'pdf', mode: 'editor', ring: true },
-  { id: 'protect', labelKey: 'quick.tool.protect', noteKey: 'quick.note.protect', icon: Lock, step: 'protect', takes: 'pdf', mode: 'ask', ring: true },
+  { id: 'sign', labelKey: 'quick.tool.sign', noteKey: 'quick.note.sign', icon: Signature, takes: 'pdf', mode: 'editor' },
+  { id: 'protect', labelKey: 'quick.tool.protect', noteKey: 'quick.note.protect', icon: Lock, step: 'protect', takes: 'pdf', mode: 'ask' },
   { id: 'unlock', labelKey: 'quick.tool.unlock', noteKey: 'quick.note.unlock', icon: LockOpen, step: 'unlock', takes: 'pdf', mode: 'ask' },
-  { id: 'topdf', labelKey: 'quick.tool.topdf', noteKey: 'quick.note.topdf', icon: FileOutput, takes: 'other', mode: 'instant', ring: true },
+  { id: 'topdf', labelKey: 'quick.tool.topdf', noteKey: 'quick.note.topdf', icon: FileOutput, takes: 'other', mode: 'instant' },
 ];
+
+/**
+ * A group on the ring: one slot that, when the pointer reaches it, opens a
+ * half circle of its tools behind it (Convert: DOCX, XLSX, … WEBP), so
+ * every format is one move away without crowding the ring.
+ */
+export interface QuickGroup {
+  id: 'convert';
+  labelKey: TKey;
+  icon: LucideIcon;
+  members: readonly QuickToolId[];
+}
+
+export const QUICK_GROUPS: readonly QuickGroup[] = [
+  { id: 'convert', labelKey: 'quick.group.convert', icon: Repeat2, members: ['word', 'excel', 'powerpoint', 'text', 'images', 'jpg', 'webp'] },
+];
+
+export function findQuickGroup(id: string | null | undefined): QuickGroup | undefined {
+  return QUICK_GROUPS.find((group) => group.id === id);
+}
+
+/**
+ * The ring's own choice, clockwise from the top, when the person has not
+ * made theirs: Compress on top and Rotate at the bottom for one PDF (the
+ * Windows ring check drops on both).
+ */
+export const RING_DEFAULT: readonly string[] = ['compress', 'convert', 'ocr', 'combine', 'split', 'rotate', 'sign', 'protect', 'topdf'];
+
+/** A slot of the ring: a tool, or a group with the tools of it that fit. */
+export interface RingItem {
+  id: string;
+  icon: LucideIcon;
+  /** A group's tools, in its half circle. */
+  members?: readonly QuickTool[];
+}
 
 /** The icon of "every tool" in the ring and the window's chooser. */
 export const ALL_TOOLS_ICON = LayoutGrid;
@@ -151,12 +193,21 @@ export function startingOptions(tool: QuickTool): unknown {
   return options;
 }
 
-/** The ring's tools for these files: the ring's own, then "All tools" in the hub's place on the ring. */
-export function ringToolsFor(names: readonly string[], chosen: readonly string[] = getSettings().ringTools): QuickTool[] {
+/** The ring's slots for these files: the person's choice (Settings › Quick tools) or the ring's own, of those that fit; "All tools" is added by the ring. */
+export function ringToolsFor(names: readonly string[], chosen: readonly string[] = getSettings().ringTools): RingItem[] {
   const fitting = toolsFor(names);
-  // Settings › Quick tools: the person's tools, in their order, of those that fit.
-  if (chosen.length > 0) return chosen.flatMap((id) => fitting.filter((tool) => tool.id === id)).slice(0, 8);
-  return fitting.filter((tool) => tool.ring);
+  const ids = chosen.length > 0 ? chosen : RING_DEFAULT;
+  const items: RingItem[] = ids.flatMap((id): RingItem[] => {
+    const group = findQuickGroup(id);
+    if (group) {
+      const members = group.members.flatMap((member) => fitting.filter((tool) => tool.id === member));
+      // A group of one is just that tool.
+      if (members.length === 1) return [{ id: members[0]!.id, icon: members[0]!.icon }];
+      return members.length > 1 ? [{ id: group.id, icon: group.icon, members }] : [];
+    }
+    return fitting.filter((tool) => tool.id === id).map((tool) => ({ id: tool.id, icon: tool.icon }));
+  });
+  return items.slice(0, 8);
 }
 
 /* ----------------------------------------------------------------- split */

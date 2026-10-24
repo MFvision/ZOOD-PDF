@@ -56,3 +56,72 @@
   background: var(--warning-bg);
   border-radius: var(--radius-8);
 }
+
+/* Page images: the kind of picture, a glass switch whose thumb slides to the choice. */
+.export-picture {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+}
+
+.export-picture-hint {
+  grid-column: 1 / -1;
+  font-size: var(--text-footnote);
+  color: var(--secondary-label);
+}
+
+.export-picture-switch {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 3px;
+  background: color-mix(in srgb, var(--label) 7%, transparent);
+  border: 0.5px solid var(--separator);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 8%);
+}
+
+.export-picture-switch::before {
+  content: "";
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: calc(3px + var(--at, 0) * (100% - 6px) / 3);
+  inline-size: calc((100% - 6px) / 3);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 75%, white), var(--accent));
+  border-radius: 999px;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgb(255 255 255 / 45%);
+  transition: inset-inline-start 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.export-picture-choice {
+  position: relative;
+  min-inline-size: 52px;
+  padding-block: 5px;
+  padding-inline: var(--space-4);
+  font: inherit;
+  font-size: var(--text-footnote);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--secondary-label);
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.export-picture-choice[aria-checked="true"] {
+  color: var(--accent-contrast, #fff);
+}
+
+.export-picture-choice:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .export-picture-switch::before {
+    transition: none;
+  }
+}
