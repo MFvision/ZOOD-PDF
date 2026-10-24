@@ -77,14 +77,16 @@ async function choose(page: Page, id: string) {
 /** Past the window in which a menu event echoing a key the page handled is dropped (shortcutEcho.ts). */
 const afterEcho = (page: Page) => page.waitForTimeout(600);
 
-test('About in the app menu opens the About sheet, which names the core and its engine', async ({ page, stayLocal: _ }) => {
+test('About in the app menu opens the About sheet: the app version and what the desktop app does, never a browser preview', async ({ page, stayLocal: _ }) => {
   await becomeMacApp(page);
   await openPdf(page, INVOICE);
   await expect.poll(async () => (await item(page, 'about'))?.enabled).toBe(true);
   await choose(page, 'about');
   const about = page.getByRole('dialog', { name: /About/ });
   await expect(about).toBeVisible();
-  await expect(about).toContainText(/Core \d/);
+  await expect(about).toContainText(/Version \d+\.\d+\.\d+/);
+  await expect(about).toContainText('complete PDF studio for your computer');
+  await expect(about).not.toContainText(/browser|Phase 1|Core \d/);
 });
 
 test('the checks on Fit width, Fit page and the navigation pane follow the view, whatever changed it', async ({
