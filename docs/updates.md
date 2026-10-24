@@ -83,8 +83,34 @@ is signed first, because the hardened runtime refuses to load an unsigned
 library. Notarization is not part of the workflow yet: Apple has not enabled it
 for the team (`scripts/macos/sign.sh` sends builds by hand until it does).
 
+## Windows signing
+
+When the repository has these two Actions secrets, the release workflow signs
+the app, its uninstaller and the installer with ZOOD's Certum code-signing
+certificate (Certum "Open Source Code Signing in the Cloud", since the code is
+public under Apache-2.0), and checks the signatures before publishing; without
+them the Windows build is unsigned, as before:
+
+- `CERTUM_EMAIL`: the e-mail of the Certum / SimplySign account.
+- `CERTUM_OTP`: the SimplySign authenticator seed (the base32 secret, or the
+  whole `otpauth://` link, from the QR code shown when SimplySign was set up).
+  It works like a password for the certificate: if it leaks, have Certum
+  re-issue the QR code and replace the secret.
+
+The signing runs in Certum's cloud through
+[ssign](https://github.com/Le-Syl21/ssign) (MIT), pinned in the workflow, which
+makes each login code from the seed, so no card, reader or SimplySign Desktop is
+needed. Azure Trusted (Artifact) Signing was not an option: it takes
+individuals only from the USA and Canada.
+
+A signed installer still meets a milder SmartScreen notice for its first weeks,
+until Windows has seen enough downloads of ZOOD signed with this certificate.
+The same signed installer is what the Microsoft Store takes for an "EXE or MSI
+app" listing (it links to the installer here). An MSIX package was ruled out:
+the right-click tools write Explorer verbs to the registry, which MSIX hides
+from Explorer.
+
 ## Not covered yet
 
-- Notarization by Apple, and Windows code signing: SmartScreen warns on the
-  installer until it carries a code-signing certificate. Updates work either way.
+- Notarization by Apple.
 - Intel Macs: the bundled PDFium is arm64, so the release builds Apple silicon only.
