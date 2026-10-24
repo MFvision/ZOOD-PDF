@@ -44,6 +44,8 @@ function sorting(lang) {
   return desktopHost(PEOPLE[lang], FILES[lang], {
     sort_job: { folder, folderName: lang === 'ar' ? 'التنزيلات' : 'Downloads', files },
     sort_look: { byIndex },
+    // Moving files: the stand-in moves nothing and keeps the same job.
+    sort_apply: { folder, folderName: lang === 'ar' ? 'التنزيلات' : 'Downloads', files },
   });
 }
 
@@ -352,7 +354,7 @@ export const SHOTS = {
     host: sorting,
     window: { width: 760, height: 660, query: '?sort', ready: '.sort-card' },
     async run(s) {
-      const words = s.lang === 'ar' ? 'ادمجها ولا تغيّر الأسماء' : 'merge them but don’t rename';
+      const words = s.lang === 'ar' ? 'رتّبها في مجلدات ولا تغيّر الأسماء' : 'put them in folders but don’t rename';
       await s.page.evaluate((said) => globalThis.__shotEmit('sort://say', { words: said }), words);
       await s.page.locator('.sort-heard').waitFor();
       await s.page.waitForTimeout(500);

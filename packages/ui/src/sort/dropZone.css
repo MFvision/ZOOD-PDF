@@ -71,6 +71,7 @@ html.drop-zone-page body {
 }
 
 .drop-zone-words strong {
+  color: var(--zone-ink);
   font-size: 17px;
   font-weight: 600;
 }
