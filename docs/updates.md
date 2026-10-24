@@ -66,9 +66,25 @@ new public key, and replace the secrets.
 
 To make a new key: `pnpm --dir apps/desktop exec tauri signer generate -w zood-updater.key`.
 
+## Mac signing
+
+When the repository has these three Actions secrets, the release workflow signs
+the Mac app with the Developer ID (hardened runtime, `Entitlements.plist`) and
+checks the signature before publishing; without them the Mac build is unsigned,
+as before:
+
+- `APPLE_CERTIFICATE`: the Developer ID Application certificate exported as a
+  .p12, in base64 (`base64 -i zood.p12 | pbcopy`).
+- `APPLE_CERTIFICATE_PASSWORD`: that .p12's password.
+- `APPLE_SIGNING_IDENTITY`: `Developer ID Application: MOHAMMED ALGHAMMAS (AWV883QWPU)`.
+
+The certificate goes into a keychain made for that run only. PDFium's library
+is signed first, because the hardened runtime refuses to load an unsigned
+library. Notarization is not part of the workflow yet: Apple has not enabled it
+for the team (`scripts/macos/sign.sh` sends builds by hand until it does).
+
 ## Not covered yet
 
-- Code signing by Apple and Microsoft is separate from update signing. The
-  Mac app is not notarized, and Windows SmartScreen warns on the installer
-  until it carries a code-signing certificate. Updates work either way.
+- Notarization by Apple, and Windows code signing: SmartScreen warns on the
+  installer until it carries a code-signing certificate. Updates work either way.
 - Intel Macs: the bundled PDFium is arm64, so the release builds Apple silicon only.
