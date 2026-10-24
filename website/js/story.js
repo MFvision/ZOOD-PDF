@@ -679,16 +679,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.10، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.10, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.11، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.11, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.10، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.10, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.11، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.11, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -727,12 +727,12 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.10/ZOOD-PDF-Setup-0.4.10.exe',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.11/ZOOD-PDF-Setup-0.4.11.exe',
   },
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.10/ZOOD-PDF-0.4.10-mac.dmg',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.11/ZOOD-PDF-0.4.11-mac.dmg',
   },
   {
     id: 'ios',
@@ -935,8 +935,8 @@ export const TOOLS = [
   {
     name: { ar: 'تصدير', en: 'Export' },
     text: {
-      ar: 'إلى ملفات docx وxlsx وpptx والصور وHTML وMarkdown والنص. تبقى الجداول جداول قابلة للتعديل، وتبقى الروابط قابلة للنقر.',
-      en: 'To docx, xlsx and pptx files, pictures, HTML, Markdown and text. Tables stay editable tables and links stay clickable.',
+      ar: 'إلى ملفات docx وxlsx وpptx والصور (PNG وJPG وWebP) وHTML وMarkdown والنص. تبقى الجداول جداول قابلة للتعديل، وتبقى الروابط قابلة للنقر.',
+      en: 'To docx, xlsx and pptx files, pictures (PNG, JPG or WebP), HTML, Markdown and text. Tables stay editable tables and links stay clickable.',
     },
     on: ON.web,
   },
