@@ -60,7 +60,11 @@ jobs:
           # The cloud drives' public app IDs (docs/cloud.md); OneDrive falls back to ZOOD's own app.
           WARRAQ_ONEDRIVE_CLIENT_ID: ${{ vars.WARRAQ_ONEDRIVE_CLIENT_ID || '4c561684-3bf8-48e7-b4dc-ca1d7c8f9472' }}
           WARRAQ_ONEDRIVE_TENANT: ${{ vars.WARRAQ_ONEDRIVE_TENANT }}
-          WARRAQ_GOOGLE_CLIENT_ID: ${{ vars.WARRAQ_GOOGLE_CLIENT_ID }}
+          # Google Drive only with its installed-app secret (an Actions
+          # secret, compiled into the host, never into the window): without
+          # it Google refuses the sign-in, so the drive is left out.
+          WARRAQ_GOOGLE_CLIENT_ID: ${{ secrets.WARRAQ_GOOGLE_CLIENT_SECRET != '' && (vars.WARRAQ_GOOGLE_CLIENT_ID || '808968607590-d1urs760af3bgfpgph8rhaaujk5tce50.apps.googleusercontent.com') || '' }}
+          WARRAQ_GOOGLE_CLIENT_SECRET: ${{ secrets.WARRAQ_GOOGLE_CLIENT_SECRET }}
 
       - name: what was built
         shell: bash
