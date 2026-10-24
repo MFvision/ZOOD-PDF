@@ -107,6 +107,8 @@ jobs:
           IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           set -euo pipefail
+          # A secret pasted or piped in may end with a line break.
+          IDENTITY="$(printf %s "$IDENTITY" | tr -d '\r\n')"
           if [ -z "$CERT" ] || [ -z "$IDENTITY" ]; then
             echo "no Developer ID secrets: the Mac build stays unsigned"
             exit 0
