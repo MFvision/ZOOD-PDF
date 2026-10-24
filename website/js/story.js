@@ -679,16 +679,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.8، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.8, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.9، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.9, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.8، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.8, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.9، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.9, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -727,12 +727,12 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.8/ZOOD-PDF-Setup-0.4.8.exe',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.9/ZOOD-PDF-Setup-0.4.9.exe',
   },
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.8/ZOOD-PDF-0.4.8-mac.dmg',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.9/ZOOD-PDF-0.4.9-mac.dmg',
   },
   {
     id: 'ios',
@@ -831,6 +831,22 @@ export const TOOLS = [
     text: {
       ar: 'رتّب التنزيلات أو سطح المكتب حسب النوع أو الشهر، مع معاينة قبل التنفيذ وزر تراجع.',
       en: 'Tidy Downloads or the Desktop by type or by month, with a preview first and Undo.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'المجلدات', en: 'Folders' },
+    text: {
+      ar: 'مجلداتك وOneDrive وGoogle Drive في مكان واحد بالصفحة الرئيسية. تسجّل الدخول بنفسك، والملفات تذهب من حسابك إليك مباشرة.',
+      en: 'Your folders, OneDrive and Google Drive in one place on Home. You sign in yourself, and files go straight between your account and you.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'رتّب مع زود', en: 'Sort with ZOOD' },
+    text: {
+      ar: 'اسحب ملفات مبعثرة إلى أعلى الشاشة وأفلتها على زود، فيقترح دمجها أو فصلها أو تسميتها أو ترتيبها في مجلدات. لا يُحذف شيء، وزر تراجع يعيد كل ملف.',
+      en: 'Drag messy files to the top of the screen and drop them on ZOOD. It suggests merging, splitting, names or folders. Nothing is deleted, and Undo puts every file back.',
     },
     on: ON.desktop,
   },

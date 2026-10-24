@@ -78,8 +78,8 @@ export const PAGES = {
             en: 'Support and ideas: when you press Send in Report a problem, our own support service receives only what you saw before sending: what you wrote, the app and system version, and the app log and picture if you chose to attach them. It is kept private, seen only by the ZOOD team. Ideas and votes are public, without names. Your install is known by a random number that names no one.',
           },
           {
-            ar: 'Google Drive وOneDrive: حين يتوفران، يُفتح الملف ويُحفظ في حسابك أنت مباشرة، ولا يمر بنا.',
-            en: 'Google Drive and OneDrive: when available, files open from and save to your own account directly, never through us.',
+            ar: 'Google Drive وOneDrive: بعد أن تسجّل الدخول بنفسك، يُفتح الملف ويُحفظ في حسابك أنت مباشرة، ولا يمر بنا.',
+            en: 'Google Drive and OneDrive: once you sign in yourself, files open from and save to your own account directly, never through us.',
           },
         ],
       },
