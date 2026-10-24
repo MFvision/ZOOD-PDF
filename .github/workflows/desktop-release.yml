@@ -92,6 +92,39 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The Developer ID, when the repository has it (docs/updates.md, "Mac
+      # signing"): imported into a keychain of this run only, and PDFium's
+      # library signed in place first, since the hardened runtime refuses an
+      # unsigned library and Tauri signs only the app. Without the secrets the
+      # Mac build stays unsigned, as before.
+      - name: import the Developer ID
+        id: macsign
+        if: matrix.platform == 'darwin-aarch64'
+        shell: bash
+        env:
+          CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CERT" ] || [ -z "$IDENTITY" ]; then
+            echo "no Developer ID secrets: the Mac build stays unsigned"
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/zood-sign.keychain-db"
+          secret="$(openssl rand -hex 24)"
+          echo "$CERT" | base64 --decode > "$RUNNER_TEMP/zood.p12"
+          security create-keychain -p "$secret" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$secret" "$keychain"
+          security import "$RUNNER_TEMP/zood.p12" -k "$keychain" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$secret" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/zood.p12"
+          codesign --force --timestamp --options runtime --sign "$IDENTITY" \
+            apps/desktop/src-tauri/resources/pdfium/libpdfium.dylib
+          echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+
       # The version is given here rather than committed, so a test build
       # never claims a released version. createUpdaterArtifacts makes the
       # signed update files (.sig) beside the installers.
@@ -107,11 +140,24 @@ jobs:
           WARRAQ_ONEDRIVE_CLIENT_ID: ${{ vars.WARRAQ_ONEDRIVE_CLIENT_ID }}
           WARRAQ_ONEDRIVE_TENANT: ${{ vars.WARRAQ_ONEDRIVE_TENANT }}
           WARRAQ_GOOGLE_CLIENT_ID: ${{ vars.WARRAQ_GOOGLE_CLIENT_ID }}
+          # Set only when the Developer ID was imported above.
+          MAC_IDENTITY: ${{ steps.macsign.outputs.identity }}
         run: |
           set -o pipefail
           VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
+          if [ -n "${MAC_IDENTITY:-}" ]; then export APPLE_SIGNING_IDENTITY="$MAC_IDENTITY"; fi
           pnpm --dir apps/desktop exec tauri build \
             --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":true}}" 2>&1 | tee build.log
+
+      - name: check the Mac signature
+        if: matrix.platform == 'darwin-aarch64' && steps.macsign.outputs.identity != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(ls -d apps/desktop/src-tauri/target/release/bundle/macos/*.app | head -n 1)"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -d --entitlements - "$app" 2>/dev/null | grep -q audio-input
+          codesign --verify --strict "$app/Contents/Resources/resources/pdfium/libpdfium.dylib"
 
       # Plain file names: the bundle's own carry spaces, which make awkward URLs.
       - name: collect the files
