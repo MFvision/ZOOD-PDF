@@ -140,7 +140,7 @@ stage.innerHTML = `
       .map((p) => `<li>${p}</li>`)
       .join('')}</ul>
     <p class="free">${t(WORDS.free)}</p>
-    <p class="url">pdf.zood.sa</p>
+    <p class="url">pdf.zoodrealty.com</p>
   </div>
 `;
 

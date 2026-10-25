@@ -1,6 +1,6 @@
 # ZOOD PDF website on Caddy: HTTPS is automatic for the domain below.
 # Override it with SITE_ADDRESS (for example ":8080" for a plain local run).
-{$SITE_ADDRESS:pdf.zood.sa} {
+{$SITE_ADDRESS:pdf.zoodrealty.com} {
 	root * /srv
 	encode zstd gzip
 	file_server

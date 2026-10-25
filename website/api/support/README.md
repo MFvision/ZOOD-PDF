@@ -32,17 +32,17 @@ config.sample.php   copy to config.php and fill in (never in git, never served)
    database and a user. Write down the database name, the user and the
    password. The tables are created on the first request.
 4. **Upload.** In hPanel › File Manager, open `public_html` for
-   `pdf.zood.sa`. Upload this folder so that it sits at
+   `pdf.zoodrealty.com`. Upload this folder so that it sits at
    `public_html/api/support/`, then check that
-   `https://pdf.zood.sa/api/support/` is the right address.
+   `https://pdf.zoodrealty.com/api/support/` is the right address.
 5. **Settings.** In that folder, copy `config.sample.php` to `config.php` and
    fill in the database details, `github_token`, and a long random `salt`.
 6. **Cron.** In hPanel › Advanced › Cron Jobs, add a job that runs every 15
    minutes:
-   `/usr/bin/php /home/<user>/domains/pdf.zood.sa/public_html/api/support/sync.php`
+   `/usr/bin/php /home/<user>/domains/pdf.zoodrealty.com/public_html/api/support/sync.php`
    Without the cron job, the relay still syncs at most every 15 minutes
    after a request reaches it.
-7. **Check.** Open `https://pdf.zood.sa/api/support/?a=ping`. It should show
+7. **Check.** Open `https://pdf.zoodrealty.com/api/support/?a=ping`. It should show
    `{"ok":true,...}`. If it shows "not set up", `config.php` is missing. In
    the app, open Help › Help & Support › Report a problem and send a test.
    An issue should appear in `zood-support`.

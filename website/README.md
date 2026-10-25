@@ -137,7 +137,7 @@ Any static host with HTTPS works; serve the folder at the domain's root.
 on the Mac that has the licensed font in `assets/fonts/licensed/`. It makes
 `website/zood-pdf-site.zip` with only what the site serves, `.htaccess`
 included (HTTPS redirect, the same security headers and caching as the
-Caddyfile). In hPanel, point `pdf.zood.sa` at a folder, turn on its free SSL,
+Caddyfile). In hPanel, point `pdf.zoodrealty.com` at a folder, turn on its free SSL,
 open File Manager there, upload the zip and extract it so `index.html` sits at
 the top. The zip carries the licensed font: keep it private.
 The zip also carries the help pages (`help/`, made by
@@ -153,7 +153,7 @@ docker build -t zood-pdf-site website/
 docker run -d -p 80:80 -p 443:443 -v caddy_data:/data zood-pdf-site
 ```
 
-The `Caddyfile` sets the domain (`pdf.zood.sa`, override with
+The `Caddyfile` sets the domain (`pdf.zoodrealty.com`, override with
 `SITE_ADDRESS`), compression, a week's caching for pictures and fonts,
 revalidation of HTML, JS and CSS on every visit, and the security headers
 (nosniff, no referrer to other sites, no framing, HSTS, a content security policy that allows

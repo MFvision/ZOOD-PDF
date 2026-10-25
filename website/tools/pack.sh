@@ -1,6 +1,6 @@
 #!/bin/sh
 # Makes zood-pdf-site.zip: only what the website serves, ready to upload into
-# a static host's web root (Hostinger: public_html of pdf.zood.sa). Run from
+# a static host's web root (Hostinger: public_html of pdf.zoodrealty.com). Run from
 # anywhere: sh website/tools/pack.sh [output.zip]
 # The licensed headline font is added when assets/fonts/licensed/ has it; the
 # zip is then private and must never be posted anywhere public.
