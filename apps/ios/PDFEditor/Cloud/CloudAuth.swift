@@ -326,13 +326,10 @@ enum CloudAuth {
     }
 
     private static var memory: [CloudProvider: CloudTokens] = [:]
-    private static let memoryLock = NSLock()
 
     /// A valid access token, refreshed when it is (nearly) out of date.
     static func accessToken(_ provider: CloudProvider) async throws -> String {
-        memoryLock.lock()
         let cached = memory[provider]
-        memoryLock.unlock()
         if let cached, cached.expires.timeIntervalSinceNow > 60 { return cached.access }
         guard let server = CloudConfig.server(provider),
               let refresh = cached?.refresh ?? storedRefresh(provider) else { throw CloudError.notSignedIn }
@@ -350,9 +347,7 @@ enum CloudAuth {
 
     static func signOut(_ provider: CloudProvider) {
         keychain.delete(provider.rawValue)
-        memoryLock.lock()
         memory[provider] = nil
-        memoryLock.unlock()
     }
 
     private static func storedRefresh(_ provider: CloudProvider) -> String? {
@@ -360,9 +355,7 @@ enum CloudAuth {
     }
 
     private static func save(_ tokens: CloudTokens, for provider: CloudProvider) {
-        memoryLock.lock()
         memory[provider] = tokens
-        memoryLock.unlock()
         if let refresh = tokens.refresh {
             try? keychain.write(Data(refresh.utf8), to: provider.rawValue)
         }
