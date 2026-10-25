@@ -210,7 +210,7 @@ enum PptxWriter {
                 }
             }
             zip.add("ppt/slides/slide\(number).xml", text: slideXML(fitted, number: number))
-            let picture = slide.picture.map { "<Relationship Id=\"rId2\" Type=\"\(rel)/image\" Target=\"../media/page\(number).\(slide.pictureIsJPEG ? "jpeg" : "png")\"/>" } ?? ""
+            let picture = slide.picture.map { _ in "<Relationship Id=\"rId2\" Type=\"\(rel)/image\" Target=\"../media/page\(number).\(slide.pictureIsJPEG ? "jpeg" : "png")\"/>" } ?? ""
             zip.add("ppt/slides/_rels/slide\(number).xml.rels", text: declaration + "<Relationships xmlns=\"\(packageRel)\"><Relationship Id=\"rId1\" Type=\"\(rel)/slideLayout\" Target=\"../slideLayouts/slideLayout1.xml\"/>\(picture)</Relationships>")
             if let data = slide.picture {
                 zip.add("ppt/media/page\(number).\(slide.pictureIsJPEG ? "jpeg" : "png")", data)
