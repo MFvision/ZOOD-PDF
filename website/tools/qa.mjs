@@ -126,35 +126,37 @@ async function run(name, w, h, touch, lang, theme, motion) {
     }
   }
 
-  // The wall: at each stop the phone's screen sits on a middle-column screen.
-  const wall = await page.evaluate(() => {
-    const el = document.querySelector('.wall');
-    return { top: el.getBoundingClientRect().top + scrollY, height: el.offsetHeight };
-  });
-  const shown = new Set();
-  for (let f = 0; f <= 1.0001; f += 0.02) {
-    await page.evaluate((yy) => scrollTo(0, yy), wall.top + f * (wall.height - h));
-    await page.waitForTimeout(40);
-    const r = await page.evaluate(() => {
-      const dev = document.querySelector('.wall-device').getBoundingClientRect();
-      const sTop = dev.top + dev.height * 0.0193;
-      const imgs = [...document.querySelectorAll('.wall-col.middle img')].map((i) =>
-        i.getBoundingClientRect(),
-      );
-      let best = 1e9;
-      let idx = -1;
-      imgs.forEach((b, i) => {
-        if (Math.abs(b.top - sTop) < best) {
-          best = Math.abs(b.top - sTop);
-          idx = i;
-        }
-      });
-      return { idx, dy: best, dw: Math.abs(imgs[0].width - dev.width * 0.92) };
+  // The wall (when the story has one): at each stop the phone's screen sits on a middle-column screen.
+  if (CHAPTERS.some((c) => c.kind === 'wall')) {
+    const wall = await page.evaluate(() => {
+      const el = document.querySelector('.wall');
+      return { top: el.getBoundingClientRect().top + scrollY, height: el.offsetHeight };
     });
-    if (r.dy < 1 && r.dw < 1) shown.add(r.idx);
+    const shown = new Set();
+    for (let f = 0; f <= 1.0001; f += 0.02) {
+      await page.evaluate((yy) => scrollTo(0, yy), wall.top + f * (wall.height - h));
+      await page.waitForTimeout(40);
+      const r = await page.evaluate(() => {
+        const dev = document.querySelector('.wall-device').getBoundingClientRect();
+        const sTop = dev.top + dev.height * 0.0193;
+        const imgs = [...document.querySelectorAll('.wall-col.middle img')].map((i) =>
+          i.getBoundingClientRect(),
+        );
+        let best = 1e9;
+        let idx = -1;
+        imgs.forEach((b, i) => {
+          if (Math.abs(b.top - sTop) < best) {
+            best = Math.abs(b.top - sTop);
+            idx = i;
+          }
+        });
+        return { idx, dy: best, dw: Math.abs(imgs[0].width - dev.width * 0.92) };
+      });
+      if (r.dy < 1 && r.dw < 1) shown.add(r.idx);
+    }
+    if (shown.size !== WALL.middle.length)
+      problems.push(`wall: the phone showed ${shown.size} of ${WALL.middle.length} screens`);
   }
-  if (shown.size !== WALL.middle.length)
-    problems.push(`wall: the phone showed ${shown.size} of ${WALL.middle.length} screens`);
 
   await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
   await page.waitForTimeout(200);

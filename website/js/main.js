@@ -7,6 +7,7 @@ import {
   CHAPTERS,
   DESK,
   DOWNLOADS,
+  FAQ,
   FOOTER,
   PLATFORMS,
   SCREENS,
@@ -21,16 +22,14 @@ import { playGather } from './gather.js';
 import { startInteractions } from './interact.js';
 import { ringScene, ringFrame } from './ring.js';
 import { aiScene, aiFrame } from './ai-room.js';
-import { libraryScene, libraryFrame } from './library.js';
 import { phoneScene, phoneFrame as phoneRoomFrame } from './phone-room.js';
-import { familyScene, familyFrame } from './family.js';
 import { remoteScene, remoteFrame } from './remote.js';
 import { filmScene, filmFrame } from './film.js';
 import { fabricButton, wireFabric } from './fabric.js';
-import { foldScene, foldFrame } from './fold-room.js';
 import { askScene, askFrame } from './ask-room.js';
-import { tourScene, tourFrame } from './tour-room.js';
-import { helperScene, helperFrame } from './helper-room.js';
+import { tryScene, tryFrame } from './try-room.js';
+import { toolsScene, toolsFrame } from './tools-room.js';
+import { snapTitle } from './hero-snap.js';
 import { startPageMorph } from './page-morph.js';
 import { startFoldable } from './foldable.js';
 
@@ -216,10 +215,23 @@ function chapterBody(c, index) {
       )
       .join('')}</ul>`;
   }
+  if (c.kind === 'download') {
+    body += `<div class="faq"><h3>${escape(t(FAQ.title))}</h3>${FAQ.items
+      .map((f) => `<details><summary>${escape(t(f.q))}</summary><p>${escape(t(f.a))}</p></details>`)
+      .join('')}</div>`;
+  }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
-  if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta.label)));
-  if (c.more)
-    body += `<a class="text-link" href="${urlFor(lang, c.more.href.replace(/\/$/, ''))}">${escape(t(c.more.label))}</a>`;
+  if (c.facts)
+    body += `<ul class="facts">${c.facts.map((f) => `<li>${escape(t(f))}</li>`).join('')}</ul>`;
+  if (c.cta || c.more) body += '<div class="actions">';
+  if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta[visitorSystem()] ?? c.cta.label)));
+  if (c.more) {
+    const href = c.more.href.startsWith('#')
+      ? c.more.href
+      : urlFor(lang, c.more.href.replace(/\/$/, ''));
+    body += `<a class="text-link" href="${href}">${escape(t(c.more.label))}</a>`;
+  }
+  if (c.cta || c.more) body += '</div>';
   if (c.devices?.length) {
     body += `<p class="sr-only">${c.devices.map((d) => escape(t(UI.screen)) + escape(t(SCREENS.alt[d.screen]))).join('. ')}</p>`;
   }
@@ -251,17 +263,12 @@ const ROOMS = {
   ring: { scene: () => ringScene(t, escape), frame: ringFrame },
   ai: { scene: () => aiScene(t, escape, media), frame: aiFrame },
   ask: { scene: () => askScene(t, escape), frame: askFrame },
-  tour: { scene: () => tourScene(t, escape), frame: tourFrame },
-  helper: { scene: () => helperScene(t, escape), frame: helperFrame },
-  library: { scene: () => libraryScene(t, escape), frame: libraryFrame },
   phone: { scene: () => phoneScene(t, escape, media, phoneFrame()), frame: phoneRoomFrame },
   remote: { scene: () => remoteScene(t, escape, phoneFrame()), frame: remoteFrame },
   film: { scene: () => filmScene(t, escape, lang), frame: filmFrame },
-  fold: { scene: () => foldScene(media), frame: foldFrame },
-  family: {
-    scene: () => familyScene(t, escape, media, { phone: phoneFrame(), tablet: tabletFrame() }),
-    frame: familyFrame,
-  },
+  try: { scene: () => tryScene(t, escape), frame: tryFrame },
+  tools: { scene: () => toolsScene(t, escape, media), frame: toolsFrame(media, t) },
+
 };
 
 function roomHtml(c, index) {
@@ -387,8 +394,8 @@ function startStory() {
   const rooms = story.flatMap((c, k) => (ROOMS[c.kind] ? [[k, ROOMS[c.kind].frame]] : []));
   const insideEl = main.querySelector('.inside');
   const wall = main.querySelector('.wall');
-  const wallCols = [...wall.querySelectorAll('.wall-col')];
-  const wallStage = wall.querySelector('.wall-stage');
+  const wallCols = wall ? [...wall.querySelectorAll('.wall-col')] : [];
+  const wallStage = wall?.querySelector('.wall-stage');
   const langLinks = [...document.querySelectorAll('.lang-switch a')];
   const indexLinks = [...index.querySelectorAll('a')];
   const frames = Object.fromEntries(
@@ -433,12 +440,14 @@ function startStory() {
     heights = sections.map((s) => s.offsetHeight);
     drip.layout();
     insideTop = insideEl.getBoundingClientRect().top + scrollY;
-    wallTop = wall.getBoundingClientRect().top + scrollY;
-    wallHeight = wall.offsetHeight;
-    stageH = wallStage.offsetHeight;
-    const first = wall.querySelector('.wall-col.middle img');
-    cell = first.getBoundingClientRect().height;
-    gap = parseFloat(getComputedStyle(first.parentElement).rowGap) || 0;
+    if (wall) {
+      wallTop = wall.getBoundingClientRect().top + scrollY;
+      wallHeight = wall.offsetHeight;
+      stageH = wallStage.offsetHeight;
+      const first = wall.querySelector('.wall-col.middle img');
+      cell = first.getBoundingClientRect().height;
+      gap = parseFloat(getComputedStyle(first.parentElement).rowGap) || 0;
+    }
     schedule();
   }
 
@@ -549,7 +558,7 @@ function startStory() {
       const floor = dock.getBoundingClientRect().bottom;
       for (let k = Math.max(0, i - 1); k <= Math.min(sections.length - 1, i + 1); k++) {
         const card = sections[k].querySelector('.words');
-        if (!card) continue;
+        if (!card || sections[k].classList.contains('hero')) continue;
         const top = card.getBoundingClientRect().top;
         const o = sections[k].classList.contains('short')
           ? '1'
@@ -579,7 +588,7 @@ function startStory() {
 
     // The wall: pinned for the whole band. The middle column steps one screen at
     // a time with a stop on each; the side columns glide in opposite directions.
-    if (scrollY + vh > wallTop && scrollY < wallTop + wallHeight) {
+    if (wall && scrollY + vh > wallTop && scrollY < wallTop + wallHeight) {
       const n = WALL.middle.length;
       const travel = Math.max(1, wallHeight - vh);
       const raw = clamp((scrollY - wallTop) / travel);
@@ -627,15 +636,16 @@ function startStory() {
     });
   };
   let wallNear = false;
-  new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        wallNear = true;
-        wallImages();
-      }
-    },
-    { rootMargin: '150% 0px' },
-  ).observe(wall);
+  if (wall)
+    new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          wallNear = true;
+          wallImages();
+        }
+      },
+      { rootMargin: '150% 0px' },
+    ).observe(wall);
 
   document.addEventListener('themechange', () => {
     lastActive = -1;
@@ -664,6 +674,7 @@ function startStory() {
   update();
   wireFabric(main, () => reduced);
   if (!location.hash) playGather(stage, reduced);
+  snapTitle(main.querySelector('.hero .title'), reduced || Boolean(location.hash));
   if (wallNear) wallImages();
 }
 
