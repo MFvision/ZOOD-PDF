@@ -630,6 +630,8 @@
   "cloud.browse.empty": "لا توجد هنا مجلدات ولا ملفات PDF.",
   "cloud.browse.emptySearch": "لا يوجد ملف PDF مطابق.",
   "cloud.browse.more": "عرض المزيد",
+  "cloud.browse.choose": "اختيار «{name}» لفتحه مع غيره",
+  "cloud.browse.openChosen": "فتح المختارة ({count})",
   "cloud.browse.opening": "جارٍ فتح «{name}»…",
   "cloud.browse.items": "العناصر: {count}",
   "cloud.browse.in": "في {path}",

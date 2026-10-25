@@ -210,6 +210,26 @@ test.describe('OneDrive in the browser', () => {
     expect(fake.tokenRequests).toHaveLength(1);
   });
 
+  test('several PDFs ticked in a folder open together, each in a tab of its own', async ({ page, stayLocal: _ }) => {
+    const { fake } = driveWithFiles();
+    await microsoft(page, fake);
+    await page.goto('/');
+    await oneDriveRow(page).getByRole('button', { name: 'Open from OneDrive…' }).click();
+    await signIn(page);
+    const dialog = sheet(page);
+    await dialog.getByRole('button', { name: /^الفواتير/ }).click();
+    await expect(dialog.getByRole('list', { name: 'Files' }).getByRole('button')).toHaveCount(5);
+    await expect(dialog.getByRole('button', { name: /^Open Chosen/ })).toHaveCount(0);
+    await dialog.getByRole('checkbox', { name: /فاتورة ٢٠٢٦\.pdf/ }).check();
+    await dialog.getByRole('checkbox', { name: /older 1\.pdf/ }).check();
+    await dialog.getByRole('button', { name: 'Open Chosen (2)' }).click();
+    await expect(dialog).toBeHidden();
+    const tabs = page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab');
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(0)).toContainText('فاتورة ٢٠٢٦');
+    await expect(tabs.nth(1)).toContainText('older 1');
+  });
+
   test('Save writes a new revision checked against the eTag it was opened at; a version conflict is the person’s to settle', async ({
     page,
     stayLocal: _,

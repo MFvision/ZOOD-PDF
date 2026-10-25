@@ -180,6 +180,24 @@
   border-block-start: 0.5px solid var(--separator);
 }
 
+.cloud-pick {
+  display: flex;
+  align-items: center;
+  padding-inline-start: var(--space-5);
+}
+
+.cloud-pick .cloud-row {
+  padding-inline-start: var(--space-4);
+}
+
+.cloud-pick-box {
+  flex: none;
+  inline-size: 18px;
+  block-size: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .cloud-row {
   display: flex;
   gap: var(--space-4);
