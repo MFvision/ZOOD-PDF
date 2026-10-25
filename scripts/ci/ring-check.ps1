@@ -9,7 +9,9 @@
 #      again and checks the ring is whole on the screen;
 #   5. selects the file and presses Ctrl+Alt+Z: the ring opens holding it,
 #      and a click on Compress runs it;
-#   4. (a control) drags the file plainly onto the app's main window.
+#   4. (a control) drags the file plainly onto the app's main window;
+#   6. drags a shortcut to the file plainly to the top of the screen and lets
+#      go on the drop zone there: it takes the shortcut as the PDF.
 # Each step is checked in the app's ring.log and in the folder, and by where
 # the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
@@ -94,14 +96,14 @@ function ExplorerToFront {
   }
 }
 
-function FileItem {
+function FileItem($called = 'sample') {
   ExplorerToFront
   $root = [System.Windows.Automation.AutomationElement]::RootElement
   # Explorer hides known extensions, so the item may be named either way.
   $name = [System.Windows.Automation.AutomationElement]::NameProperty
   $named = New-Object System.Windows.Automation.OrCondition `
-    (New-Object System.Windows.Automation.PropertyCondition $name, 'sample.pdf'),
-    (New-Object System.Windows.Automation.PropertyCondition $name, 'sample')
+    (New-Object System.Windows.Automation.PropertyCondition $name, "$called.pdf"),
+    (New-Object System.Windows.Automation.PropertyCondition $name, $called)
   foreach ($try in 1..10) {
     $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $named)
     if ($item) {
@@ -284,8 +286,37 @@ Shot 'ring-4-plain-drag.png'
 Start-Sleep -Seconds 2
 Check ((Log) -match 'files dragged over the main window') 'control: a plain drag reaches the main window'
 
+# 6. The drop zone: a plain drag of a shortcut to the PDF (as on a desktop)
+# to the top middle of the screen, let go on "Drop here to sort".
+$shell = New-Object -ComObject WScript.Shell
+$link = $shell.CreateShortcut((Join-Path $folder 'sample-link.lnk'))
+$link.TargetPath = (Join-Path $folder 'sample.pdf')
+$link.Save()
+# Explorer back on the screen (step 3 pushed it into the corner), lower
+# down, so the drag starts on the shortcut and has room to reach the top.
+$explorer = [Input]::FindWindow('CabinetWClass', [NullString]::Value)
+[Input]::MoveWindow($explorer, 200, 300, 760, 400, $true) | Out-Null
+Start-Sleep -Seconds 2
+$at = FileItem 'sample-link'
+$zx = [int]([Input]::Width / 2); $zy = 70
+[Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
+[Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 200
+foreach ($step in 1..30) {
+  [Input]::Mouse($at[0] + $step * ($zx - $at[0]) / 30, $at[1] + $step * ($zy - $at[1]) / 30, 0)
+  Start-Sleep -Milliseconds 50
+}
+# A few small moves over the zone, so its drop target follows.
+foreach ($step in 1..10) { [Input]::Mouse($zx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+Start-Sleep -Milliseconds 600
+Shot 'zone-6-over.png'
+[Input]::Mouse($zx, $zy, 0x0004)
+Start-Sleep -Seconds 3
+Shot 'zone-6-after.png'
+Check ((Log) -match 'the drop zone peeks') 'a plain drag to the top brings the drop zone'
+Check ((Log) -match '1 files dropped on the drop zone') 'a shortcut let go on the drop zone is taken as its PDF'
+
 Set-Content (Join-Path $Out 'ring.log') (Log)
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
 Write-Host (Log)
 if ($failures.Count -gt 0) { throw "ring check failed: $($failures -join '; ')" }
-Write-Host 'the ring works: it opens, its tools take a drop and a click, and it stays on the screen'
+Write-Host 'the ring works: it opens, its tools take a drop and a click, and it stays on the screen; the drop zone takes a drop'

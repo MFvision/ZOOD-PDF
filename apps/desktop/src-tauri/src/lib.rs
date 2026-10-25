@@ -22,8 +22,10 @@ pub mod decide;
 pub mod doc_window;
 pub mod fonts;
 pub mod library;
+pub mod lnk;
 pub mod menu;
 pub mod neural;
+pub mod parked;
 pub mod presence;
 pub mod print;
 pub mod profile;
@@ -627,7 +629,7 @@ pub fn run() {
             // files in the fs scope (a drop is as explicit a choice as a dialog).
             match drag {
                 DragDropEvent::Enter { paths, position } => {
-                    let files = paths.iter().any(|p| p.is_file());
+                    let files = paths.iter().any(|p| lnk::file_of(p).is_some());
                     ring::log("files dragged over the main window");
                     DRAGGING_FILES.store(files, std::sync::atomic::Ordering::Relaxed);
                     if files {
@@ -675,9 +677,9 @@ pub fn run() {
                     let scope = window.app_handle().fs_scope();
                     let files: Vec<String> = paths
                         .iter()
-                        .filter(|p| p.is_file())
+                        .filter_map(|p| lnk::file_of(p))
                         .map(|p| {
-                            if let Err(e) = scope.allow_file(p) {
+                            if let Err(e) = scope.allow_file(&p) {
                                 eprintln!("warraq: cannot allow dropped file {}: {e}", p.display());
                             }
                             p.to_string_lossy().into_owned()
