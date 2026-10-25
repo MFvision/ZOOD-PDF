@@ -204,6 +204,9 @@ struct QuickToolsView: View {
     @State private var chosen: LocalDocument?
     @State private var imported: URL?
     @State private var importing = false
+    @State private var makingFrom = false
+    @State private var making = false
+    @State private var made: URL?
     @State private var working: QuickTool?
     @State private var asking: QuickTool?
     @State private var input = QuickRunner.Input(name: "", bytes: Data())
@@ -221,6 +224,7 @@ struct QuickToolsView: View {
                 VStack(alignment: .leading, spacing: Space.x6) {
                     filePicker
                     if let result { resultCard(result) }
+                    makePDFCard
                     ForEach(QuickTool.groups.indices, id: \.self) { index in
                         let (title, tools) = QuickTool.groups[index]
                         VStack(alignment: .leading, spacing: Space.x3) {
@@ -247,6 +251,9 @@ struct QuickToolsView: View {
                     chosen = nil
                     result = nil
                 }
+            }
+            .fileImporter(isPresented: $makingFrom, allowedContentTypes: MakePDF.types) { picked in
+                if case let .success(url) = picked { Task { await makePDF(from: url) } }
             }
             .sheet(item: $asking) { tool in
                 QuickInputSheet(tool: tool, file: file, input: $input) {
@@ -300,6 +307,58 @@ struct QuickToolsView: View {
             Text("2. Tap a tool: it runs at once and makes a new file. Your PDF stays as it is.")
                 .font(TextStyle.caption)
                 .foregroundStyle(Surface.secondaryLabel)
+        }
+    }
+
+    /// A PDF from a Word, Excel or PowerPoint file, a web page or text.
+    private var makePDFCard: some View {
+        VStack(alignment: .leading, spacing: Space.x3) {
+            Button {
+                makingFrom = true
+            } label: {
+                HStack(spacing: Space.x3) {
+                    if making { ProgressView() } else { Image(systemName: "doc.badge.plus").font(.system(size: 22)) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Make a PDF from another file").themeFont(.headline)
+                        Text("Word, Excel, PowerPoint, a web page or text").font(TextStyle.caption).foregroundStyle(Surface.secondaryLabel)
+                    }
+                    Spacer()
+                }
+                .padding(Space.x4)
+                .background(Surface.groupedCell, in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+            }
+            .buttonStyle(.pressable)
+            .foregroundStyle(Surface.label)
+            .disabled(making)
+            .accessibilityIdentifier("quick.makePDF")
+            if let made {
+                HStack {
+                    ShareLink(item: made) { Label(made.lastPathComponent, systemImage: "square.and.arrow.up").lineLimit(1) }
+                    Spacer()
+                    Button("Open") {
+                        if let bytes = try? Data(contentsOf: made),
+                           (try? library.adopt(bytes: bytes, name: made.deletingPathExtension().lastPathComponent, open: true)) != nil {
+                            dismiss()
+                        }
+                    }
+                }
+                .padding(.horizontal, Space.x2)
+            }
+        }
+    }
+
+    private func makePDF(from url: URL) async {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        making = true
+        defer { making = false }
+        do {
+            let data = try await MakePDF.pdf(from: url)
+            let target = try Exporter.folder().appending(path: url.deletingPathExtension().lastPathComponent + ".pdf")
+            try data.write(to: target)
+            made = target
+        } catch {
+            self.error = "This file could not be turned into a PDF on this iPhone."
         }
     }
 
