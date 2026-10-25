@@ -292,6 +292,10 @@ $shell = New-Object -ComObject WScript.Shell
 $link = $shell.CreateShortcut((Join-Path $folder 'sample-link.lnk'))
 $link.TargetPath = (Join-Path $folder 'sample.pdf')
 $link.Save()
+# Explorer back on the screen (step 3 pushed it into the corner), lower
+# down, so the drag starts on the shortcut and has room to reach the top.
+$explorer = [Input]::FindWindow('CabinetWClass', [NullString]::Value)
+[Input]::MoveWindow($explorer, 200, 300, 760, 400, $true) | Out-Null
 Start-Sleep -Seconds 2
 $at = FileItem 'sample-link'
 $zx = [int]([Input]::Width / 2); $zy = 70
