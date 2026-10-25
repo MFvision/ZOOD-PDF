@@ -66,9 +66,10 @@ jobs:
           grep -E 'error:|BUILD (SUCCEEDED|FAILED)' build.log | sort -u | head -200 || true
           exit $status
       # The suites for the parts the iPhone shares with the desktop. The
-      # Keychain suites need a signed test host (this build is unsigned), and
-      # the form-filling suite reads back ZOOD's licensed font, which is not
-      # in the repository: both run with scripts/ios/build.sh on the Mac.
+      # Keychain suites need a signed test host (this build is unsigned): they
+      # run with scripts/ios/build.sh on the Mac. FormAutofillTests' read-back
+      # of the drawn Arabic fails on the CI simulator (2026-10-25) and is to be
+      # looked at there too.
       - name: Unit tests on a simulator
         run: |
           device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')
