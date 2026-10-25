@@ -154,13 +154,15 @@ final class AIAssistant: Identifiable {
     let id = UUID()
     let model: DocumentModel
     private(set) var state: State = .idle
+    /// The answer as it is being written (ZOOD's model writes it piece by piece).
+    private(set) var partial = ""
     var task: AITask = .summarize
     var question = ""
     /// What the model read for the last answer, for the note under it.
     private(set) var context: AIContext?
-    let availability: AIAvailability
-    let engineName: String?
-    let engine: (any AIEngine)?
+    private(set) var availability: AIAvailability
+    private(set) var engineName: String?
+    private(set) var engine: (any AIEngine)?
 
     init(model: DocumentModel, engine: (any AIEngine)? = nil, availability: AIAvailability? = nil) {
         self.model = model
@@ -177,6 +179,19 @@ final class AIAssistant: Identifiable {
 
     var isWorking: Bool { state == .working }
 
+    /// Asks again which engine answers: after ZOOD's model was fetched.
+    func refreshEngine() {
+        guard !isWorking else { return }
+        let found = AIEngines.current()
+        engine = found.engine
+        availability = found.availability
+        engineName = engine?.name
+    }
+
+    /// Whether a task can run without any model: a summary or key points
+    /// are then the document's own key sentences (`KeySentences`).
+    var canRunWithoutModel: Bool { task == .summarize || task == .keyPoints }
+
     static let instructions = """
     You are the assistant inside ZOOD PDF, a PDF editor. The prompt carries passages of the open document inside \
     <document>, each marked with its page, and then the request. Answer from the passages only; when they do not \
@@ -187,8 +202,8 @@ final class AIAssistant: Identifiable {
 
     /// Runs the chosen task over the document.
     func run() async {
-        guard let engine else {
-            state = .failed(String(localized: "On-device AI is not available."))
+        guard engine != nil || canRunWithoutModel else {
+            state = .failed(AIEngineError.unavailable(availability).localizedDescription)
             return
         }
         let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -204,8 +219,22 @@ final class AIAssistant: Identifiable {
                 state = .failed(String(localized: "No text could be read on these pages, even from their pictures."))
                 return
             }
+            guard let engine else {
+                let sentences = KeySentences.pick(from: context.text, count: task == .keyPoints ? 6 : 4)
+                let answer = task == .keyPoints
+                    ? sentences.map { "• " + $0 }.joined(separator: "\n")
+                    : sentences.joined(separator: " ")
+                state = answer.isEmpty ? .failed(String(localized: "No text could be read on these pages, even from their pictures.")) : .answered(answer)
+                return
+            }
             let prompt = "<document>\n\(context.text)\n</document>\n\n\(task.request(question: question))"
-            let answer = try await engine.reply(instructions: Self.instructions, prompt: prompt)
+            partial = ""
+            let answer = try await engine.reply(instructions: Self.instructions, prompt: prompt) { text in
+                Task { @MainActor [weak self] in
+                    guard let self, self.state == .working else { return }
+                    self.partial = text
+                }
+            }
             state = .answered(answer.trimmingCharacters(in: .whitespacesAndNewlines))
         } catch {
             state = .failed(error.localizedDescription)
@@ -263,5 +292,38 @@ final class AIAssistant: Identifiable {
     func reset() {
         state = .idle
         context = nil
+        partial = ""
+    }
+}
+
+/// A summary with no model at all: the sentences that carry the document's
+/// most frequent words (a plain TextRank-like score), in the order the
+/// document has them. What an iPhone without the memory for ZOOD's model
+/// still gets — said as such in the AI sheet.
+enum KeySentences {
+    static func pick(from text: String, count: Int) -> [String] {
+        let cleaned = text.replacingOccurrences(of: #"\[page \d+\]"#, with: " ", options: .regularExpression)
+        var sentences: [String] = []
+        cleaned.enumerateSubstrings(in: cleaned.startIndex..., options: .bySentences) { sentence, _, _, _ in
+            let trimmed = (sentence ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            if trimmed.count >= 25, trimmed.count <= 400 { sentences.append(trimmed) }
+        }
+        guard !sentences.isEmpty else { return [] }
+        func words(_ sentence: String) -> [String] {
+            sentence.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init).filter { $0.count > 3 }
+        }
+        var frequency: [String: Int] = [:]
+        for sentence in sentences { for word in Set(words(sentence)) { frequency[word, default: 0] += 1 } }
+        let scored = sentences.enumerated().map { index, sentence -> (Int, Double) in
+            let own = words(sentence)
+            guard !own.isEmpty else { return (index, 0) }
+            let score = own.reduce(0.0) { $0 + Double(frequency[$1] ?? 0) } / Double(own.count).squareRoot()
+            // The opening sentences say what a document is: a small lift.
+            return (index, score * (index < 3 ? 1.25 : 1))
+        }
+        let chosen = scored.sorted { $0.1 > $1.1 }.prefix(count).map(\.0).sorted()
+        var seen = Set<String>()
+        return chosen.map { sentences[$0] }.filter { seen.insert($0).inserted }
     }
 }

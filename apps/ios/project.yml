@@ -51,6 +51,14 @@ targets:
     platform: iOS
     sources:
       - path: PDFEditor
+        excludes:
+          - "Resources/Model/**"
+      # ZOOD's own AI model (scripts/ios/fetch-model.sh, git-ignored): bundled
+      # as a folder when it is there, so the AI works offline from install.
+      - path: PDFEditor/Resources/Model
+        type: folder
+        buildPhase: resources
+        optional: true
       - path: Shared
       # The Arabic face the core writes with (stamps, text boxes, PDF/A
       # substitutes): Amiri, SIL OFL, subset on each write.
@@ -75,6 +83,10 @@ targets:
         embed: false
       - framework: Vendor/WarraqCore.xcframework
         embed: false
+      # llama.cpp (MIT), the engine ZOOD's model runs on: scripts/ios/fetch-llama.sh.
+      - framework: Vendor/llama.xcframework
+        embed: true
+        codeSign: true
       - target: Widgets
       - target: ShareExtension
       - sdk: PDFKit.framework
@@ -394,6 +406,10 @@ targets:
       # The wrapper's code is already inside the host app; the tests need only
       # its module to compile against.
       - target: WarraqCore
+        link: false
+        embed: false
+      # The same for llama.cpp's module (ZoodModelEngine's tests).
+      - framework: Vendor/llama.xcframework
         link: false
         embed: false
     settings:

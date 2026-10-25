@@ -1,11 +1,18 @@
 import Foundation
 import SwiftUI
 
-// The on-device AI provider. On iOS 26 and later with Apple Intelligence
-// turned on, Apple's Foundation Models framework answers in the app's own
-// process: no download, no key, nothing leaves the device. Where it is not
-// available the app says exactly why (in Settings) and shows none of the AI
-// controls — there is no other model on a phone, and no façade.
+// The on-device AI providers, both in the app's own process, no key,
+// nothing leaving the device:
+//
+// - ZOOD's own model (`ZoodModelEngine`, llama.cpp, the desktop's model):
+//   Arabic and English, any iPhone with 4 GB of memory, carried in the app
+//   or fetched once.
+// - Apple's Foundation Models (iOS 26+, Apple Intelligence on): used for a
+//   request in a language Apple's model reads — never for Arabic, which it
+//   does not — when ZOOD's model is not there.
+//
+// The AI button is always there; when neither can answer yet, the AI sheet
+// says why and offers what fixes it (fetching ZOOD's model).
 //
 // `AIEngine` is what the assistant and form autofill talk to;
 // `FoundationModelsEngine` is the real one, `FakeEngine` (Debug builds only,
@@ -26,6 +33,10 @@ enum AIAvailability: Equatable, Sendable {
     case modelNotReady
     /// A reason the framework did not name.
     case unavailable
+    /// ZOOD's model is not on this phone yet: it can be fetched once.
+    case needsModel
+    /// The phone has too little memory for ZOOD's model, and no Apple model.
+    case deviceTooSmall
 
     var isAvailable: Bool { self == .available }
 
@@ -38,6 +49,8 @@ enum AIAvailability: Equatable, Sendable {
         case .appleIntelligenceOff: "Turn on Apple Intelligence in the Settings app to use on-device AI."
         case .modelNotReady: "The on-device model is not ready yet — it may still be downloading. Try again later."
         case .unavailable: "On-device AI is not available on this device."
+        case .needsModel: "ZOOD's AI runs on this iPhone, in Arabic and English, with nothing sent anywhere. Fetch it once (about 1.1 GB) and it works offline from then on."
+        case .deviceTooSmall: "This iPhone has too little memory for ZOOD's AI. Quick summaries still work."
         }
     }
 
@@ -72,8 +85,70 @@ protocol AIEngine: Sendable {
     var name: String { get }
     /// A whole answer to a prompt under instructions.
     func reply(instructions: String, prompt: String) async throws -> String
+    /// The same, handing the answer so far to `partial` as it is written.
+    func reply(instructions: String, prompt: String, partial: @escaping @Sendable (String) -> Void) async throws -> String
     /// Which fields take which details — structured, never free text.
     func assign(fields: [FieldDescription], profileKeys: [ProfileKey], documentText: String) async throws -> [FieldAssignment]
+}
+
+extension AIEngine {
+    func reply(instructions: String, prompt: String, partial: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await reply(instructions: instructions, prompt: prompt)
+    }
+}
+
+/// Whether a text is mostly Arabic letters.
+func readsArabic(_ text: String) -> Bool {
+    var arabic = 0
+    var latin = 0
+    for scalar in text.unicodeScalars.prefix(4000) {
+        switch scalar.value {
+        case 0x0600...0x06FF, 0x0750...0x077F, 0xFB50...0xFDFF, 0xFE70...0xFEFF: arabic += 1
+        case 0x41...0x5A, 0x61...0x7A: latin += 1
+        default: break
+        }
+    }
+    return arabic > 0 && arabic * 2 >= latin
+}
+
+/// ZOOD's model and Apple's together: each request goes to the one that
+/// reads its language best — ZOOD's for Arabic, and whenever it is there;
+/// Apple's for a language it reads when ZOOD's model is not.
+struct RoutedEngine: AIEngine {
+    let zood: ZoodModelEngine?
+    let apple: (any AIEngine)?
+    let appleReadsArabic: Bool
+
+    var name: String {
+        switch (zood, apple) {
+        case (.some, .some): "\(ZoodModel.displayName) + Apple Intelligence"
+        case (.some, nil): ZoodModel.displayName
+        default: apple?.name ?? ""
+        }
+    }
+
+    func engine(for prompt: String) throws -> any AIEngine {
+        if let zood { return zood }
+        if let apple, appleReadsArabic || !readsArabic(prompt) { return apple }
+        throw AIEngineError.unavailable(.needsModel)
+    }
+
+    func reply(instructions: String, prompt: String) async throws -> String {
+        try await engine(for: prompt).reply(instructions: instructions, prompt: prompt)
+    }
+
+    func reply(instructions: String, prompt: String, partial: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await engine(for: prompt).reply(instructions: instructions, prompt: prompt, partial: partial)
+    }
+
+    func assign(fields: [FieldDescription], profileKeys: [ProfileKey], documentText: String) async throws -> [FieldAssignment] {
+        // Apple's guided generation, when it reads the form, is the stricter of the two.
+        if let apple, appleReadsArabic || !readsArabic(documentText + fields.map(\.label).joined()) {
+            return try await apple.assign(fields: fields, profileKeys: profileKeys, documentText: documentText)
+        }
+        guard let zood else { throw AIEngineError.unavailable(.needsModel) }
+        return try await zood.assign(fields: fields, profileKeys: profileKeys, documentText: documentText)
+    }
 }
 
 enum AIEngineError: Error, LocalizedError, Equatable {
@@ -89,7 +164,10 @@ enum AIEngineError: Error, LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .unavailable: String(localized: "On-device AI is not available.")
+        case let .unavailable(reason):
+            reason == .needsModel
+                ? String(localized: "This needs ZOOD's AI on this iPhone. Fetch it once in the AI sheet or Settings › AI.")
+                : String(localized: "On-device AI is not available.")
         case .refused: String(localized: "The on-device model declined this request.")
         case .tooLong: String(localized: "This is too much text for the on-device model. Ask about a part of the document.")
         case .safetyCheckUnavailable: String(localized: "The on-device model did not answer: its safety check cannot run on this device.")
@@ -110,24 +188,42 @@ enum AIEngines {
         #endif
     }
 
-    /// The availability now (the framework is asked each time: Apple
-    /// Intelligence can be turned on while the app runs).
-    static func availability() -> AIAvailability {
-        if fakeRequested { return .available }
-        if #available(iOS 26, *) {
-            return FoundationModelsEngine.availability()
-        }
-        return .systemTooOld
-    }
-
-    /// The engine, or nil with the reason it is not there.
-    static func current() -> (engine: (any AIEngine)?, availability: AIAvailability) {
-        if fakeRequested { return (FakeEngine(), .available) }
+    /// Apple's model, when it answers here (iOS 26+, Apple Intelligence on).
+    static func appleEngine() -> (engine: (any AIEngine)?, availability: AIAvailability, readsArabic: Bool) {
         if #available(iOS 26, *) {
             let availability = FoundationModelsEngine.availability()
-            return (availability.isAvailable ? FoundationModelsEngine() : nil, availability)
+            return (availability.isAvailable ? FoundationModelsEngine() : nil, availability, FoundationModelsEngine.readsArabic)
         }
-        return (nil, .systemTooOld)
+        return (nil, .systemTooOld, false)
+    }
+
+    /// ZOOD's model, when it is on this phone and the phone can run it.
+    static func zoodEngine() -> ZoodModelEngine? {
+        guard ZoodModel.deviceCanRun, let file = ZoodModel.location else { return nil }
+        return ZoodModelEngine(file: file)
+    }
+
+    /// The availability now (asked each time: Apple Intelligence can be
+    /// turned on, and ZOOD's model fetched, while the app runs).
+    static func availability() -> AIAvailability {
+        current().availability
+    }
+
+    /// The engine, or nil with the reason none answers yet.
+    static func current() -> (engine: (any AIEngine)?, availability: AIAvailability) {
+        if fakeRequested { return (FakeEngine(), .available) }
+        let zood = zoodEngine()
+        let apple = appleEngine()
+        if zood != nil || apple.engine != nil {
+            return (RoutedEngine(zood: zood, apple: apple.engine, appleReadsArabic: apple.readsArabic), .available)
+        }
+        return (nil, ZoodModel.deviceCanRun ? .needsModel : .deviceTooSmall)
+    }
+
+    /// Why Apple's model is not there, for Settings.
+    static func appleAvailability() -> AIAvailability {
+        if fakeRequested { return .available }
+        return appleEngine().availability
     }
 }
 

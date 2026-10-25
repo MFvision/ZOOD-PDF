@@ -2,9 +2,9 @@ import PDFKit
 import SwiftUI
 
 /// The AI sheet over a document: a task, a question for "Ask", the answer,
-/// and a line saying what the model read. Shown only when the on-device
-/// model is available (or a Debug run fakes it): elsewhere the toolbar has
-/// no AI button and Settings says why.
+/// and a line saying what the model read. When no model answers on this
+/// phone yet, it offers to fetch ZOOD's (and still makes a quick summary
+/// from the document's key sentences).
 struct AIPanel: View {
     @Bindable var assistant: AIAssistant
     var onAutofill: () -> Void
@@ -13,6 +13,11 @@ struct AIPanel: View {
     var body: some View {
         AppSheet(title: "AI on this device") {
             List {
+                if assistant.engine == nil {
+                    ZoodModelSetupSection(availability: assistant.availability) {
+                        assistant.refreshEngine()
+                    }
+                }
                 Section {
                     Picker("Task", selection: $assistant.task) {
                         ForEach(AITask.allCases) { task in
@@ -37,7 +42,7 @@ struct AIPanel: View {
                             }
                         }
                     }
-                    .disabled(assistant.isWorking)
+                    .disabled(assistant.isWorking || (assistant.engine == nil && !assistant.canRunWithoutModel))
                     .accessibilityIdentifier("ai.run")
                 } header: {
                     Text("Ask the document")
@@ -85,8 +90,13 @@ struct AIPanel: View {
             Section {
                 HStack(spacing: Space.x3) {
                     ProgressView()
-                    Text("Reading…")
+                    Text(assistant.partial.isEmpty ? "Reading…" : "Writing…")
                         .foregroundStyle(Surface.secondaryLabel)
+                }
+                if !assistant.partial.isEmpty {
+                    Text(assistant.partial)
+                        .font(TextStyle.body)
+                        .accessibilityIdentifier("ai.partial")
                 }
             }
         case let .answered(answer):
@@ -97,6 +107,11 @@ struct AIPanel: View {
                     .accessibilityIdentifier("ai.answer")
                 if let context = assistant.context {
                     contextNote(context)
+                }
+                if assistant.engine == nil {
+                    Text("A quick summary: the document's key sentences, picked on this iPhone without an AI model.")
+                        .font(TextStyle.caption)
+                        .foregroundStyle(Surface.secondaryLabel)
                 }
             } header: {
                 Text("Answer")
@@ -141,6 +156,62 @@ struct AIPanel: View {
     private func run() {
         guard !assistant.isWorking else { return }
         Task { await assistant.run() }
+    }
+}
+
+/// ZOOD's model, offered where no model answers yet: fetched once, checked,
+/// then offline for good. Shared by the AI sheet and Settings › AI.
+struct ZoodModelSetupSection: View {
+    let availability: AIAvailability
+    var onReady: () -> Void = {}
+    @State private var download = ZoodModelDownload.shared
+
+    var body: some View {
+        Section {
+            switch download.state {
+            case .idle, .failed:
+                if availability == .deviceTooSmall {
+                    Label("This iPhone has too little memory for ZOOD's AI.", systemImage: "memorychip")
+                } else {
+                    Button {
+                        download.start()
+                    } label: {
+                        Label("Get ZOOD's AI (1.1 GB, once)", systemImage: "arrow.down.circle")
+                    }
+                    .accessibilityIdentifier("ai.model.get")
+                }
+                if case let .failed(message) = download.state {
+                    Label(message, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                }
+            case let .downloading(fraction):
+                VStack(alignment: .leading, spacing: Space.x3) {
+                    ProgressView(value: fraction) {
+                        Text("Fetching ZOOD's AI… \(Int(fraction * 100))%")
+                    }
+                    Text("Keep ZOOD open until it finishes. Wi-Fi is best.")
+                        .font(TextStyle.caption)
+                        .foregroundStyle(Surface.secondaryLabel)
+                    Button("Stop", role: .cancel) { download.cancel() }
+                }
+                .accessibilityIdentifier("ai.model.progress")
+            case .checking:
+                HStack(spacing: Space.x3) {
+                    ProgressView()
+                    Text("Checking the file…")
+                }
+            case .ready:
+                Label("ZOOD's AI is ready on this iPhone.", systemImage: "checkmark.seal")
+                    .accessibilityIdentifier("ai.model.ready")
+            }
+        } header: {
+            Text("ZOOD's AI")
+        } footer: {
+            Text(availability.message)
+        }
+        .onChange(of: download.state) { _, state in
+            if state == .ready { onReady() }
+        }
     }
 }
 

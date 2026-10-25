@@ -11,6 +11,7 @@ on:
       - 'apps/ios/**'
       - 'packages/core/warraq-core/include/**'
       - '.github/workflows/ios-compile.yml'
+      - 'scripts/ios/**'
   workflow_dispatch:
 
 concurrency:
@@ -45,6 +46,13 @@ jobs:
           WARRAQ_IOS_SIM_ONLY: '1'
           WARRAQ_IOS_DEBUG: '1'
         run: zsh scripts/ios/build-core.sh
+      - name: llama.cpp for the on-device model
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/ios/fetch-llama.sh
+          bin=$(find apps/ios/Vendor/llama.xcframework -path '*ios-arm64*simulator*' -name llama -type f | head -1)
+          file "$bin" || true
       - name: Project
         run: |
           brew install xcodegen
@@ -57,10 +65,22 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build-for-testing > build.log 2>&1 || status=$?
           grep -E 'error:|BUILD (SUCCEEDED|FAILED)' build.log | sort -u | head -200 || true
           exit $status
+      - name: Unit tests on a simulator
+        run: |
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')
+          echo "simulator $device"
+          status=0
+          xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
+            -destination "id=$device" CODE_SIGNING_ALLOWED=NO \
+            -only-testing:PDFEditorTests test-without-building > test.log 2>&1 || status=$?
+          grep -E "Test Case .*failed|error:|Executed [0-9]+ test|\*\* TEST" test.log | sort -u | head -150 || true
+          exit $status
       - name: Keep the log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-log
-          path: build.log
+          path: |
+            build.log
+            test.log
           if-no-files-found: ignore
