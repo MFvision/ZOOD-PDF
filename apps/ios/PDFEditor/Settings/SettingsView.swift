@@ -195,7 +195,7 @@ struct SettingsView: View {
             LabeledContent("Version", value: Self.appVersion)
             LabeledContent("Core", value: Core.version)
             LabeledContent("Privacy") {
-                Text("Nothing leaves this device.")
+                Text("Nothing leaves this device unless you send it.")
                     .multilineTextAlignment(.trailing)
             }
             if let url = URL(string: UIApplication.openSettingsURLString) {

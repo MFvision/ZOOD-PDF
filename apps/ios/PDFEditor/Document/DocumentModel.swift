@@ -350,6 +350,8 @@ final class DocumentModel: Identifiable, Hashable {
         }
         original = edited
         self.edited = nil
+        // A file opened from OneDrive or Google Drive goes back there (CloudCenter).
+        NotificationCenter.default.post(name: .zoodDocumentSaved, object: url)
     }
 
     /// Lets go of the core and of the file.

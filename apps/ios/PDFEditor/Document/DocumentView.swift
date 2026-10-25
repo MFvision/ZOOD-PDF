@@ -229,7 +229,6 @@ struct DocumentView: View {
             .task(id: model.isReady && model.asksZood) {
                 guard model.isReady, model.asksZood else { return }
                 model.asksZood = false
-                guard AIEngines.availability().isAvailable else { return }
                 reader.stop()
                 assistant = AIAssistant(model: model)
             }
@@ -578,8 +577,8 @@ struct DocumentView: View {
         }
     }
 
-    /// Read aloud, and the AI button — only where Apple's model (or the
-    /// Debug fake) answers: nowhere else is there an AI button to press.
+    /// Read aloud, and the AI button: always there — where no model answers
+    /// yet, the AI sheet offers to fetch ZOOD's and still makes a quick summary.
     @ViewBuilder
     private var aiAndReadAloud: some View {
         Button("Read aloud", systemImage: reader.isActive ? "speaker.slash" : "speaker.wave.2") {
@@ -591,15 +590,13 @@ struct DocumentView: View {
         }
         .disabled(!model.isReady)
         .accessibilityIdentifier("document.readAloud")
-        if AIEngines.availability().isAvailable {
-            Button("AI", systemImage: "sparkles") {
-                // Autofill writes PDFKit's document: no reading highlight in it.
-                reader.stop()
-                assistant = AIAssistant(model: model)
-            }
-            .disabled(!model.isReady)
-            .accessibilityIdentifier("document.ai")
+        Button("AI", systemImage: "sparkles") {
+            // Autofill writes PDFKit's document: no reading highlight in it.
+            reader.stop()
+            assistant = AIAssistant(model: model)
         }
+        .disabled(!model.isReady)
+        .accessibilityIdentifier("document.ai")
     }
 
     private var moreMenu: some View {

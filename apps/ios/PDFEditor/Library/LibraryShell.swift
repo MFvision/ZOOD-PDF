@@ -40,11 +40,16 @@ enum LibrarySection: String, CaseIterable, Identifiable {
 
 /// The tools the sidebar lists under "Tools": each one the app does today.
 enum LibraryTool: String, CaseIterable, Identifiable {
+    case askZood
     case scan
     case create
     case combine
+    case quickTools
+    case sort
+    case cloud
     case search
     case batch
+    case help
 
     var id: String { rawValue }
 
@@ -55,6 +60,11 @@ enum LibraryTool: String, CaseIterable, Identifiable {
         case .combine: "Combine files"
         case .search: "Search"
         case .batch: "Batch"
+        case .askZood: "Ask ZOOD"
+        case .quickTools: "Quick tools"
+        case .sort: "Sort with ZOOD"
+        case .cloud: "Cloud drives"
+        case .help: "Help & Support"
         }
     }
 
@@ -65,8 +75,24 @@ enum LibraryTool: String, CaseIterable, Identifiable {
         case .combine: "doc.on.doc"
         case .search: "text.magnifyingglass"
         case .batch: "square.stack.3d.down.forward"
+        case .askZood: "sparkles"
+        case .quickTools: "bolt"
+        case .sort: "tray.2"
+        case .cloud: "cloud"
+        case .help: "questionmark.circle"
         }
     }
+}
+
+/// The full screens the Tools open over the Library.
+enum LibraryScreen: String, Identifiable {
+    case askZood
+    case quickTools
+    case sort
+    case cloud
+    case help
+
+    var id: String { rawValue }
 }
 
 /// The Library: a three-column split view on iPad (sections and tools, the
@@ -108,6 +134,8 @@ struct LibraryShell: View {
     @State private var showingBatch = false
     /// The phone remote for ZOOD PDF on a computer (Remote/RemoteView.swift).
     @State private var showingRemote = false
+    /// Ask ZOOD, Quick tools, Sort, the cloud drives, Help: one screen at a time.
+    @State private var screen: LibraryScreen?
     @State private var restored = false
     /// The welcome tour: shown once, the first time the app is opened, and
     /// from Settings whenever it is asked for again.
@@ -183,6 +211,23 @@ struct LibraryShell: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(library: library)
+        }
+        .fullScreenCover(item: $screen) { screen in
+            Group {
+                switch screen {
+                case .askZood: AskZoodView(library: library, run: { tool in self.screen = nil; Task { @MainActor in run(tool) } })
+                case .quickTools: QuickToolsView(library: library)
+                case .sort: SortView(library: library)
+                case .cloud: CloudView(open: { url in library.open(url: url) })
+                case .help: HelpCenterView()
+                }
+            }
+            .appEnvironment()
+            .environment(library)
+        }
+        // A save that went back to OneDrive or Google Drive, for a moment.
+        .overlay(alignment: .top) {
+            CloudSaveBanner()
         }
         .fullScreenCover(isPresented: $showingRemote) {
             // A PDF sent from the computer joins the Library and opens.
@@ -279,6 +324,8 @@ struct LibraryShell: View {
             guard !restored else { return }
             restored = true
             AppGroup.setFlag("cameraAvailable", DocumentCameraView.isSupported)
+            // Listens for saves of files that came from a cloud drive.
+            _ = CloudCenter.shared
             lock.lock()
             restoreScene()
         }
@@ -381,6 +428,11 @@ struct LibraryShell: View {
         case .combine: actions.combine()
         case .search: actions.search()
         case .batch: actions.batch()
+        case .askZood: screen = .askZood
+        case .quickTools: screen = .quickTools
+        case .sort: screen = .sort
+        case .cloud: screen = .cloud
+        case .help: screen = .help
         }
     }
 

@@ -18,6 +18,10 @@ enum Exporter {
         case text
         case compressed
         case pdfa
+        case excel
+        case powerPoint
+        case jpg
+        case webp
 
         var id: String { rawValue }
     }

@@ -35,3 +35,5 @@ apps/ios/PDFEditor/Resources/LicensedFonts/
 
 # Website references from the owner (third-party videos): local only
 docs/research/website-refs/
+apps/ios/PDFEditor/Resources/Model/*
+!apps/ios/PDFEditor/Resources/Model/README.txt

@@ -25,6 +25,12 @@ struct FoundationModelsEngine: AIEngine {
         }
     }
 
+    /// Whether Apple's model reads Arabic here (it did not when this was
+    /// written; asked of the framework, so a later system that does is used).
+    static var readsArabic: Bool {
+        SystemLanguageModel.default.supportedLanguages.contains { $0.languageCode == .arabic }
+    }
+
     func reply(instructions: String, prompt: String) async throws -> String {
         let session = LanguageModelSession(instructions: instructions)
         do {
