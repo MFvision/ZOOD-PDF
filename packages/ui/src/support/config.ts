@@ -10,12 +10,12 @@ import { ABOUT } from '../settings/about';
  * waits on it, and it starts working by itself the day it answers.
  */
 export const SUPPORT = {
-  relay: 'https://pdf.zood.sa/api/support/',
+  relay: 'https://pdf.zoodrealty.com/api/support/',
   email: ABOUT.email,
   /** How long a request may take before the app stops waiting and offers e-mail. */
   timeoutMs: 8000,
   /** The website's help pages, the same articles as the app's. */
-  website: { ar: 'https://pdf.zood.sa/help/', en: 'https://pdf.zood.sa/en/help/' },
+  website: { ar: 'https://pdf.zoodrealty.com/help/', en: 'https://pdf.zoodrealty.com/en/help/' },
 } as const;
 
 export { LIMITS } from './limits';

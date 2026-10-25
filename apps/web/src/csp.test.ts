@@ -36,7 +36,7 @@ const FONT_SOURCES = 'https://api.fontsource.org https://cdn.jsdelivr.net/fontso
  * Help & Support's relay, on ZOOD's own site: a problem report, the ideas and
  * a vote, each when the person sends it or opens Ideas. Its own path only.
  */
-const SUPPORT_SOURCES = 'https://pdf.zood.sa/api/support/';
+const SUPPORT_SOURCES = 'https://pdf.zoodrealty.com/api/support/';
 
 const EXPECTED_CSP =
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; worker-src 'self' blob:; frame-src blob:; connect-src 'self' ${AI_SOURCES} ${MODEL_SOURCES} ${FONT_SOURCES} ${SUPPORT_SOURCES}; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
