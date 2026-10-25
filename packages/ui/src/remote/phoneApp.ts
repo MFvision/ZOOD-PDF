@@ -13,10 +13,10 @@
  *   segno.make(LINK, error='m').save(out, kind='svg', border=0, xmldecl=False)
  * and copy the path's d attribute here.
  */
-export const PHONE_APP_LINK = 'https://pdf.zood.sa/app';
+export const PHONE_APP_LINK = 'https://pdf.zoodrealty.com/app';
 
 /** The link as people read it under the code. */
-export const PHONE_APP_LINK_SHORT = 'pdf.zood.sa/app';
+export const PHONE_APP_LINK_SHORT = 'pdf.zoodrealty.com/app';
 
 export const PHONE_APP_QR_SIZE = 25;
 

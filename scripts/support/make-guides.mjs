@@ -38,8 +38,8 @@ const shot = (step, lang) => (step.pic && existsSync(join(shots, `${step.pic}-${
 const moving = (step, lang) => join(shots, `${step.pic}-${lang}.webp`);
 
 const WORDS = {
-  ar: { guide: 'دليل', steps: 'الخطوات', tips: 'نصائح', inApp: 'في التطبيق: افتح مساعدة › المساعدة والدعم، وابحث عن هذا الدليل، ثم اضغط «أرني» أو «نفّذه عني».', name: 'محرر زود PDF', url: 'pdf.zood.sa/help', desktop: 'في تطبيق الكمبيوتر' },
-  en: { guide: 'Guide', steps: 'Steps', tips: 'Tips', inApp: 'In the app: open Help › Help & Support, find this guide, then press Show me or Do it for me.', name: 'ZOOD PDF', url: 'pdf.zood.sa/en/help', desktop: 'In the desktop app' },
+  ar: { guide: 'دليل', steps: 'الخطوات', tips: 'نصائح', inApp: 'في التطبيق: افتح مساعدة › المساعدة والدعم، وابحث عن هذا الدليل، ثم اضغط «أرني» أو «نفّذه عني».', name: 'محرر زود PDF', url: 'pdf.zoodrealty.com/help', desktop: 'في تطبيق الكمبيوتر' },
+  en: { guide: 'Guide', steps: 'Steps', tips: 'Tips', inApp: 'In the app: open Help › Help & Support, find this guide, then press Show me or Do it for me.', name: 'ZOOD PDF', url: 'pdf.zoodrealty.com/en/help', desktop: 'In the desktop app' },
 };
 
 function guideHtml(article, lang) {
@@ -142,7 +142,7 @@ const PAGE = {
 
 function helpPage(lang) {
   const p = PAGE[lang];
-  const url = lang === 'ar' ? 'https://pdf.zood.sa/help/' : 'https://pdf.zood.sa/en/help/';
+  const url = lang === 'ar' ? 'https://pdf.zoodrealty.com/help/' : 'https://pdf.zoodrealty.com/en/help/';
   const sections = CATEGORIES.map((category) => {
     const list = ARTICLES.filter((one) => one.category === category.id);
     if (list.length === 0) return '';
@@ -166,9 +166,9 @@ ${article.tips ? `<ul class="help-tips">${article.tips.map((tip) => `<li>${escap
 <title>${escape(p.title)}</title>
 <meta name="description" content="${escape(p.description)}">
 <link rel="canonical" href="${url}">
-<link rel="alternate" hreflang="ar" href="https://pdf.zood.sa/help/">
-<link rel="alternate" hreflang="en" href="https://pdf.zood.sa/en/help/">
-<link rel="alternate" hreflang="x-default" href="https://pdf.zood.sa/help/">
+<link rel="alternate" hreflang="ar" href="https://pdf.zoodrealty.com/help/">
+<link rel="alternate" hreflang="en" href="https://pdf.zoodrealty.com/en/help/">
+<link rel="alternate" hreflang="x-default" href="https://pdf.zoodrealty.com/help/">
 <meta name="theme-color" content="#f5f1ed" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#041e42" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">

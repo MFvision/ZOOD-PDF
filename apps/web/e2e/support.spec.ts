@@ -10,7 +10,7 @@ import { INVOICE, answer, openPdf, test } from './helpers';
  * The relay is answered by the test, so nothing leaves the machine.
  */
 
-const RELAY = 'https://pdf.zood.sa/api/support/';
+const RELAY = 'https://pdf.zoodrealty.com/api/support/';
 
 async function start(page: Page, lang: 'en' | 'ar' = 'en'): Promise<void> {
   await page.addInitScript(
