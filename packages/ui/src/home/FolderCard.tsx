@@ -27,6 +27,14 @@ export interface FolderCardProps {
   pages: readonly (string | null)[];
   /** The small round sign at the front's corner. */
   badge: ReactNode;
+  /**
+   * Makes the sign a button of its own, for a second action beside opening
+   * the folder (a drive's "choose more"); it is given the button, to place a
+   * menu by.
+   */
+  onBadge?: (from: HTMLElement) => void;
+  /** The badge button's accessible name. */
+  badgeLabel?: string;
   /** The accessible name of the folder's button, when it says more than the name. */
   label?: string;
   onOpen: () => void;
@@ -39,7 +47,7 @@ export interface FolderCardProps {
 /** How long the pages fan out before what was asked for happens (motion.css's regular duration and a little). */
 const FAN_MS = 320;
 
-export function FolderCard({ name, detail, tone, pages, badge, label, onOpen, open, peek }: FolderCardProps) {
+export function FolderCard({ name, detail, tone, pages, badge, onBadge, badgeLabel, label, onOpen, open, peek }: FolderCardProps) {
   const [opening, setOpening] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -56,7 +64,7 @@ export function FolderCard({ name, detail, tone, pages, badge, label, onOpen, op
       onOpen();
     }, FAN_MS);
   };
-  return (
+  const card = (
     <button
       type="button"
       className={cx('folder', (opening || open) && 'is-open', peek && 'is-peek')}
@@ -89,10 +97,27 @@ export function FolderCard({ name, detail, tone, pages, badge, label, onOpen, op
           </span>
           <span className="folder-detail">{detail}</span>
         </span>
-        <span className="folder-badge" aria-hidden="true">
-          {badge}
+        <span className={cx('folder-badge', onBadge && 'is-hidden')} aria-hidden="true">
+          {!onBadge && badge}
         </span>
       </span>
     </button>
+  );
+  if (!onBadge) return card;
+  // A button may not hold another: the badge's own button lies over its place on the front.
+  return (
+    <span className="folder-wrap">
+      {card}
+      <button
+        type="button"
+        className="folder-badge folder-badge-btn"
+        aria-label={badgeLabel}
+        title={badgeLabel}
+        aria-haspopup="menu"
+        onClick={(event) => onBadge(event.currentTarget)}
+      >
+        {badge}
+      </button>
+    </span>
   );
 }

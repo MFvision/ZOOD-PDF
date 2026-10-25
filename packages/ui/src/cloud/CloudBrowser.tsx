@@ -83,7 +83,7 @@ export function CloudBrowser({
         if (cancelled) return;
         const kind = kindOf(error);
         setResult({ view, entries: [], next: null, failed: kind });
-        if (kind === 'signedOut') signInAgain(provider, mode === 'open' ? { kind: 'open' } : { kind: 'saveAs' });
+        if (kind === 'signedOut') signInAgain(provider, mode === 'open' ? { kind: 'browse' } : { kind: 'saveAs' });
       },
     );
     return () => {
