@@ -16,20 +16,29 @@ vendor="$repo/apps/ios/Vendor"
 pin="$vendor/llama.pin"
 tag="$(sed -n 's/^tag=//p' "$pin")"
 want="$(sed -n 's/^sha256=//p' "$pin")"
-if [ "$tag" = "latest" ]; then
-  # Only while the pin is first chosen: the newest release's tag.
-  auth=()
-  [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
-  tag="$(curl -fsSL "${auth[@]}" https://api.github.com/repos/ggml-org/llama.cpp/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')"
-  echo "newest llama.cpp release: $tag (write tag=$tag into $pin)"
-fi
+auth=()
+[ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
+if [ "$tag" = "latest" ]; then release_api="https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=40"
+else release_api=https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/$tag; fi
+# The release's XCFramework asset, by its name (the naming has changed over
+# time); for "latest", the newest release that has one.
+read -r tag url < <(curl -fsSL ${auth[@]+"${auth[@]}"} "$release_api" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for r in (data if isinstance(data, list) else [data]):
+    assets = [a for a in r.get("assets", []) if "xcframework" in a["name"] and a["name"].endswith(".zip")]
+    if assets:
+        print(r["tag_name"], assets[0]["browser_download_url"]); break
+else:
+    print("none -")')
+[ "$url" != "-" ] || { echo "llama.cpp $tag has no XCFramework asset" >&2; exit 1; }
+echo "llama.cpp release $tag: $url"
 if [ -d "$vendor/llama.xcframework" ] && [ -f "$vendor/llama.xcframework/.tag" ] && [ "$(cat "$vendor/llama.xcframework/.tag")" = "$tag" ]; then
   echo "llama.xcframework $tag already here"
   exit 0
 fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-url="https://github.com/ggml-org/llama.cpp/releases/download/$tag/llama-$tag-xcframework.zip"
 echo "== fetching $url"
 curl -fsSL --retry 4 -o "$work/llama.zip" "$url"
 got="$(shasum -a 256 "$work/llama.zip" | cut -d' ' -f1)"

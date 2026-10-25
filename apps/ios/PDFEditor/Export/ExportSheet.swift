@@ -15,6 +15,12 @@ struct ExportSheet: View {
     @State private var imageDPI: Float? = 150
     @State private var showingCompress = false
     @State private var showingFileExporter = false
+    @State private var cloudFile: CloudFile?
+
+    struct CloudFile: Identifiable {
+        let url: URL
+        var id: URL { url }
+    }
 
     struct ExportResult: Identifiable {
         let id = UUID()
@@ -55,7 +61,11 @@ struct ExportSheet: View {
                     row(.pdf, "PDF", "doc.richtext", "The document as it stands.")
                     row(.word, "Word", "doc.text", "Each page as it looks: its pictures behind, its text in boxes to edit, in its own fonts and colours.")
                     row(.wordText, "Word, text only", "text.justify.leading", "Flowing paragraphs in reading order, Arabic right-to-left.")
+                    row(.excel, "Excel", "tablecells", "The tables on each page as sheets you can calculate with; numbers stay numbers.")
+                    row(.powerPoint, "PowerPoint", "rectangle.on.rectangle", "Each page a slide, its text in boxes you can edit.")
                     row(.images, "Page pictures", "photo.on.rectangle", "A PNG of each page at 150 dpi.")
+                    row(.jpg, "JPG pictures", "photo", "A JPG of each page at 150 dpi: small, for messages and the web.")
+                    row(.webp, "WebP pictures", "photo.stack", "A WebP of each page at 150 dpi, without loss.")
                     row(.text, "Text", "text.alignright", "Every page's text in logical order.")
                     row(.compressed, "Compressed PDF", "arrow.down.right.and.arrow.up.left", "Pictures downsampled, streams recompressed, unused objects dropped.")
                     row(.pdfa, "PDF/A-2b", "checkmark.seal", "For archiving: written whole and validated.")
@@ -73,6 +83,12 @@ struct ExportSheet: View {
                         Label("Save a copy to Files…", systemImage: "folder")
                     }
                     .accessibilityIdentifier("export.files")
+                    Button {
+                        if let url = try? Exporter.pdf(model) { cloudFile = CloudFile(url: url) }
+                    } label: {
+                        Label("Save to OneDrive or Google Drive…", systemImage: "icloud.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("export.cloud")
                 }
             }
             .accessibilityIdentifier("export.list")
@@ -89,6 +105,10 @@ struct ExportSheet: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(error ?? "")
+        }
+        .fullScreenCover(item: $cloudFile) { file in
+            CloudView(open: { _ in }, saving: file.url)
+                .appEnvironment()
         }
         .fileExporter(isPresented: $showingFileExporter, item: SharedPDF(model: model), contentTypes: [.pdf], defaultFilename: model.name) { _ in }
     }
@@ -154,6 +174,13 @@ struct ExportSheet: View {
                     let findings = report.findings?.items.count ?? 0
                     result = ExportResult(format: format, files: [url],
                                           note: report.findings?.passed == true ? "PDF/A-\(level): all \(total) checks passed." : "PDF/A-\(level): \(findings) findings in \(total) checks.")
+                case .excel:
+                    result = ExportResult(format: format, files: [try await Exporter.excel(model)], note: nil)
+                case .powerPoint:
+                    result = ExportResult(format: format, files: [try await Exporter.powerPoint(model)], note: nil)
+                case .jpg, .webp:
+                    let files = try await Exporter.pictures(model, format: format == .jpg ? "jpeg" : "webp")
+                    result = ExportResult(format: format, files: files, note: "\(files.count) pictures.")
                 }
                 #if DEBUG
                 // A UI test asks for the files where it can read them.

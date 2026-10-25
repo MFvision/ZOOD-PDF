@@ -23,7 +23,7 @@ struct OnboardingView: View {
             message: "Open a PDF from Files or from your own library and read it as it was written — Arabic in its own order, right to left, page by page.",
             points: [
                 OnboardingPoint(symbol: "text.alignright", text: "Arabic read and searched properly, tashkeel and all"),
-                OnboardingPoint(symbol: "lock.shield", text: "No account, and nothing ever leaves this device"),
+                OnboardingPoint(symbol: "lock.shield", text: "No account, and nothing leaves this device unless you send it"),
             ]
         ),
         OnboardingScreen(
@@ -59,6 +59,34 @@ struct OnboardingView: View {
             points: [
                 OnboardingPoint(symbol: "books.vertical", text: "A library you can search across every document"),
                 OnboardingPoint(symbol: "lock", text: "A password on the file, and Face ID on the app"),
+            ]
+        ),
+        OnboardingScreen(
+            symbol: "sparkles",
+            title: "Ask ZOOD, on this iPhone",
+            message: "Ask ZOOD summarizes a document, answers questions about it and writes a presentation, in Arabic or English. Its model runs on the iPhone itself: no internet, no account, nothing sent.",
+            points: [
+                OnboardingPoint(symbol: "text.badge.star", text: "Summaries and answers about the open PDF"),
+                OnboardingPoint(symbol: "rectangle.on.rectangle.angled", text: "“Make me a presentation” writes a PowerPoint"),
+                OnboardingPoint(symbol: "command", text: "Type what you want: “merge”, “open the contract”"),
+            ]
+        ),
+        OnboardingScreen(
+            symbol: "bolt",
+            title: "Quick tools and Sort",
+            message: "Quick tools in the Library turn a file into Word, Excel, PowerPoint or pictures, and split, sign, watermark or unlock it in one tap. Sort with ZOOD suggests merges, names and folders, and Undo puts it all back.",
+            points: [
+                OnboardingPoint(symbol: "tablecells", text: "Tables become Excel sheets"),
+                OnboardingPoint(symbol: "folder.badge.gearshape", text: "“IMG_2034” gets a name that says what it is"),
+            ]
+        ),
+        OnboardingScreen(
+            symbol: "icloud",
+            title: "OneDrive and Google Drive",
+            message: "Sign in from Cloud drives in the Library to open a PDF from your drive. When you save it, ZOOD puts it back on the drive; if it changed there meanwhile, yours is kept as a copy.",
+            points: [
+                OnboardingPoint(symbol: "person.badge.key", text: "Your own account, signed in once"),
+                OnboardingPoint(symbol: "square.and.arrow.up.on.square", text: "Export straight to a drive"),
             ]
         ),
         OnboardingScreen(

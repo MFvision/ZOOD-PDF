@@ -117,6 +117,9 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [ar, en]
         LSRequiresIPhoneOS: true
+        # Google Drive's desktop-client secret, given by the build's environment
+        # (WARRAQ_GOOGLE_CLIENT_SECRET, as the desktop's). Left empty, Google Drive is hidden.
+        ZOODGoogleClientSecret: $(WARRAQ_GOOGLE_CLIENT_SECRET)
         UILaunchScreen: {}
         # Read-aloud keeps speaking with the screen locked.
         UIBackgroundModes: [audio]

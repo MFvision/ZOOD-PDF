@@ -289,6 +289,27 @@ final class AIAssistant: Identifiable {
     /// opening pages, which is where a summary's material mostly is.
     static let recognizedPageLimit = 12
 
+    /// The presentation made from this document, once made.
+    private(set) var deckFile: URL?
+    private(set) var makingDeck = false
+    private(set) var deckError: String?
+
+    /// "Make a presentation" from the document's text: the model writes the
+    /// slides, ZOOD builds the PowerPoint file (`DeckMaker`).
+    func makeDeck() async {
+        guard let engine, !makingDeck else { return }
+        makingDeck = true
+        deckError = nil
+        defer { makingDeck = false }
+        do {
+            let context = try await gather(for: "")
+            let deck = try await DeckMaker.write(topic: "", document: context.text, engine: engine)
+            deckFile = try DeckMaker.file(deck)
+        } catch {
+            deckError = error.localizedDescription
+        }
+    }
+
     func reset() {
         state = .idle
         context = nil

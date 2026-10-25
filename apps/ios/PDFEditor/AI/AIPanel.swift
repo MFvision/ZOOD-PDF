@@ -52,6 +52,33 @@ struct AIPanel: View {
 
                 answerSection
 
+                if assistant.engine != nil {
+                    Section {
+                        Button {
+                            Task { await assistant.makeDeck() }
+                        } label: {
+                            HStack {
+                                Label("Make a presentation from this PDF", systemImage: "rectangle.on.rectangle.angled")
+                                Spacer()
+                                if assistant.makingDeck { ProgressView() }
+                            }
+                        }
+                        .disabled(assistant.makingDeck || assistant.isWorking)
+                        .accessibilityIdentifier("ai.deck")
+                        if let file = assistant.deckFile {
+                            ShareLink(item: file) {
+                                Label(file.lastPathComponent, systemImage: "square.and.arrow.up")
+                            }
+                            .accessibilityIdentifier("ai.deck.share")
+                        }
+                        if let error = assistant.deckError {
+                            Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                        }
+                    } footer: {
+                        Text("ZOOD writes the slides on this iPhone and builds a PowerPoint file you can open in PowerPoint or Keynote.")
+                    }
+                }
+
                 if hasTextFields {
                     Section {
                         Button("Fill the form from my profile", systemImage: "rectangle.and.pencil.and.ellipsis") {
