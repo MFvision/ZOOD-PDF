@@ -11,6 +11,7 @@ import type { ProviderId } from './config';
 import type { Account, Entry, Saved } from './drive';
 import { kindOf } from './errors';
 import type { CloudErrorKind } from './errors';
+import { MAX_TABS } from '../state/tabs';
 import { pickedIds } from './gdrive';
 import { currentHost } from './host';
 import { googlePicker } from './oauth';
@@ -93,6 +94,8 @@ export interface CloudApi {
   pickWithGoogle: (purpose: 'open' | 'folder', name?: string) => void;
   signOut: (provider: ProviderId) => Promise<void>;
   openEntry: (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => Promise<void>;
+  /** Each PDF among `entries` in a tab of its own. */
+  openEntries: (provider: ProviderId, entries: readonly Pick<Entry, 'key' | 'name' | 'kind'>[]) => Promise<void>;
   saveInto: (provider: ProviderId, folderKey: string | null, name: string) => Promise<void>;
   resolveConflict: (choice: 'copy' | 'replace' | 'cancel') => void;
   resolveNameTaken: (choice: 'replace' | 'rename' | 'cancel') => void;
@@ -136,6 +139,7 @@ const NO_CLOUD: CloudApi = {
   pickWithGoogle: () => undefined,
   signOut: async () => undefined,
   openEntry: async () => undefined,
+  openEntries: async () => undefined,
   saveInto: async () => undefined,
   resolveConflict: () => undefined,
   resolveNameTaken: () => undefined,
@@ -184,7 +188,21 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   const [recent, setRecent] = useState(() => readCloudRecent().filter((entry) => offered.includes(entry.provider)));
   const [thumbnails, setThumbnails] = useState(readCloudThumbnails);
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [activity, setActivity] = useState<Activity | null>(null);
+  // What each drive is doing: one drive signing in or opening never holds up another.
+  const [activities, setActivities] = useState<Partial<Record<ProviderId, Activity>>>({});
+  const setActivity = useCallback((provider: ProviderId, next: Activity | null) => {
+    setActivities((current) => {
+      const kept = { ...current };
+      if (next) kept[provider] = next;
+      else delete kept[provider];
+      return kept;
+    });
+  }, []);
+  // What is said: the drive on screen's, else (no sheet: saving) any.
+  const activity = useMemo(
+    () => (sheet ? (activities[sheet.provider] ?? null) : (Object.values(activities)[0] ?? null)),
+    [sheet, activities],
+  );
   const [error, setError] = useState<CloudErrorKind | null>(null);
   // Each drive file open has its own claim on Save, which its tab keeps
   // while another tab shows: the binding is the live tab's claim's file.
@@ -203,6 +221,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   // Drive files being opened, by the `File` each is opened as: each claims Save once the app has it open.
   const pending = useRef(new WeakMap<File, Binding>());
   const abort = useRef<AbortController | null>(null);
+  const signingIn = useRef<ProviderId | null>(null);
   const answer = useRef<((choice: string) => void) | null>(null);
 
   const drive = useCallback((provider: ProviderId) => service.drive(provider), [service]);
@@ -230,15 +249,20 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
     [rememberAccount],
   );
 
-  /** An error where the person will see it: in the sheet on screen, else in the window's banner. */
+  /** An error where the person will see it: in the drive's sheet on screen, else in the window's banner. */
   const report = useCallback(
-    (error: unknown) => {
+    (error: unknown, provider: ProviderId) => {
       const kind = kindOf(error);
-      if (sheetRef.current) setError(kind);
+      if (sheetRef.current?.provider === provider) setError(kind);
       else dispatch({ type: 'DOCUMENT_FAILED', error: errorKey(kind) });
     },
     [dispatch],
   );
+
+  /** Shows `next` unless another drive's sheet is on screen: work on one drive never takes another's place. */
+  const showFor = useCallback((provider: ProviderId, next: Sheet | null) => {
+    setSheet((current) => (current && current.provider !== provider ? current : next));
+  }, []);
 
   // The first page of a drive file, for its tile on the home screen (never a protected one).
   const { document: remote, documentPassword } = services;
@@ -260,24 +284,32 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
 
   const openEntry = useCallback(
     async (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => {
-      setError(null);
-      setActivity({ kind: 'opening', provider, name: entry.name });
+      if (sheetRef.current?.provider === provider) setError(null);
+      setActivity(provider, { kind: 'opening', provider, name: entry.name });
       try {
         const opened = await drive(provider).open(entry.key);
         const file = new File([opened.bytes], opened.name, { type: 'application/pdf' });
         const { bytes: _bytes, ...saved } = opened;
         pending.current.set(file, { ...saved, provider, file });
-        setActivity(null);
-        setSheet(null);
+        setActivity(provider, null);
+        showFor(provider, null);
         setRecent(addCloudRecent({ provider, key: opened.key, name: opened.name, openedAt: Date.now() }));
         await services.openFile(file, undefined, { recent: false });
       } catch (error) {
-        setActivity(null);
+        setActivity(provider, null);
         if (kindOf(error) === 'signedOut') signInAgain(provider, { kind: 'recent', entry: { provider, key: entry.key, name: entry.name, openedAt: Date.now() } });
-        else report(error);
+        else report(error, provider);
       }
     },
-    [drive, services, signInAgain, report],
+    [drive, services, signInAgain, report, setActivity, showFor],
+  );
+
+  /** Several files at once (picked, or chosen in the sheet): each PDF opens in a tab of its own, one after another. */
+  const openEntries = useCallback(
+    async (provider: ProviderId, entries: readonly Pick<Entry, 'key' | 'name' | 'kind'>[]) => {
+      for (const entry of entries.filter((one) => one.kind === 'pdf').slice(0, MAX_TABS)) await openEntry(provider, entry);
+    },
+    [openEntry],
   );
 
   /** Asks the person, in a sheet, and waits for the choice. */
@@ -304,18 +336,18 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
             setClaimed((count) => count + 1);
             return { saved: true as const, toast: `cloud.saved.${bound.provider}` as TKey };
           };
-          setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
+          setActivity(bound.provider, { kind: 'saving', provider: bound.provider, name: bound.name });
           try {
             try {
               return done(await drive(bound.provider).saveRevision(bound.key, body, bound.version));
             } catch (error) {
               if (kindOf(error) !== 'conflict') throw error;
             }
-            setActivity(null);
+            setActivity(bound.provider, null);
             const choice = await ask<'copy' | 'replace' | 'cancel'>({ kind: 'conflict', provider: bound.provider, name: bound.name });
             if (choice === 'replace') {
               setSheet(null);
-              setActivity({ kind: 'saving', provider: bound.provider, name: bound.name });
+              setActivity(bound.provider, { kind: 'saving', provider: bound.provider, name: bound.name });
               return done(await drive(bound.provider).saveRevision(bound.key, body, null));
             }
             if (choice === 'copy') {
@@ -336,14 +368,14 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
             }
             return { saved: false };
           } finally {
-            setActivity(null);
+            setActivity(bound.provider, null);
           }
         },
       };
       claims.set(target, held);
       claimSave(target);
     },
-    [claims, claimSave, drive, ask, t, signInAgain, dispatch],
+    [claims, claimSave, drive, ask, t, signInAgain, dispatch, setActivity],
   );
 
   // A drive file, once open, claims Save; its tab keeps the claim while
@@ -378,20 +410,20 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       if (!bytes) return;
       const body = wholeBuffer(bytes);
       const back = sheetRef.current;
-      setActivity({ kind: 'saving', provider, name });
+      setActivity(provider, { kind: 'saving', provider, name });
       try {
         let saved: Saved;
         try {
           saved = await drive(provider).saveNew(folderKey, name, body, 'fail');
         } catch (error) {
           if (kindOf(error) !== 'nameTaken') throw error;
-          setActivity(null);
+          setActivity(provider, null);
           const choice = await ask<'replace' | 'rename' | 'cancel'>({ kind: 'nameTaken', provider, name });
           if (choice === 'cancel') {
             setSheet(back);
             return;
           }
-          setActivity({ kind: 'saving', provider, name });
+          setActivity(provider, { kind: 'saving', provider, name });
           saved = await drive(provider).saveNew(folderKey, name, body, choice);
         }
         adopt(provider, saved, file);
@@ -404,13 +436,13 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
         if (kindOf(error) === 'signedOut') signInAgain(provider, { kind: 'saveAs' });
         else {
           setSheet((current) => current ?? back);
-          report(error);
+          report(error, provider);
         }
       } finally {
-        setActivity(null);
+        setActivity(provider, null);
       }
     },
-    [services, drive, ask, adopt, state.document, dispatch, signInAgain, report],
+    [services, drive, ask, adopt, state.document, dispatch, signInAgain, report, setActivity],
   );
 
   const openRecentNow = useCallback((entry: CloudRecent) => void openEntry(entry.provider, entry), [openEntry]);
@@ -427,22 +459,22 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
             picked = ids.length > 0 ? ((await drive(provider).picked?.(ids)) ?? []) : [];
           } catch (error) {
             if (kindOf(error) === 'signedOut') return signInAgain(provider, next);
-            setSheet({ kind: 'browse', provider, mode: 'open' });
-            report(error);
+            showFor(provider, { kind: 'browse', provider, mode: 'open' });
+            report(error, provider);
             return;
           }
-          for (const entry of picked) if (entry.kind === 'pdf') await openEntry(provider, entry);
+          await openEntries(provider, picked);
           const folder = picked.find((entry) => entry.kind === 'folder');
-          if (folder) setSheet({ kind: 'browse', provider, mode: 'open', folder: { key: folder.key, name: folder.name } });
-          else if (!picked.some((entry) => entry.kind === 'pdf')) setSheet({ kind: 'browse', provider, mode: 'open' });
+          if (folder) showFor(provider, { kind: 'browse', provider, mode: 'open', folder: { key: folder.key, name: folder.name } });
+          else if (!picked.some((entry) => entry.kind === 'pdf')) showFor(provider, { kind: 'browse', provider, mode: 'open' });
           return;
         }
         case 'saveAs':
-          setSheet({ kind: 'browse', provider, mode: 'saveAs' });
+          showFor(provider, { kind: 'browse', provider, mode: 'saveAs' });
           return;
         case 'pickFolder': {
           const folder = pickedIds(params)[0];
-          setSheet({ kind: 'browse', provider, mode: 'saveAs', name: next.name });
+          showFor(provider, { kind: 'browse', provider, mode: 'saveAs', name: next.name });
           if (folder) await saveInto(provider, folder, next.name);
           return;
         }
@@ -450,12 +482,12 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
           openRecentNow(next.entry);
           return;
         case 'save':
-          setSheet(null);
+          showFor(provider, null);
           await services.saveDocument();
           return;
       }
     },
-    [drive, openEntry, saveInto, openRecentNow, services, signInAgain, report],
+    [drive, openEntries, saveInto, openRecentNow, services, signInAgain, report, showFor],
   );
 
   const begin = useCallback(
@@ -470,22 +502,29 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
         }
         (service.host.broker as BrowserBroker).staySignedIn(provider, stay);
       }
+      // One sign-in at a time (one browser answer to wait for): a new one,
+      // on either drive, ends the one under way rather than waiting on it.
+      const earlier = abort.current;
+      earlier?.abort();
       const controller = new AbortController();
       abort.current = controller;
+      signingIn.current = provider;
       setError(null);
-      setActivity({ kind: 'signIn', provider });
+      setActivity(provider, { kind: 'signIn', provider });
       const extra =
         provider === 'gdrive' && (next.kind === 'open' || next.kind === 'pickFolder')
           ? googlePicker(next.kind === 'open' ? 'open' : 'folder')
           : undefined;
       void (async () => {
         try {
+          if (earlier && service.host.desktop) await service.cancelSignIn();
           const { account, params } = await service.signIn(provider, { popup, extra, signal: controller.signal });
           rememberAccount(provider, account, service.host.desktop || stay);
-          setActivity(null);
+          setActivity(provider, null);
           await carryOn(provider, next, params);
         } catch (error) {
-          setActivity(null);
+          // A sign-in ended by a newer one on the same drive leaves that one's activity alone.
+          if (abort.current === controller || signingIn.current !== provider) setActivity(provider, null);
           // Closing the sheet cancelled it: nothing to say.
           if (abort.current === controller && !controller.signal.aborted) setError(kindOf(error));
         } finally {
@@ -493,7 +532,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
         }
       })();
     },
-    [service, rememberAccount, carryOn],
+    [service, rememberAccount, carryOn, setActivity],
   );
 
   const signIn = useCallback(
@@ -550,12 +589,16 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   );
 
   const cancel = useCallback(() => {
-    abort.current?.abort();
-    abort.current = null;
-    void service.cancelSignIn();
+    // Closing a drive's sheet ends that drive's sign-in, not another's.
+    const closing = sheetRef.current?.provider;
+    if (!closing || signingIn.current === closing) {
+      abort.current?.abort();
+      abort.current = null;
+      void service.cancelSignIn();
+      setActivities((current) => Object.fromEntries(Object.entries(current).filter(([, doing]) => doing.kind !== 'signIn')));
+    }
     answer.current?.('cancel');
     answer.current = null;
-    setActivity((current) => (current?.kind === 'signIn' ? null : current));
     setError(null);
     setSheet(null);
   }, [service]);
@@ -595,6 +638,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       pickWithGoogle,
       signOut,
       openEntry,
+      openEntries,
       saveInto,
       resolveConflict: resolve,
       resolveNameTaken: resolve,
@@ -621,6 +665,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       pickWithGoogle,
       signOut,
       openEntry,
+      openEntries,
       saveInto,
       resolve,
       signInAgain,

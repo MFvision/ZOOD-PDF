@@ -630,6 +630,8 @@
   "cloud.browse.empty": "No folders or PDF files here.",
   "cloud.browse.emptySearch": "No PDF file matches.",
   "cloud.browse.more": "Show More",
+  "cloud.browse.choose": "Choose “{name}” to open with others",
+  "cloud.browse.openChosen": "Open Chosen ({count})",
   "cloud.browse.opening": "Opening “{name}”…",
   "cloud.browse.items": "Items: {count}",
   "cloud.browse.in": "In {path}",

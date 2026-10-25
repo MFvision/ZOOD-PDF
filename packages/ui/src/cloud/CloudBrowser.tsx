@@ -57,6 +57,15 @@ export function CloudBrowser({
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{ view: string; entries: Entry[]; next: string | null; failed: CloudErrorKind | null } | null>(null);
   const [more, setMore] = useState(false);
+  // PDFs ticked to open together, kept while the person moves between folders.
+  const [chosen, setChosen] = useState<ReadonlyMap<string, Entry>>(new Map());
+  const choose = (entry: Entry, on: boolean) =>
+    setChosen((current) => {
+      const next = new Map(current);
+      if (on) next.set(entry.key, entry);
+      else next.delete(entry.key);
+      return next;
+    });
   const [name, setName] = useState(() => initialName ?? document?.name ?? 'document.pdf');
   const here = path[path.length - 1] ?? { key: null, name: '' };
   const view = JSON.stringify([searching, here.key, attempt]);
@@ -207,8 +216,19 @@ export function CloudBrowser({
       <ul className="cloud-list" aria-label={t('cloud.browse.list')} aria-busy={loading || undefined}>
         {shown.map((entry) => {
           const disabled = busy || (mode === 'saveAs' && entry.kind === 'pdf');
+          const ticks = mode === 'open' && entry.kind === 'pdf';
           return (
-            <li key={entry.key}>
+            <li key={entry.key} className={ticks ? 'cloud-pick' : undefined}>
+              {ticks && (
+                <input
+                  type="checkbox"
+                  className="cloud-pick-box"
+                  checked={chosen.has(entry.key)}
+                  disabled={busy}
+                  aria-label={t('cloud.browse.choose', { name: entry.name })}
+                  onChange={(event) => choose(entry, event.target.checked)}
+                />
+              )}
               <button
                 type="button"
                 className="cloud-row"
@@ -295,6 +315,20 @@ export function CloudBrowser({
         <button type="button" className="icon-btn icon-btn-labeled" onClick={cloud.cancel}>
           {t('cloud.cancel')}
         </button>
+        {mode === 'open' && chosen.size > 0 && (
+          <button
+            type="button"
+            className="icon-btn icon-btn-labeled icon-btn-primary"
+            disabled={busy}
+            onClick={() => {
+              const entries = [...chosen.values()];
+              setChosen(new Map());
+              void cloud.openEntries(provider, entries);
+            }}
+          >
+            {t('cloud.browse.openChosen', { count: chosen.size.toLocaleString(lang) })}
+          </button>
+        )}
         {mode === 'open' && !walks && (
           <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" disabled={busy} onClick={() => cloud.pickWithGoogle('open')}>
             {t('cloud.pick.open')}
