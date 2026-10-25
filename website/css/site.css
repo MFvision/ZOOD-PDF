@@ -5865,3 +5865,376 @@ main {
     filter: none;
   }
 }
+
+/* ---- The 2026-10-25 home: hero facts, try-it, tools tabs, FAQ ---------------- */
+.hero .actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  margin-top: 26px;
+}
+.hero .actions .text-link {
+  margin-top: 0;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.facts li {
+  padding: 5px 12px;
+  border: 1px solid var(--sep);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  color: var(--text-2);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Try it here (js/try-room.js). */
+.room-try {
+  height: 170svh;
+}
+.try {
+  aspect-ratio: auto;
+  min-height: 0;
+  display: grid;
+  align-items: center;
+}
+.try-card {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 14px;
+  padding: clamp(18px, 3cqi, 30px);
+  border-radius: var(--r-sheet);
+  transition:
+    opacity var(--slow) var(--ease) 120ms,
+    transform var(--slow) var(--ease) 120ms;
+}
+.js .room-try:not(.seen) .try-card {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.try-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'label button' 'line button';
+  align-items: center;
+  gap: 4px 16px;
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  border: 1px solid var(--sep);
+}
+.try-label {
+  grid-area: label;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.try-bad .try-label::before,
+.try-good .try-label::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: 8px;
+  border-radius: 50%;
+  background: #b3261e;
+  vertical-align: 1px;
+}
+.try-good .try-label::before {
+  background: #2e7d4f;
+}
+.try-line {
+  grid-area: line;
+  margin: 0;
+  font: 500 clamp(19px, 2.2cqi, 26px)/1.5 var(--font-head);
+  color: var(--text);
+  user-select: all;
+}
+.try-copy {
+  grid-area: button;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--sep);
+  border-radius: var(--r-button);
+  background: var(--card);
+  color: var(--text);
+  font: 600 15px var(--font-body);
+  cursor: pointer;
+  transition: transform var(--quick) var(--ease), background var(--quick) var(--ease);
+}
+.try-copy svg {
+  width: 18px;
+  height: 18px;
+}
+.try-copy:active {
+  transform: scale(0.97);
+}
+.try-copy.done {
+  background: var(--accent);
+  color: var(--page);
+  border-color: transparent;
+}
+.try-paste textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--sep);
+  border-radius: var(--r-card);
+  background: transparent;
+  color: var(--text);
+  font: 500 20px/1.5 var(--font-head);
+  resize: vertical;
+}
+.try-paste textarea.is-good {
+  border: 1.5px solid #2e7d4f;
+}
+.try-paste textarea.is-bad {
+  border: 1.5px solid #b3261e;
+}
+.try-status {
+  min-height: 1.4em;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+/* The tools tabs (js/tools-room.js). */
+.room-tools {
+  height: 340svh;
+}
+.tk {
+  aspect-ratio: auto;
+  max-height: none;
+  display: grid;
+  gap: 2.4cqi;
+  align-content: center;
+}
+.tk-tabs {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  justify-self: start;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 5px;
+  border-radius: var(--r-pill);
+  scrollbar-width: none;
+}
+.tk-tab {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--text-2);
+  font: 600 15px var(--font-body);
+  cursor: pointer;
+  transition: color var(--regular) var(--ease);
+}
+.tk-tab[aria-selected='true'] {
+  color: var(--page);
+}
+.tk-pill {
+  position: absolute;
+  inset-block: 5px;
+  left: 0;
+  width: var(--pill-w, 0);
+  border-radius: var(--r-pill);
+  background: var(--text);
+  transform: translateX(var(--pill-x, 0));
+  transition:
+    transform var(--slow) var(--ease),
+    width var(--slow) var(--ease);
+}
+.tk-panel {
+  position: relative;
+  z-index: 2;
+}
+.tk-device {
+  border-radius: 1.2cqi;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--sep);
+  box-shadow: var(--device-shadow);
+}
+.tk-device .screen {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--under);
+}
+.tk-device img,
+.tk-device video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+.tk-device video {
+  opacity: 0;
+  transition: opacity var(--regular) var(--ease);
+}
+.tk-device video.on {
+  opacity: 1;
+}
+.tk-caption {
+  position: absolute;
+  inset-block-end: -1.6cqi;
+  inset-inline-start: -2cqi;
+  max-width: min(78%, 460px);
+  padding: 14px 18px;
+  border-radius: var(--r-card);
+}
+.tk-caption h3 {
+  margin: 0 0 4px;
+  font: 600 18px/1.4 var(--font-head);
+}
+.tk-caption p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.tk-caption.swap {
+  animation: tk-swap var(--slow) var(--ease);
+}
+@keyframes tk-swap {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+/* On phones the two hands-on rooms read top to bottom, without pinning:
+   words first, then the thing to try. */
+@media (max-width: 899px) {
+  .room-try,
+  .room-tools {
+    height: auto;
+  }
+  .room-try .ring-stage,
+  .room-tools .ring-stage {
+    position: relative;
+    height: auto;
+    overflow: visible;
+    padding-block: calc(var(--bar) + 28px) 56px;
+  }
+  .room-try .ring-words,
+  .room-tools .ring-words {
+    order: 0;
+    align-self: start;
+  }
+  .try,
+  .tk {
+    max-height: none;
+  }
+  .tk-caption {
+    position: relative;
+    inset: auto;
+    max-width: none;
+    margin-top: 10px;
+  }
+  .tk-caption p {
+    display: none;
+  }
+  .room-tools .ring-words .points,
+  .room-try .ring-words .points,
+  .room-try .ring-words .note {
+    display: none;
+  }
+  .try-row {
+    padding: 10px 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tk-caption.swap {
+    animation: none;
+  }
+  .tk-pill {
+    transition: none;
+  }
+}
+
+/* Questions under the downloads. */
+.faq {
+  margin-top: 26px;
+}
+.faq h3 {
+  margin: 0 0 8px;
+  font: 600 18px/1.4 var(--font-head);
+}
+.faq details {
+  border-top: 1px solid var(--sep);
+}
+.faq summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.faq details p {
+  margin: 0 0 14px;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+/* The highlighted phrase: one band per line drawn on the phrase itself, so two
+   words never overlap into a darker seam. It grows in after the words land. */
+.title .hl {
+  background-image: linear-gradient(var(--band), var(--band));
+  background-repeat: no-repeat;
+  background-position: left 0 bottom 6%;
+  background-size: 0% 42%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding-inline: 0.12em;
+  margin-inline: -0.12em;
+  transition: background-size var(--slow) var(--ease);
+  transition-delay: calc(var(--wn, 0) * 45ms + 200ms);
+}
+[dir='rtl'] .title .hl {
+  background-position: right 0 bottom 6%;
+}
+.seen .title .hl,
+.no-js .title .hl {
+  background-size: 100% 42%;
+}
+.hero .title .hl {
+  transition-delay: 1.9s;
+}
+.title .hl .w::before {
+  display: none;
+}
+.hero .title {
+  font-size: clamp(36px, 4.6vw, 70px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .title .hl,
+  .hero .title .hl {
+    transition: none;
+  }
+}
+
+/* The opening line waits for its fonts before it is measured (js/hero-snap.js). */
+.title.snap-wait .w {
+  opacity: 0;
+  transition: none;
+}
