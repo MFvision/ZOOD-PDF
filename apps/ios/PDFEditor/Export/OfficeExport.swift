@@ -36,7 +36,7 @@ enum OfficeExport {
 
     /// A sheet for each page: its tables as tables, its other lines a row
     /// each (cut at their wide gaps into cells).
-    static func sheets(core: Core, pageLabel: (Int) -> String) async throws -> [Sheet] {
+    static func sheets(core: Core, pageLabel: @Sendable (Int) -> String) async throws -> [Sheet] {
         var sheets: [Sheet] = []
         let count = await core.pageCount
         for index in 0..<count {
