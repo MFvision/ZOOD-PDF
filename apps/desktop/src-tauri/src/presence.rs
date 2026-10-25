@@ -246,7 +246,7 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
             let _ = window.show();
             return;
         }
-        let window = match WebviewWindowBuilder::new(
+        let builder = WebviewWindowBuilder::new(
             &handle,
             BUBBLE_LABEL,
             WebviewUrl::App("index.html?askbubble=1".into()),
@@ -260,16 +260,17 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
         .skip_taskbar(true)
         .focused(false)
         .focusable(false)
-        .visible(false)
-        .transparent(true)
-        .build()
-        {
+        .transparent(true);
+        // Made ready out of sight, so it takes drops on Windows (`parked.rs`),
+        // then put in its place below.
+        let window = match crate::parked::hidden(builder).build() {
             Ok(window) => window,
             Err(e) => {
                 debug_log(format!("presence: cannot make the bubble: {e}"));
                 return;
             }
         };
+        crate::parked::made(&window);
         if let Some((x, y)) = load(&handle).at.or_else(|| first_place(&handle)) {
             let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }
@@ -277,6 +278,10 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
         let kept = handle.clone();
         window.on_window_event(move |event| {
             if let tauri::WindowEvent::Moved(at) = event {
+                // Where it waited off screen (`parked.rs`) is not a place to keep.
+                if crate::parked::is_away(at.x, at.y) {
+                    return;
+                }
                 let mut presence = load(&kept);
                 presence.at = Some((at.x, at.y));
                 store(&kept, &presence);

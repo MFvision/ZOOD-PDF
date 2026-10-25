@@ -117,7 +117,7 @@ fn zone_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     if let Some(window) = app.get_webview_window(ZONE_LABEL) {
         return Some(window);
     }
-    let window = WebviewWindowBuilder::new(
+    let builder = WebviewWindowBuilder::new(
         app,
         ZONE_LABEL,
         WebviewUrl::App("index.html?dropzone=1".into()),
@@ -131,11 +131,13 @@ fn zone_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     .skip_taskbar(true)
     .focused(false)
     .focusable(false)
-    .visible(false)
-    .transparent(true)
-    .build()
-    .map_err(|e| log(&format!("cannot make the drop zone: {e}")))
-    .ok()?;
+    .transparent(true);
+    // Made ready out of sight, so it takes drops on Windows (`parked.rs`).
+    let window = crate::parked::hidden(builder)
+        .build()
+        .map_err(|e| log(&format!("cannot make the drop zone: {e}")))
+        .ok()?;
+    crate::parked::made(&window);
     crate::ask::notch::above_menu_bar(&window);
     Some(window)
 }
@@ -217,7 +219,7 @@ pub fn hide_zone<R: Runtime>(app: &AppHandle<R>) {
     NEAR.store(false, Ordering::Relaxed);
     if let Some(window) = app.get_webview_window(ZONE_LABEL) {
         let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look: "hidden" });
-        let _ = window.hide();
+        crate::parked::away(&window);
     }
 }
 
@@ -235,12 +237,16 @@ pub fn released<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// The files of a drop, as a Sort session takes them: files only, each once.
+/// The files of a drop, as a Sort session takes them: files only, each once,
+/// and a Windows shortcut as the file it points at (`lnk.rs`).
 pub fn files_of(paths: &[PathBuf]) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = Vec::new();
     for path in paths {
-        if path.is_file() && !files.contains(path) {
-            files.push(path.clone());
+        let Some(path) = crate::lnk::file_of(path) else {
+            continue;
+        };
+        if !files.contains(&path) {
+            files.push(path);
             if files.len() >= MAX_FILES {
                 break;
             }

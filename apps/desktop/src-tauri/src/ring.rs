@@ -369,13 +369,15 @@ fn ring_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
             .skip_taskbar(true)
             .focused(false)
             .focusable(false)
-            .visible(false)
             // On macOS this needs Tauri's macos-private-api (Cargo.toml).
             .transparent(true);
-    builder
+    // Made ready out of sight, so it takes drops on Windows (`parked.rs`).
+    let window = crate::parked::hidden(builder)
         .build()
         .map_err(|e| log(&format!("cannot make the ring window: {e}")))
-        .ok()
+        .ok()?;
+    crate::parked::made(&window);
+    Some(window)
 }
 
 fn show<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
@@ -440,7 +442,7 @@ fn show<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
 
 pub fn hide<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window(LABEL) {
-        let _ = window.hide();
+        crate::parked::away(&window);
     }
 }
 
@@ -465,7 +467,7 @@ pub fn on_drag<R: Runtime>(
         tauri::DragDropEvent::Enter { paths, .. } => {
             let names = paths
                 .iter()
-                .filter(|p| p.is_file())
+                .filter_map(|p| crate::lnk::file_of(p))
                 .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
                 .collect::<Vec<String>>();
             log(&format!("{} files dragged onto the ring", names.len()));
@@ -486,9 +488,8 @@ pub fn on_drag<R: Runtime>(
         tauri::DragDropEvent::Drop { paths, .. } => {
             let files: Vec<PathBuf> = paths
                 .iter()
-                .filter(|p| p.is_file())
+                .filter_map(|p| crate::lnk::file_of(p))
                 .take(500)
-                .cloned()
                 .collect();
             log(&format!("{} files let go on the ring", files.len()));
             if let Ok(mut dropped) = DROPPED.lock() {
