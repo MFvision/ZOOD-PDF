@@ -65,6 +65,10 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build-for-testing > build.log 2>&1 || status=$?
           grep -E 'error:|BUILD (SUCCEEDED|FAILED)' build.log | sort -u | head -200 || true
           exit $status
+      # The suites for the parts the iPhone shares with the desktop. The
+      # Keychain suites need a signed test host (this build is unsigned), and
+      # the form-filling suite reads back ZOOD's licensed font, which is not
+      # in the repository: both run with scripts/ios/build.sh on the Mac.
       - name: Unit tests on a simulator
         run: |
           device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')
@@ -72,7 +76,10 @@ jobs:
           status=0
           xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
             -destination "id=$device" CODE_SIGNING_ALLOWED=NO \
-            -only-testing:PDFEditorTests test-without-building > test.log 2>&1 || status=$?
+            -only-testing:PDFEditorTests/ParityTests -only-testing:PDFEditorTests/AITests \
+            -only-testing:PDFEditorTests/ExportTests -only-testing:PDFEditorTests/BatchTests \
+            -only-testing:PDFEditorTests/LibraryTests -only-testing:PDFEditorTests/DocumentModelTests \
+            test-without-building > test.log 2>&1 || status=$?
           grep -E "Test Case .*failed|error:|Executed [0-9]+ test|\*\* TEST" test.log | sort -u | head -150 || true
           exit $status
       - name: Keep the log
