@@ -196,8 +196,8 @@ export const PAGES = {
             en: 'Ask in your own words: it answers from the guides on your device, then offers Show me or Do it for me.',
           },
           {
-            ar: 'أدلة خطوة بخطوة بالعربية والإنجليزية، كل واحد منها ملف PDF أيضًا. وهي هنا كذلك: pdf.zood.sa/help.',
-            en: 'Step-by-step guides in Arabic and English, each one also a PDF. They are here too: pdf.zood.sa/en/help.',
+            ar: 'أدلة خطوة بخطوة بالعربية والإنجليزية، كل واحد منها ملف PDF أيضًا. وهي هنا كذلك: pdf.zoodrealty.com/help.',
+            en: 'Step-by-step guides in Arabic and English, each one also a PDF. They are here too: pdf.zoodrealty.com/en/help.',
           },
           {
             ar: 'أبلغ عن مشكلة دون حساب: ترى ما سيُرفق (السجل، ولقطة الشاشة إن أردت) وتوافق قبل أن يُرسل.',
