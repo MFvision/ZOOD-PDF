@@ -8,8 +8,17 @@
 //! card's one button and Settings ask for each here and show what is still
 //! missing. On Windows only the microphone can be switched off (Settings ›
 //! Privacy › Microphone); nothing else needs allowing.
+//!
+//! A Mac keeps each permission with the signature of the app it was given
+//! to. When that signature changes (0.4.11, the first build GitHub signed,
+//! replaced builds signed on the Mac), System Settings still shows ZOOD PDF
+//! switched on, but the switch belongs to the old signature: the app is
+//! refused, and switching it off and on again does not help. So before
+//! asking for a permission that is missing, ZOOD PDF's own entry for it is
+//! cleared (`tccutil reset`), and the question and the switch are fresh.
 
 use serde::Serialize;
+use tauri::{AppHandle, Runtime};
 
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,8 +43,8 @@ pub fn ask_access() -> Access {
 /// `screen`): the system's own question when it has not asked yet, else
 /// its Settings opened at the list where ZOOD PDF is switched on.
 #[tauri::command]
-pub fn ask_allow(kind: String) {
-    system::allow(&kind);
+pub fn ask_allow<R: Runtime>(app: AppHandle<R>, kind: String) {
+    system::allow(&kind, &app.config().identifier);
 }
 
 /// Opens the microphone for a moment, which is what makes the system ask.
@@ -114,7 +123,44 @@ mod system {
         }
     }
 
-    pub fn allow(kind: &str) {
+    /// The permission's name for `tccutil`, when it is missing now.
+    fn missing(kind: &str) -> Option<&'static str> {
+        let now = access();
+        match kind {
+            "accessibility" if !now.accessibility => Some("Accessibility"),
+            "screen" if !now.screen => Some("ScreenCapture"),
+            "input" if !now.input => Some("ListenEvent"),
+            _ => None,
+        }
+    }
+
+    /// The services already cleared since ZOOD PDF started: Screen
+    /// Recording and Input Monitoring count only after a relaunch, so a
+    /// second press must not clear the switch the person just turned on.
+    static FORGOTTEN: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+
+    /// Clears ZOOD PDF's entry for `service`, which may be left from an
+    /// earlier signature: switched on in System Settings, yet refused. Only
+    /// this app's own entry, once a run; the person is asked again right after.
+    fn forget(service: &'static str, bundle: &str) {
+        let Ok(mut forgotten) = FORGOTTEN.lock() else {
+            return;
+        };
+        if forgotten.contains(&service) {
+            return;
+        }
+        forgotten.push(service);
+        let _ = std::process::Command::new("/usr/bin/tccutil")
+            .args(["reset", service, bundle])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+    }
+
+    pub fn allow(kind: &str, bundle: &str) {
+        if let Some(service) = missing(kind) {
+            forget(service, bundle);
+        }
         match kind {
             "accessibility" => {
                 prompt_accessibility();
@@ -229,7 +275,7 @@ mod system {
         }
     }
 
-    pub fn allow(kind: &str) {
+    pub fn allow(kind: &str, _bundle: &str) {
         if kind == "microphone" {
             let _ = std::process::Command::new("explorer")
                 .arg("ms-settings:privacy-microphone")
@@ -252,5 +298,5 @@ mod system {
         }
     }
 
-    pub fn allow(_kind: &str) {}
+    pub fn allow(_kind: &str, _bundle: &str) {}
 }
