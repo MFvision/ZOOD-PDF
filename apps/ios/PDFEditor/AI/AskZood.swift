@@ -191,8 +191,9 @@ enum CommandBook {
         // Questions are for the model even when they name a tool ("how do I compress?").
         if has(said, ["how", "what", "why", "can i", "كيف", "ليش", "لماذا", "وش", "ايش", "هل"]) { return nil }
         let table: [(LibraryTool, [String])] = [
-            (.scan, ["scan", "camera", "امسح", "مسح ضوئي", "صور مستند", "سكان", "سكانر"]),
+            // Before Scan: "merge my scans" merges.
             (.combine, ["combine", "merge", "join", "ادمج", "دمج", "اجمع"]),
+            (.scan, ["scan", "camera", "امسح", "مسح ضوئي", "صور مستند", "سكان", "سكانر"]),
             (.quickTools, ["compress", "smaller", "convert", "to word", "to excel", "to powerpoint", "to jpg", "to webp", "split", "unlock", "watermark", "page numbers", "rotate",
                            "اضغط", "ضغط", "صغر", "حول", "تحويل", "قسم", "تقسيم", "افصل", "فك القفل", "علامه مائيه", "ترقيم", "تدوير"]),
             (.sort, ["sort", "organize", "organise", "tidy", "رتب", "نظم", "ترتيب", "تنظيم"]),
