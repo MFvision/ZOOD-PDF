@@ -44,6 +44,11 @@ import type { CloudRecent } from './store';
 
 /** What to do once signed in. */
 export type Next =
+  /** The drive's own list: what was chosen or saved before (no Google picker). */
+  | { kind: 'browse' }
+  /** Nothing more: the Folders view shows the drive itself. */
+  | { kind: 'stay' }
+  /** Choosing files to open: Google's picker, or OneDrive's list. */
   | { kind: 'open' }
   | { kind: 'saveAs' }
   | { kind: 'recent'; entry: CloudRecent }
@@ -85,6 +90,8 @@ export interface CloudApi {
   /** What went wrong, said in the sheet on screen. */
   error: CloudErrorKind | null;
   startOpen: (provider: ProviderId) => void;
+  /** Signs in and stays where the person is (the Folders view lists the drive itself). */
+  startSignIn: (provider: ProviderId) => void;
   startSaveAs: (provider: ProviderId) => void;
   openRecent: (entry: CloudRecent) => void;
   clearRecent: () => void;
@@ -132,6 +139,7 @@ const NO_CLOUD: CloudApi = {
   activity: null,
   error: null,
   startOpen: () => undefined,
+  startSignIn: () => undefined,
   startSaveAs: () => undefined,
   openRecent: () => undefined,
   clearRecent: () => undefined,
@@ -469,6 +477,12 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
           else if (!picked.some((entry) => entry.kind === 'pdf')) showFor(provider, { kind: 'browse', provider, mode: 'open' });
           return;
         }
+        case 'browse':
+          showFor(provider, { kind: 'browse', provider, mode: 'open' });
+          return;
+        case 'stay':
+          showFor(provider, null);
+          return;
         case 'saveAs':
           showFor(provider, { kind: 'browse', provider, mode: 'saveAs' });
           return;
@@ -538,7 +552,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   const signIn = useCallback(
     (provider: ProviderId, stay: boolean) => {
       const current = sheetRef.current;
-      begin(provider, current?.kind === 'signIn' ? current.next : { kind: 'open' }, stay);
+      begin(provider, current?.kind === 'signIn' ? current.next : { kind: 'browse' }, stay);
     },
     [begin],
   );
@@ -552,10 +566,16 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   const startOpen = useCallback(
     (provider: ProviderId) => {
       setError(null);
-      setSheet(accounts[provider] ? { kind: 'browse', provider, mode: 'open' } : { kind: 'signIn', provider, next: { kind: 'open' } });
+      // Opening a drive shows what is in it; choosing more is its own action (pickWithGoogle).
+      setSheet(accounts[provider] ? { kind: 'browse', provider, mode: 'open' } : { kind: 'signIn', provider, next: { kind: 'browse' } });
     },
     [accounts],
   );
+
+  const startSignIn = useCallback((provider: ProviderId) => {
+    setError(null);
+    setSheet({ kind: 'signIn', provider, next: { kind: 'stay' } });
+  }, []);
 
   const startSaveAs = useCallback(
     (provider: ProviderId) => {
@@ -631,6 +651,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       activity,
       error,
       startOpen,
+      startSignIn,
       startSaveAs,
       openRecent,
       clearRecent,
@@ -658,6 +679,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       activity,
       error,
       startOpen,
+      startSignIn,
       startSaveAs,
       openRecent,
       clearRecent,

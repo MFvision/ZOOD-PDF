@@ -70,7 +70,7 @@ function SignIn({ provider, next }: { provider: ProviderId; next: Next }) {
   const picking = provider === 'gdrive' && next.kind === 'open';
   return (
     <div className="cloud-sheet">
-      <p>{t(`cloud.signIn.body.${provider}` as TKey)}</p>
+      <p>{t(provider === 'gdrive' && !picking ? 'cloud.signIn.body.gdriveList' : (`cloud.signIn.body.${provider}` as TKey))}</p>
       {cloud.desktop ? (
         <p className="cloud-note">{t('cloud.signIn.keychain')}</p>
       ) : (

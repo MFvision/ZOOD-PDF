@@ -210,6 +210,33 @@ test.describe('OneDrive in the browser', () => {
     expect(fake.tokenRequests).toHaveLength(1);
   });
 
+  test('in Folders, a drive opens in place to what is in it: sign in first, then folders and PDFs as pages, a click opens one', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    const { fake } = driveWithFiles();
+    await microsoft(page, fake);
+    await page.goto('/');
+    await page.getByRole('navigation', { name: 'Home sections' }).getByRole('button', { name: 'Folders', exact: true }).click();
+    await page.getByRole('button', { name: 'Open the folder OneDrive' }).click();
+    const drive = page.locator('section', { has: page.getByRole('heading', { name: /OneDrive/ }) });
+    // Nothing reaches Microsoft until the person signs in.
+    expect(fake.log).toHaveLength(0);
+    await drive.getByRole('button', { name: /^Sign In/ }).click();
+    await signIn(page);
+    const cards = drive.getByRole('list').getByRole('button');
+    await expect(cards).toHaveText([/^Choose Files/, /^Archive/, /^الفواتير/, /^World Bank briefing/]);
+    // Choosing more is its own card: from the drive, or from this computer.
+    await cards.first().click();
+    await expect(page.getByRole('menu', { name: 'Choose Files' }).getByRole('menuitem')).toHaveText(['From OneDrive…', 'From This Computer…']);
+    await page.keyboard.press('Escape');
+    await drive.getByRole('button', { name: /^الفواتير/ }).click();
+    await expect(drive.getByRole('heading')).toContainText('الفواتير');
+    await drive.getByRole('button', { name: /^فاتورة ٢٠٢٦/ }).click();
+    await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
+    await expect(page.getByRole('toolbar')).toContainText('فاتورة ٢٠٢٦');
+  });
+
   test('several PDFs ticked in a folder open together, each in a tab of its own', async ({ page, stayLocal: _ }) => {
     const { fake } = driveWithFiles();
     await microsoft(page, fake);

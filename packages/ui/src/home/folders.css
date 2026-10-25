@@ -208,6 +208,42 @@
   border-radius: 50%;
 }
 
+/* A folder with a second action: the badge is a button of its own, over its place on the front. */
+.folder-wrap {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 220px;
+}
+
+.folder-badge.is-hidden {
+  visibility: hidden;
+}
+
+.folder-badge-btn {
+  position: absolute;
+  inset-block-end: 13px;
+  inset-inline-end: 13px;
+  z-index: 5;
+  padding: 0;
+  cursor: pointer;
+  border: 0;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 25%);
+}
+
+[dir="rtl"] .folder-badge-btn {
+  inset-inline-end: 15px;
+}
+
+.folder-badge-btn:hover {
+  background: var(--accent);
+}
+
+.folder-badge-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Tones. ZOOD's navy and sand first, then two quieter ones; the drives in their own colours (no marks). */
 .folder[data-tone="sand"] {
   --back-a: #5b4129;
@@ -263,6 +299,7 @@
 /* Hover leans it open; a click (or the open folder) fans the pages out. */
 .folder:hover,
 .folder:focus-visible,
+.folder-wrap:hover .folder,
 .folder.is-peek {
   --lean: -16deg;
   --rise: 24px;
@@ -335,6 +372,14 @@ html[data-reduce-motion="on"] .folder * {
   display: inline-flex;
   gap: var(--space-3);
   align-items: center;
+}
+
+.folders-crumb {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-weight: 500;
+  color: var(--secondary-label);
 }
 
 .folders-open-count {

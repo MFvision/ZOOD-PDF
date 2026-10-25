@@ -117,6 +117,8 @@ export function LibraryPanel() {
   const [filters, setFilters] = useState<FilterState>(() => (asked0 && 'tag' in asked0 ? { ...noFilters(), tags: [asked0.tag] } : noFilters()));
   const [showFilters, setShowFilters] = useState(asked0 !== null && 'tag' in asked0);
   const wantsFolder = useRef(asked0 !== null && 'addFolder' in asked0);
+  // Files chosen in the Folders view, read once the index is open.
+  const wantsFiles = useRef<readonly File[] | null>(asked0 !== null && 'addFiles' in asked0 ? asked0.addFiles : null);
   const [folderAsks, setFolderAsks] = useState(0);
   const starred = useStarred();
   const starOf = (key: string) => starred.some((item) => item.id === starId('library', key));
@@ -163,6 +165,11 @@ export function LibraryPanel() {
       onLibraryRequest((request) => {
         if ('addFolder' in request) {
           wantsFolder.current = true;
+          setFolderAsks((asks) => asks + 1);
+          return;
+        }
+        if ('addFiles' in request) {
+          wantsFiles.current = request.addFiles;
           setFolderAsks((asks) => asks + 1);
           return;
         }
@@ -375,9 +382,13 @@ export function LibraryPanel() {
     })();
   };
 
-  // Asked for from the Folders view: the folder picker opens once the index is.
+  // Asked for from the Folders view, once the index is open: files chosen there are read, or the folder picker opens.
   useEffect(() => {
-    if (!wantsFolder.current || handle === null) return;
+    if (handle === null) return;
+    const files = wantsFiles.current;
+    wantsFiles.current = null;
+    if (files && files.length > 0) takeFiles([...files]);
+    if (!wantsFolder.current) return;
     wantsFolder.current = false;
     addFolder();
     // eslint-disable-next-line react-hooks/exhaustive-deps

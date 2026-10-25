@@ -1,10 +1,10 @@
 /**
  * A request handed to the Library panel from outside it: the home screen's
  * Tags view asks it to open with one tag chosen as a filter, and the Folders
- * view asks it to add a folder. Taken once when the panel mounts, or applied
- * at once if it is already open.
+ * view asks it to add a folder, or files the person chose there. Taken once
+ * when the panel mounts, or applied at once if it is already open.
  */
-export type LibraryRequest = { tag: string } | { addFolder: true };
+export type LibraryRequest = { tag: string } | { addFolder: true } | { addFiles: readonly File[] };
 
 let pending: LibraryRequest | null = null;
 const listeners = new Set<(request: LibraryRequest) => void>();
