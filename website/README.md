@@ -75,8 +75,12 @@ to the next chapter. Frames: `phone`, `tablet`, `desktop`, `browser`.
 
 ## Downloads
 
-`DOWNLOADS` in `js/story.js`: a button with `href: null` reads "Coming soon".
-Put the link in to make it live. `PLATFORMS` holds each platform's status line.
+`DOWNLOADS` in `js/story.js` lists only versions people can install today:
+never add a row without a working link (the owner wants no "Coming soon").
+Each row has the release link, the file's SHA-256 (the asset's `digest` on the
+GitHub release) and the one first-run step. On every release, change the
+version in both links and both checksums. The visitor's own computer comes
+first as the big button. `PLATFORMS` holds each platform's status line.
 
 ## Screens
 

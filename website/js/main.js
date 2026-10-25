@@ -100,6 +100,10 @@ export function topBar(slug) {
   bar.className = 'topbar';
   const choice = root.dataset.theme ?? 'auto';
   bar.innerHTML = `<a class="brand" href="${urlFor(lang)}${slug ? '' : '#top'}" aria-label="${escape(t(UI.home))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
+    <nav class="bar-links" aria-label="${escape(t(UI.getIt))}">
+      ${slug ? '' : `<a class="bar-film" href="#film">${escape(t(UI.watch))}</a>`}
+      <a class="bar-get" href="${urlFor(lang)}#download">${escape(t(UI.getIt))}</a>
+    </nav>
     <nav class="switch lang-switch" aria-label="${escape(t(UI.language))}">
       <a href="${urlFor('ar', slug)}" lang="ar" hreflang="ar" aria-current="${lang === 'ar'}">العربية</a>
       <a href="${urlFor('en', slug)}" lang="en" hreflang="en" aria-current="${lang === 'en'}">English</a>
@@ -176,6 +180,16 @@ export function headlineFont() {
 }
 
 // ---- The story --------------------------------------------------------------
+// The visitor's computer, read in the browser only (nothing is sent), so its
+// download comes first. Phones and unknown systems keep the list's own order.
+function visitorSystem() {
+  const p = `${navigator.userAgentData?.platform ?? ''} ${navigator.platform ?? ''} ${navigator.userAgent}`;
+  if (/iPhone|iPad|iPod|Android/i.test(p) || navigator.maxTouchPoints > 1 && /Mac/i.test(p)) return '';
+  if (/Win/i.test(p)) return 'windows';
+  if (/Mac/i.test(p)) return 'mac';
+  return '';
+}
+
 function chapterBody(c, index) {
   const heading = index === 0 ? 'h1' : 'h2';
   const id = `h-${c.id}`;
@@ -190,11 +204,17 @@ function chapterBody(c, index) {
     body += `<ul class="platforms">${PLATFORMS.map((p, k) => `<li style="--li:${k}"><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
   }
   if (c.kind === 'download') {
-    body += `<ul class="downloads">${DOWNLOADS.map((d, k) =>
-      d.href
-        ? `<li style="--li:${k}"><a href="${escape(d.href)}" rel="noopener">${escape(t(d.label))}</a></li>`
-        : `<li style="--li:${k}"><span class="soon">${escape(t(d.label))} <span>${escape(t(UI.comingSoon))}</span></span></li>`,
-    ).join('')}</ul>`;
+    const mine = visitorSystem();
+    const list = [...DOWNLOADS].sort((a, b) => (b.id === mine) - (a.id === mine));
+    body += `<ul class="downloads">${list
+      .map(
+        (d, k) => `<li style="--li:${k}"${d.id === mine ? ' class="mine"' : ''}>
+        <a href="${escape(d.href)}" rel="noopener" download><span>${escape(t(d.label))}</span>${d.id === mine ? `<span class="tag">${escape(t(UI.yours))}</span>` : ''}</a>
+        <p class="first-run"><strong>${escape(t(UI.firstRun))}:</strong> ${escape(t(d.steps))}</p>
+        <details class="sum"><summary>${escape(t(UI.checksum))}</summary><code class="ltr">${escape(d.sha256)}</code></details>
+      </li>`,
+      )
+      .join('')}</ul>`;
   }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
   if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta.label)));
@@ -388,6 +408,11 @@ function startStory() {
   );
   document.querySelectorAll('main .title').forEach((el) => seen.observe(el));
 
+  // The top bar's Download link shows once the opening (and its own button) has scrolled away.
+  new IntersectionObserver(([e]) => root.classList.toggle('past-hero', !e.isIntersecting)).observe(
+    main.querySelector('.hero'),
+  );
+
   let tops = [];
   let heights = [];
   let insideTop = 0;
@@ -518,14 +543,17 @@ function startStory() {
     }
 
     // On a phone the cards rest under the devices; a card leaving upwards fades
-    // before it reaches them.
+    // before it reaches them. Platforms and Download show no devices, and their
+    // cards are taller than the room under the dock, so they never fade.
     if (narrow.matches) {
       const floor = dock.getBoundingClientRect().bottom;
       for (let k = Math.max(0, i - 1); k <= Math.min(sections.length - 1, i + 1); k++) {
         const card = sections[k].querySelector('.words');
         if (!card) continue;
         const top = card.getBoundingClientRect().top;
-        const o = clamp((top - floor + vh * 0.1) / (vh * 0.1)).toFixed(2);
+        const o = sections[k].classList.contains('short')
+          ? '1'
+          : clamp((top - floor + vh * 0.1) / (vh * 0.1)).toFixed(2);
         if (card.style.opacity !== o) card.style.opacity = o;
       }
     }

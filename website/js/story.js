@@ -30,7 +30,11 @@ export const UI = {
   },
   chapters: { ar: 'فصول الصفحة', en: 'Chapters' },
   screen: { ar: 'شاشة: ', en: 'Screen: ' },
-  comingSoon: { ar: 'قريبًا', en: 'Coming soon' },
+  getIt: { ar: 'حمّل', en: 'Download' },
+  watch: { ar: 'شاهد الفيلم', en: 'Watch the film' },
+  yours: { ar: 'لجهازك', en: 'For your computer' },
+  checksum: { ar: 'تحقّق من الملف (SHA-256)', en: 'Check the file (SHA-256)' },
+  firstRun: { ar: 'أول تشغيل', en: 'The first time you open it' },
   where: { ar: 'متوفر في: ', en: 'Available on: ' },
   noscript: {
     ar: 'هذه الصفحة تروي قصتها بجافاسكربت. قائمة الأدوات والصفحات القانونية تعمل من دونها.',
@@ -657,8 +661,8 @@ export const CHAPTERS = [
     eyebrow: { ar: 'التحميل', en: 'Download' },
     title: { ar: 'حمّله على [[جهازك]].', en: 'Get it for [[your device]].' },
     lead: {
-      ar: 'مجاني وبلا حساب. ستعمل الأزرار حين تصبح كل نسخة جاهزة للتحميل.',
-      en: 'Free, with no account. Each button goes live when its version is ready.',
+      ar: 'مجاني وبلا حساب، ويحدّث نفسه بنفسه.',
+      en: 'Free, with no account, and it updates itself.',
     },
   },
   {
@@ -707,43 +711,32 @@ export const PLATFORMS = [
       en: 'In TestFlight testing, then the App Store.',
     },
   },
-  {
-    id: 'web',
-    name: { ar: 'تطبيق الويب', en: 'Web app' },
-    status: {
-      ar: 'جاهز، ويُثبَّت ويعمل دون اتصال. لم يُستضف بعد.',
-      en: 'Built, installable and works offline. Not hosted yet.',
-    },
-  },
-  {
-    id: 'extension',
-    name: { ar: 'إضافة كروم وإيدج', en: 'Chrome and Edge extension' },
-    status: { ar: 'جاهزة، ولم تُنشر في المتجر بعد.', en: 'Built, not yet in the store.' },
-  },
 ];
 
-// The download chapter. A button with href null reads "Coming soon".
+// The download chapter: only versions people can install today (no "Coming soon").
+// The visitor's own system comes first as the big button. `sha256` is the
+// release asset's digest on GitHub; update it with the link on every release.
+// `steps` is the one thing to do the first time, while the app is unsigned.
 export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
     href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.12/ZOOD-PDF-Setup-0.4.12.exe',
+    sha256: '23e76383970046dad0e50c956221e44da9db30b591ff18f1a60ace51eeda1030',
+    steps: {
+      ar: 'إن ظهر تنبيه ويندوز الأزرق، اختر «مزيد من المعلومات» ثم «تشغيل على أي حال». يظهر لأن التطبيق جديد وغير موقّع بعد.',
+      en: 'If the blue Windows box appears, choose More info, then Run anyway. It shows because the app is new and not signed yet.',
+    },
   },
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
     href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.12/ZOOD-PDF-0.4.12-mac.dmg',
-  },
-  {
-    id: 'ios',
-    label: { ar: 'آيفون وآيباد (App Store)', en: 'iPhone and iPad (App Store)' },
-    href: null,
-  },
-  { id: 'web', label: { ar: 'افتح في المتصفح', en: 'Open in your browser' }, href: null },
-  {
-    id: 'extension',
-    label: { ar: 'إضافة كروم وإيدج', en: 'Chrome and Edge extension' },
-    href: null,
+    sha256: '13482964f7464d1eddd02446569d4a60d732b3256c892eb0ac9eea89e226ea50',
+    steps: {
+      ar: 'اسحب زود PDF إلى التطبيقات وافتحه. إن منعه ماك، افتح الإعدادات › الخصوصية والأمن واختر «فتح على أي حال» مرة واحدة.',
+      en: 'Drag ZOOD PDF to Applications and open it. If your Mac stops it, open System Settings › Privacy & Security and choose Open Anyway, once.',
+    },
   },
 ];
 

@@ -323,8 +323,24 @@ img {
     font-size: 15px;
   }
   .switch button {
-    min-width: 40px;
-    padding: 0 6px;
+    min-width: 38px;
+    padding: 0 5px;
+  }
+  /* Small phones: the bar had no room for both switches in full (the theme
+     switch was cut off at 375 px), so only the other language shows. */
+  .lang-switch [aria-current='true'] {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  .topbar {
+    gap: 6px;
+  }
+  .topbar .logo {
+    height: 25px;
+  }
+  .brand {
+    gap: 7px;
   }
 }
 
@@ -958,6 +974,7 @@ main {
   font-size: 15px;
 }
 .title {
+  text-wrap: balance;
   font-weight: 600;
   font-size: clamp(30px, 3.4vw, 50px);
   line-height: 1.25;
@@ -1127,8 +1144,11 @@ main {
   display: grid;
   gap: 10px;
 }
-.downloads a,
-.downloads .soon {
+.downloads li {
+  display: grid;
+  gap: 6px;
+}
+.downloads a {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1137,18 +1157,91 @@ main {
   padding: 0 18px;
   border-radius: var(--r-button);
   border: 1px solid var(--sep);
-  background: var(--card);
+  background: var(--navy);
+  color: #f5f1ed;
   font-weight: 600;
   text-decoration: none;
 }
-.downloads a {
-  background: var(--navy);
-  color: #f5f1ed;
+/* The visitor's own system: the big button. */
+.downloads .mine a {
+  min-height: 60px;
+  font-size: 1.1em;
 }
-.downloads .soon span {
+.downloads .tag {
+  font-size: 13px;
   font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: rgb(245 241 237 / 16%);
+}
+.downloads:has(.mine) li:not(.mine) a {
+  background: var(--card);
+  color: var(--text);
+}
+.first-run {
+  margin: 0;
   font-size: 14px;
   color: var(--text-2);
+  line-height: 1.55;
+}
+.first-run strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.sum {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.sum summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+}
+.sum code {
+  display: block;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Top bar: Watch the film and Download. Download waits on the story page until
+   the opening, which has its own button, has scrolled away. */
+.bar-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bar-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.bar-get {
+  background: var(--navy);
+  color: #f5f1ed;
+  min-height: 36px !important;
+}
+:root[data-page='story']:not(.past-hero) .bar-get {
+  display: none;
+}
+@media (max-width: 760px) {
+  .bar-film {
+    display: none !important;
+  }
+}
+/* Phones: the bar is full with the logo and the two switches. */
+@media (max-width: 600px) {
+  .bar-links {
+    display: none;
+  }
 }
 
 /* ---- The chapter index (wide screens) ----------------------------------- */
