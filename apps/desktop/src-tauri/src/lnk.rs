@@ -106,11 +106,9 @@ pub fn read(bytes: &[u8]) -> Option<Target> {
         let count = usize::from(u16_at(bytes, *at)?);
         let start = *at + 2;
         let text = if unicode {
-            let units: Vec<u16> = bytes
-                .get(start..start + count * 2)?
-                .chunks_exact(2)
-                .map(|c| u16::from_le_bytes([c[0], c[1]]))
-                .collect();
+            let units = (0..count)
+                .map(|i| u16_at(bytes, start + i * 2))
+                .collect::<Option<Vec<u16>>>()?;
             *at = start + count * 2;
             String::from_utf16(&units).ok()?
         } else {
