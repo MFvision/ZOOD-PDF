@@ -1,0 +1,61 @@
+# Publishes website/ to the `hostinger` branch. Hostinger (pdf.zoodrealty.com,
+# hPanel > Advanced > GIT) deploys that branch into public_html on every push.
+# The branch holds only what the site serves, the same set as website/tools/pack.sh.
+# The licensed headline font is never published: the repository is public.
+name: Website to Hostinger
+
+on:
+  push:
+    branches: [app]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-hostinger.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: website-hostinger
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Stage the files the site serves
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/site"
+          cd website
+          git ls-files -z -- . ':!tools' ':!README.md' ':!Dockerfile' ':!Caddyfile' \
+            ':!.dockerignore' ':!.gitignore' ':!package.json' \
+            | xargs -0 cp --parents -t "$RUNNER_TEMP/site"
+          test -f "$RUNNER_TEMP/site/index.html"
+
+      - name: Commit to the hostinger branch
+        run: |
+          set -eu
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          deploy="$RUNNER_TEMP/deploy"
+          if git ls-remote --exit-code --heads origin hostinger >/dev/null; then
+            git fetch origin hostinger
+            git worktree add -B hostinger "$deploy" origin/hostinger
+          else
+            git worktree add --orphan -b hostinger "$deploy"
+          fi
+          cd "$deploy"
+          git rm -rq --ignore-unmatch .
+          cp -a "$RUNNER_TEMP/site/." .
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Website unchanged.'
+            exit 0
+          fi
+          git commit -q -m "Website from ${GITHUB_SHA::7}"
+          git push origin hostinger
