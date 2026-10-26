@@ -11,7 +11,9 @@
 #      and a click on Compress runs it;
 #   4. (a control) drags the file plainly onto the app's main window;
 #   6. drags a shortcut to the file plainly to the top of the screen and lets
-#      go on the drop zone there: it takes the shortcut as the PDF.
+#      go on the drop zone there: it takes the shortcut as the PDF;
+#   7. drags two copied shortcuts to Arabic-named PDFs there at once: the
+#      shelf takes both PDFs.
 # Each step is checked in the app's ring.log and in the folder, and by where
 # the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
@@ -314,6 +316,44 @@ Start-Sleep -Seconds 3
 Shot 'zone-6-after.png'
 Check ((Log) -match 'the drop zone peeks') 'a plain drag to the top brings the drop zone'
 Check ((Log) -match '1 files dropped on the drop zone') 'a shortcut let go on the drop zone is taken as its PDF'
+
+# 7. As on a real desktop: two shortcuts to PDFs with Arabic names, made in
+# another folder and copied here (so the path each keeps relative to itself
+# leads nowhere), picked together and dragged up onto the shelf at once.
+$arabic = Join-Path $folder 'arabic'
+New-Item -ItemType Directory -Force -Path $arabic | Out-Null
+$made = Join-Path $env:RUNNER_TEMP 'ring-links'
+New-Item -ItemType Directory -Force -Path $made | Out-Null
+foreach ($n in 'a', 'b') {
+  $name = (-join [char[]](0x622, 0x641, 0x627, 0x20, 0x622, 0x64A)) + " $n.pdf"
+  Copy-Item $Sample (Join-Path $arabic $name)
+  $link = $shell.CreateShortcut((Join-Path $made "arabic-$n.lnk"))
+  $link.TargetPath = (Join-Path $arabic $name)
+  $link.Save()
+  Copy-Item (Join-Path $made "arabic-$n.lnk") (Join-Path $folder "arabic-$n - Copy.lnk")
+}
+Start-Sleep -Seconds 3
+$a = FileItem 'arabic-a - Copy'
+$b = FileItem 'arabic-b - Copy'
+[Input]::Mouse($a[0], $a[1], 0); [Input]::Mouse($a[0], $a[1], 0x0002); [Input]::Mouse($a[0], $a[1], 0x0004)
+Start-Sleep -Milliseconds 300
+[Input]::Key(0x11, $false)
+[Input]::Mouse($b[0], $b[1], 0); [Input]::Mouse($b[0], $b[1], 0x0002); [Input]::Mouse($b[0], $b[1], 0x0004)
+[Input]::Key(0x11, $true)
+Start-Sleep -Milliseconds 500
+[Input]::Mouse($b[0], $b[1], 0x0002); Start-Sleep -Milliseconds 200
+foreach ($step in 1..30) {
+  [Input]::Mouse($b[0] + $step * ($zx - $b[0]) / 30, $b[1] + $step * ($zy - $b[1]) / 30, 0)
+  Start-Sleep -Milliseconds 50
+}
+foreach ($step in 1..10) { [Input]::Mouse($zx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+Start-Sleep -Milliseconds 600
+Shot 'zone-7-over.png'
+[Input]::Mouse($zx, $zy, 0x0004)
+Start-Sleep -Seconds 3
+Shot 'zone-7-after.png'
+Check ((Log) -match '2 files dropped on the drop zone') 'two copied shortcuts to Arabic-named PDFs are both taken'
+Check ((Log) -notmatch 'dropped not taken') 'no dropped shortcut is left out'
 
 Set-Content (Join-Path $Out 'ring.log') (Log)
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue

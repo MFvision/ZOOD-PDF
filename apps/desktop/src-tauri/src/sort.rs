@@ -45,7 +45,7 @@ const PEEK: (f64, f64) = (196.0, 58.0);
 const OPEN: (f64, f64) = (400.0, 168.0);
 /// The shelf at rest (a tab that says how many files wait) and open (`shelf.rs`).
 const TAB: (f64, f64) = (210.0, 34.0);
-const SHELF: (f64, f64) = (680.0, 272.0);
+const SHELF: (f64, f64) = (720.0, 330.0);
 /// How near the top, and how far either side of the middle, opens the zone, in points.
 const NEAR_TOP: f64 = 240.0;
 /// How near the top the pointer comes before the zone peeks at all: a drag
@@ -431,10 +431,27 @@ pub fn on_drag<R: Runtime>(window: &tauri::Window<R>, event: &tauri::DragDropEve
             }
             let files = files_of(paths);
             log(&format!("{} files dropped on the drop zone", files.len()));
+            // Folders, and shortcuts that lead to no file (several shortcuts
+            // to one file are that file once, and not missed).
+            let missed = paths
+                .iter()
+                .take(MAX_FILES)
+                .filter(|p| crate::lnk::file_of(p).is_none())
+                .count();
+            if missed > 0 {
+                let links = paths.iter().filter(|p| crate::lnk::is_shortcut(p)).count();
+                log(&format!(
+                    "{missed} of {} dropped not taken ({links} shortcuts among them)",
+                    paths.len()
+                ));
+            }
             UP.store(false, Ordering::Relaxed);
             NEAR.store(false, Ordering::Relaxed);
             crate::shelf::add(app, &files, false);
             show_look(app, "shelf");
+            if missed > 0 {
+                let _ = window.emit_to(ZONE_LABEL, crate::shelf::MISSED_EVENT, missed);
+            }
         }
         _ => {}
     }

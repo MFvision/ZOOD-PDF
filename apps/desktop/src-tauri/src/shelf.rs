@@ -29,6 +29,9 @@ use crate::sort::{self, ZONE_LABEL};
 
 /// The shelf's files changed: the zone reads them again.
 pub const CHANGED_EVENT: &str = "shelf://changed";
+/// How many of the paths let go on the zone it could not take (folders,
+/// shortcuts that lead to no file).
+pub const MISSED_EVENT: &str = "shelf://missed";
 const FILE: &str = "shelf.json";
 /// More than a shelf can show; the oldest go first.
 const MAX_ITEMS: usize = 60;

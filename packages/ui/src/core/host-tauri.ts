@@ -456,6 +456,8 @@ export interface DropZoneState {
 
 /** The shelf's files changed (`shelf.rs`); the payload is how many wait. */
 export const SHELF_CHANGED_EVENT = 'shelf://changed';
+/** How many of a drop's paths the shelf could not take. */
+export const SHELF_MISSED_EVENT = 'shelf://missed';
 
 /** A file on ZOOD's shelf at the top of the screen (`src-tauri/src/shelf.rs`). */
 export interface ShelfItem {

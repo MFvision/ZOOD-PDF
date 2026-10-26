@@ -29,6 +29,7 @@ import { getSharedCoreClient } from '../core/client';
 import {
   DROP_ZONE_EVENT,
   SHELF_CHANGED_EVENT,
+  SHELF_MISSED_EVENT,
   onHostEvent,
   readBatchFile,
   shelfClear,
@@ -93,6 +94,7 @@ const KIND_ICONS: Record<string, LucideIcon> = {
 const DRAG_START = 5;
 /** How long "Done" (or what went wrong) stays on the shelf. */
 const DONE_SHOWN_MS = 4000;
+const MISSED_SHOWN_MS = 9000;
 const FAILED_SHOWN_MS = 6000;
 
 /** A mouse wheel turns a sideways row (the files, the buttons), towards its end in either direction. */
@@ -149,6 +151,9 @@ function Zone() {
   const [phone, setPhone] = useState(false);
   const [work, setWork] = useState<Work | null>(null);
   const [note, setNote] = useState<TKey | null>(null);
+  /** Of the last drop, how many ZOOD could not take (folders, shortcuts to files that are gone). */
+  const [missed, setMissed] = useState(0);
+  const missedTimer = useRef<number | undefined>(undefined);
   const press = useRef<{ x: number; y: number; path: string; dragged: boolean } | null>(null);
   const endTimer = useRef<number | undefined>(undefined);
 
@@ -176,11 +181,22 @@ function Zone() {
         }
       }),
       onHostEvent<number>(SHELF_CHANGED_EVENT, () => reload()),
+      onHostEvent<number>(SHELF_MISSED_EVENT, (count) => {
+        setMissed(count);
+        window.clearTimeout(missedTimer.current);
+        missedTimer.current = window.setTimeout(() => setMissed(0), MISSED_SHOWN_MS);
+      }),
     ];
     return () => stops.forEach((stop) => stop());
   }, []);
 
-  useEffect(() => () => window.clearTimeout(endTimer.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(endTimer.current);
+      window.clearTimeout(missedTimer.current);
+    },
+    [],
+  );
 
   const targets = targetsOf(items, picked);
   const names = targets.map((item) => item.name);
@@ -353,69 +369,79 @@ function Zone() {
           </button>
         </header>
 
-        <ul className="shelf-tiles" onWheel={wheelSideways} aria-label={t('shelf.files', { count: items.length })}>
-          {items.map((item) => {
-            const isPicked = picked.has(item.path);
-            return (
-              <li
-                key={item.path}
-                className={['shelf-tile', isPicked ? 'is-picked' : '', item.made ? 'is-made' : ''].filter(Boolean).join(' ')}
-                title={item.path}
-                aria-selected={isPicked}
-                onPointerDown={(event) => onTileDown(event, item.path)}
-                onPointerMove={onTileMove}
-                onPointerUp={() => onTileUp(item.path)}
-                onDoubleClick={() => void shelfOpen(item.path)}
-              >
-                <span className="shelf-thumb">
-                  <Thumb item={item} />
-                  {isPicked ? (
-                    <span className="shelf-check" aria-hidden="true">
-                      <Check size={12} strokeWidth={3} />
+        {items.length === 0 ? (
+          <div className="shelf-empty">
+            <ZoodMark size={30} />
+            <strong>{t('shelf.empty')}</strong>
+            <span>{t('shelf.emptyMore')}</span>
+          </div>
+        ) : (
+          <>
+            <ul className="shelf-tiles" onWheel={wheelSideways} aria-label={t('shelf.files', { count: items.length })}>
+              {items.map((item) => {
+                const isPicked = picked.has(item.path);
+                return (
+                  <li
+                    key={item.path}
+                    className={['shelf-tile', isPicked ? 'is-picked' : '', item.made ? 'is-made' : ''].filter(Boolean).join(' ')}
+                    title={item.path}
+                    aria-selected={isPicked}
+                    onPointerDown={(event) => onTileDown(event, item.path)}
+                    onPointerMove={onTileMove}
+                    onPointerUp={() => onTileUp(item.path)}
+                    onDoubleClick={() => void shelfOpen(item.path)}
+                  >
+                    <span className="shelf-thumb">
+                      <Thumb item={item} />
+                      {isPicked ? (
+                        <span className="shelf-check" aria-hidden="true">
+                          <Check size={12} strokeWidth={3} />
+                        </span>
+                      ) : null}
+                      {item.made ? <span className="shelf-new">{t('shelf.new')}</span> : null}
                     </span>
-                  ) : null}
-                  {item.made ? <span className="shelf-new">{t('shelf.new')}</span> : null}
-                </span>
-                <bdi className="shelf-name">{item.name}</bdi>
-                <span className="shelf-tile-tools">
-                  <button type="button" title={t('shelf.reveal')} aria-label={t('shelf.reveal')} onPointerDown={(event) => event.stopPropagation()} onClick={() => void shelfReveal(item.path)}>
-                    <FolderOpen size={13} />
-                  </button>
-                  <button type="button" title={t('shelf.remove')} aria-label={t('shelf.remove')} disabled={busy} onPointerDown={(event) => event.stopPropagation()} onClick={() => void shelfRemove([item.path])}>
-                    <X size={13} />
-                  </button>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+                    <bdi className="shelf-name">{item.name}</bdi>
+                    <span className="shelf-tile-tools">
+                      <button type="button" title={t('shelf.reveal')} aria-label={t('shelf.reveal')} onPointerDown={(event) => event.stopPropagation()} onClick={() => void shelfReveal(item.path)}>
+                        <FolderOpen size={13} />
+                      </button>
+                      <button type="button" title={t('shelf.remove')} aria-label={t('shelf.remove')} disabled={busy} onPointerDown={(event) => event.stopPropagation()} onClick={() => void shelfRemove([item.path])}>
+                        <X size={13} />
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
 
-        <div className="shelf-row" role="group" aria-label={t('shelf.doNow')}>
-          <span className="shelf-row-label">{t('shelf.doNow')}</span>
-          <div className="shelf-chips" onWheel={wheelSideways}>
-            {actions.map((action) => {
-              const Icon = actionIcon(action);
-              const key = action.kind === 'tool' ? `${action.tool}${action.onePdf ? '-one' : ''}` : action.kind;
-              return (
-                <button key={key} type="button" className="shelf-action" disabled={busy} onClick={() => act(action)}>
-                  <Icon size={15} aria-hidden="true" />
-                  <span>{actionLabel(action)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            <div className="shelf-row" role="group" aria-label={t('shelf.doNow')}>
+              <span className="shelf-row-label">{t('shelf.doNow')}</span>
+              <div className="shelf-chips" onWheel={wheelSideways}>
+                {actions.map((action) => {
+                  const Icon = actionIcon(action);
+                  const key = action.kind === 'tool' ? `${action.tool}${action.onePdf ? '-one' : ''}` : action.kind;
+                  return (
+                    <button key={key} type="button" className="shelf-action" disabled={busy} onClick={() => act(action)}>
+                      <Icon size={15} aria-hidden="true" />
+                      <span>{actionLabel(action)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        <div className="shelf-row" role="group" aria-label={t('shelf.convertTo')}>
-          <span className="shelf-row-label">{t('shelf.convertTo')}</span>
-          <div className="shelf-chips" onWheel={wheelSideways}>
-            {CONVERT_ROW.map((entry) => (
-              <button key={entry.tool} type="button" className="shelf-format" disabled={busy || !fits.has(entry.tool)} onClick={() => runTool(entry.tool)}>
-                {entry.label}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="shelf-row" role="group" aria-label={t('shelf.convertTo')}>
+              <span className="shelf-row-label">{t('shelf.convertTo')}</span>
+              <div className="shelf-chips" onWheel={wheelSideways}>
+                {CONVERT_ROW.map((entry) => (
+                  <button key={entry.tool} type="button" className="shelf-format" disabled={busy || !fits.has(entry.tool)} onClick={() => runTool(entry.tool)}>
+                    {entry.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <footer className="shelf-foot" role="status">
           {work ? (
@@ -429,7 +455,9 @@ function Zone() {
               </span>
             </>
           ) : (
-            <span className="shelf-foot-words">{note ? t(note) : t('shelf.hint')}</span>
+            <span className={missed > 0 ? 'shelf-foot-words is-missed' : 'shelf-foot-words'}>
+              {missed > 0 ? t('shelf.missed', { count: missed }) : note ? t(note) : items.length === 0 ? '' : t('shelf.hint')}
+            </span>
           )}
         </footer>
 

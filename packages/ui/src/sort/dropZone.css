@@ -343,13 +343,14 @@ html.zood-drop-page body {
 
 .shelf-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-inline-size: 0;
 }
 
 .shelf-row-label {
   flex: none;
+  padding-block-start: 8px;
   inline-size: 74px;
   color: var(--zone-muted);
   font-size: 11.5px;
@@ -358,17 +359,33 @@ html.zood-drop-page body {
 .shelf-chips {
   display: flex;
   flex: 1;
+  flex-wrap: wrap;
   gap: 6px;
   min-inline-size: 0;
-  overflow: auto hidden;
-  scrollbar-width: none;
-
-  /* More buttons past the edge: the row fades out there. */
-  mask-image: linear-gradient(to var(--shelf-end, right), #000 calc(100% - 28px), transparent);
 }
 
-[dir="rtl"] .shelf-chips {
-  --shelf-end: left;
+.shelf-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1.5px dashed var(--zone-line);
+  border-radius: 16px;
+  color: var(--zone-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.shelf-empty strong {
+  color: var(--zone-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.shelf-foot-words.is-missed {
+  color: var(--zone-bronze);
 }
 
 .shelf-action,
