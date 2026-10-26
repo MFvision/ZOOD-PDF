@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Combine, File, FileImage, FileText, Globe, Inbox, LayoutGrid, MessageCircle, Printer, Send, Smartphone, Sparkles } from 'lucide-react';
+import { Combine, Feather, File, FileImage, FileText, Globe, Inbox, LayoutGrid, MessageCircle, Printer, Smartphone, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ZoodMark } from '../components/ZoodMark';
 import { readBatchFile } from '../core/host-tauri';
@@ -23,7 +23,7 @@ export interface InHand {
   pictures: string[];
 }
 
-const TILE_ICONS: Record<TileId, LucideIcon> = { web: Globe, send: Send, print: Printer };
+const TILE_ICONS: Record<TileId, LucideIcon> = { web: Globe, send: Feather, print: Printer };
 const MORE_ICONS: Record<MoreId, LucideIcon> = { ask: MessageCircle, organize: Sparkles, phone: Smartphone, tools: LayoutGrid };
 
 /** A tile's one word, and what it does for the first kind of file in hand. */

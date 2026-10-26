@@ -48,6 +48,7 @@ import { useInstallUpdate } from '../updates/UpdateBanner';
 import { ActionRow, Choice, Group, OrderedList, Pick, Row, TextSetting, Toggle } from './controls';
 import { LookPreview } from './LookPreview';
 import { ShortcutField } from './ShortcutField';
+import { DropPanelSettings } from './DropPanelSettings';
 import { PutAwaySettings } from './PutAwaySettings';
 
 const set = (patch: Partial<AppSettings>) => updateSettings(patch);
@@ -642,6 +643,7 @@ export function QuickPage() {
           <Toggle label={t('quick.settings.dropZone')} hint={t('quick.settings.dropZoneNote')} checked={ring.dropZone !== false} onChange={(on) => changeRing({ dropZone: on })} />
         </Group>
       )}
+      {ring && ring.dropZone !== false && <DropPanelSettings />}
       {ring && <PutAwaySettings />}
       <Group title={t('prefs.resultsGroup')}>
         <Pick

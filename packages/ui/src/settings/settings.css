@@ -539,6 +539,30 @@ html[data-look="mono"] .prefs-nav-icon {
   gap: var(--space-1);
 }
 
+/* The grip: press and drag an entry to its place. */
+.prefs-order-grip {
+  display: grid;
+  place-items: center;
+  margin-inline-start: calc(var(--space-2) * -1);
+  color: var(--tertiary-label);
+  cursor: grab;
+  touch-action: none;
+}
+
+.prefs-order.is-dragging,
+.prefs-order.is-dragging .prefs-order-grip {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.prefs-order-item.is-held {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--radius-8);
+  background: var(--control-background);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+}
+
 .prefs-icon-button {
   display: grid;
   place-items: center;

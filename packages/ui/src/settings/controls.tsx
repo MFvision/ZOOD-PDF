@@ -1,6 +1,6 @@
-import { useId } from 'react';
-import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react';
+import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
 import { useI18n } from '../i18n/useT';
@@ -177,9 +177,11 @@ export function ActionRow({ label, hint, action, onClick, danger = false, disabl
 }
 
 /**
- * A list the person orders and switches: each entry with its switch and a
- * move up and a move down button (which work with the keyboard and a screen
- * reader, as dragging would not).
+ * A list the person orders and switches: each entry with its switch, a grip
+ * to drag it to its place, and a move up and a move down button (which work
+ * with the keyboard and a screen reader, as dragging would not). The drag
+ * follows the pointer itself, not the system's drag and drop, which the
+ * desktop app keeps for files.
  */
 export function OrderedList<T extends string>({
   label,
@@ -209,13 +211,49 @@ export function OrderedList<T extends string>({
     onChange(next, [...hidden]);
   };
   const toggle = (item: T, on: boolean) => onChange([...items], on ? hidden.filter((one) => one !== item) : [...hidden, item]);
+  // While dragging: the order as it is shown, and which entry is held.
+  const [dragging, setDragging] = useState<{ item: T; order: T[] } | null>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const shown = dragging?.order ?? items;
+  const grab = (event: ReactPointerEvent<HTMLElement>, item: T) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging({ item, order: [...items] });
+  };
+  const drag = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!dragging || !list.current) return;
+    const rows = [...list.current.children] as HTMLElement[];
+    // The place is the first row whose middle is below the pointer.
+    let to = rows.findIndex((row) => {
+      const box = row.getBoundingClientRect();
+      return event.clientY < box.top + box.height / 2;
+    });
+    if (to < 0) to = rows.length - 1;
+    const from = dragging.order.indexOf(dragging.item);
+    if (to === from) return;
+    const order = [...dragging.order];
+    order.splice(from, 1);
+    order.splice(to, 0, dragging.item);
+    setDragging({ ...dragging, order });
+  };
+  const drop = () => {
+    if (!dragging) return;
+    const order = dragging.order;
+    setDragging(null);
+    if (order.some((item, at) => item !== items[at])) onChange(order, [...hidden]);
+  };
   return (
     <Row label={label} hint={hint} labelId={id} stacked>
-      <ul className="prefs-order" aria-labelledby={id}>
-        {items.map((item, index) => {
+      <ul ref={list} className={dragging ? 'prefs-order is-dragging' : 'prefs-order'} aria-labelledby={id}>
+        {shown.map((item, index) => {
           const on = !hidden.includes(item);
+          const held = dragging?.item === item;
           return (
-            <li key={item} className={on ? 'prefs-order-item' : 'prefs-order-item is-off'}>
+            <li key={item} className={['prefs-order-item', on ? '' : 'is-off', held ? 'is-held' : ''].filter(Boolean).join(' ')}>
+              <span className="prefs-order-grip" aria-hidden="true" onPointerDown={(event) => grab(event, item)} onPointerMove={drag} onPointerUp={drop} onPointerCancel={drop}>
+                <Icon of={GripVertical} size={14} />
+              </span>
               <label className="prefs-order-name">
                 <input type="checkbox" checked={on} disabled={!on && max !== undefined && onCount >= max} onChange={(event) => toggle(item, event.target.checked)} />
                 <span>{name(item)}</span>
@@ -224,7 +262,7 @@ export function OrderedList<T extends string>({
                 <button type="button" className="prefs-icon-button" aria-label={t('prefs.moveUp', { name: name(item) })} disabled={index === 0} onClick={() => move(index, -1)}>
                   <Icon of={ArrowUp} size={14} />
                 </button>
-                <button type="button" className="prefs-icon-button" aria-label={t('prefs.moveDown', { name: name(item) })} disabled={index === items.length - 1} onClick={() => move(index, 1)}>
+                <button type="button" className="prefs-icon-button" aria-label={t('prefs.moveDown', { name: name(item) })} disabled={index === shown.length - 1} onClick={() => move(index, 1)}>
                   <Icon of={ArrowDown} size={14} />
                 </button>
               </span>

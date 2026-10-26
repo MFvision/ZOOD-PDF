@@ -66,6 +66,10 @@ export interface AppSettings {
   /** Quick tools outside the app (the switches themselves live with the host). */
   shellMenuTools: string[];
   ringTools: string[];
+  /** The drop zone's panel (`sort/StowPanel.tsx`): its targets in order, the ones taken off, and most used first. */
+  dropOrder: DropItem[];
+  dropHidden: DropItem[];
+  dropByUse: boolean;
   ringShortcut: string;
   ringSize: RingSize;
   output: OutputPlace;
@@ -92,6 +96,27 @@ export interface AppSettings {
 export const HOME_SECTIONS: readonly HomeSection[] = ['actions', 'recent', 'starred', 'tools', 'assistant', 'clouds'];
 export const AI_PROMPTS: readonly AiPrompt[] = ['summarize', 'keyPoints', 'explain', 'translate', 'email', 'quiz'];
 export const ACCENTS: readonly Accent[] = ['look', 'blue', 'purple', 'pink', 'red', 'orange', 'green', 'graphite'];
+
+/** Every target the drop zone's panel can show, row by row: tiles, formats, the rest of ZOOD. */
+export const DROP_ITEMS = [
+  'tile:web',
+  'tile:send',
+  'tile:print',
+  'format:jpg',
+  'format:png',
+  'format:webp',
+  'format:pdf',
+  'format:docx',
+  'format:xlsx',
+  'format:pptx',
+  'format:txt',
+  'format:merge',
+  'more:ask',
+  'more:organize',
+  'more:phone',
+  'more:tools',
+] as const;
+export type DropItem = (typeof DROP_ITEMS)[number];
 
 export const DEFAULT_SETTINGS: AppSettings = {
   startWith: 'home',
@@ -120,6 +145,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sidebarTools: 'all',
   shellMenuTools: [],
   ringTools: [],
+  dropOrder: [...DROP_ITEMS],
+  dropHidden: [],
+  dropByUse: false,
   ringShortcut: 'Mod+Alt+Z',
   ringSize: 'medium',
   output: 'beside',
@@ -180,7 +208,7 @@ function shortcuts(value: unknown): Record<string, string> {
 
 export function sanitizeSettings(raw: unknown): AppSettings {
   const d = DEFAULT_SETTINGS;
-  if (!raw || typeof raw !== 'object') return { ...d, homeSections: [...d.homeSections], aiPrompts: [...d.aiPrompts] };
+  if (!raw || typeof raw !== 'object') return { ...d, homeSections: [...d.homeSections], aiPrompts: [...d.aiPrompts], dropOrder: [...d.dropOrder] };
   const s = raw as Record<string, unknown>;
   return {
     startWith: oneOf(s.startWith, ['home', 'reopen'] as const, d.startWith),
@@ -208,6 +236,9 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     sidebarTools: oneOf(s.sidebarTools, ['all', 'grouped'] as const, d.sidebarTools),
     shellMenuTools: names(s.shellMenuTools),
     ringTools: names(s.ringTools, 8),
+    dropOrder: ordered(s.dropOrder, DROP_ITEMS),
+    dropHidden: subset(s.dropHidden, DROP_ITEMS),
+    dropByUse: bool(s.dropByUse, d.dropByUse),
     ringShortcut: text(s.ringShortcut, d.ringShortcut, 40),
     ringSize: oneOf(s.ringSize, ['small', 'medium', 'large'] as const, d.ringSize),
     output: oneOf(s.output, ['beside', 'folder', 'ask'] as const, d.output),

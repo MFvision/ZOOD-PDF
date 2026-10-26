@@ -1,5 +1,6 @@
 import { isConvertibleName, isPdfName } from '../quick/plan';
 import type { QuickToolId } from '../quick/plan';
+import type { DropItem } from '../state/settings';
 
 /**
  * The drop zone's tiles, after the owner's "Stow" (Julien Design Craft's
@@ -178,4 +179,26 @@ export function dropTargetAt(x: number, y: number, doc: Pick<Document, 'elementF
   const element = doc.elementFromPoint(x, y);
   const target = element?.closest<HTMLElement>('[data-drop]');
   return target?.dataset.drop ?? null;
+}
+
+/** How the person set the panel up (Settings › Quick tools › Drop panel). */
+export interface PanelPrefs {
+  order: readonly DropItem[];
+  hidden: readonly DropItem[];
+  byUse: boolean;
+}
+
+/**
+ * One row of the panel as the person wants it: the targets they took off
+ * left out, the rest in their order, or the most used first (ties in their
+ * order) when they chose that.
+ */
+export function arrange<T>(items: readonly T[], idOf: (item: T) => DropItem, prefs: PanelPrefs, use: Readonly<Record<string, number>> = {}): T[] {
+  const place = (item: T) => {
+    const at = prefs.order.indexOf(idOf(item));
+    return at < 0 ? prefs.order.length : at;
+  };
+  return items
+    .filter((item) => !prefs.hidden.includes(idOf(item)))
+    .sort((a, b) => (prefs.byUse ? (use[idOf(b)] ?? 0) - (use[idOf(a)] ?? 0) : 0) || place(a) - place(b));
 }

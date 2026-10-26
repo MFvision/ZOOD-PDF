@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, moreFor, runsFor, tilesFor } from './stow';
+import { arrange, dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, moreFor, runsFor, tilesFor } from './stow';
 
 describe('the drop zone tiles', () => {
   it('knows pictures, PDFs and documents', () => {
@@ -69,5 +69,19 @@ describe('the row to the rest of ZOOD', () => {
     expect(moreFor(['a.pdf', 'b.jpg'], true)).toEqual(['ask', 'organize', 'phone', 'tools']);
     expect(moreFor(['photo.jpg'])).toEqual(['organize', 'tools']);
     expect(moreFor(['setup.exe'])).toEqual([]);
+  });
+});
+
+describe('the panel as the person set it up', () => {
+  const ids = ['tile:web', 'tile:send', 'tile:print'] as const;
+  const prefs = { order: ['tile:print', 'tile:web', 'tile:send'] as const, hidden: [] as const, byUse: false };
+  it('follows their order and leaves out what they took off', () => {
+    expect(arrange([...ids], (id) => id, prefs)).toEqual(['tile:print', 'tile:web', 'tile:send']);
+    expect(arrange([...ids], (id) => id, { ...prefs, hidden: ['tile:web'] })).toEqual(['tile:print', 'tile:send']);
+  });
+  it('puts the most used first when asked, ties in their order', () => {
+    const use = { 'tile:send': 5, 'tile:web': 2 };
+    expect(arrange([...ids], (id) => id, { ...prefs, byUse: true }, use)).toEqual(['tile:send', 'tile:web', 'tile:print']);
+    expect(arrange([...ids], (id) => id, prefs, use)).toEqual(['tile:print', 'tile:web', 'tile:send']);
   });
 });
