@@ -10,6 +10,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
+# Started twice below, after the first start's working folder may differ.
+$App = (Resolve-Path $App).Path
+$Out = (Resolve-Path $Out).Path
 
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
