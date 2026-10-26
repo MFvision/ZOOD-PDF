@@ -4,7 +4,8 @@ import { markSpans, snippet } from './snippet';
 import { addRule, parseTags, removeRule, ruleKey, ruleWords } from './rules';
 import { emptyMeta, memoryStore, tidyMeta } from './store';
 import type { FolderRecord, LibraryMeta } from './store';
-import { filesFromPicker, folderOf, keysUnder, readableFile } from './sources';
+import { keepNativePath } from '../core/host-tauri';
+import { fileForKey, filesFromPicker, folderOf, heldFiles, isDevicePath, keysUnder, mustChooseAgain, readableFile } from './sources';
 import type { LibraryKind } from './kinds';
 import type { TagRule } from './ops';
 
@@ -171,6 +172,38 @@ describe('the files a person adds', () => {
     expect(folderOf(meta, 'nowhere/d.pdf')).toBeUndefined();
     expect(keysUnder(meta, folder)).toEqual(['f1/a.pdf', 'f1/deep/b.pdf']);
     expect(keysUnder(meta, other)).toEqual(['/Users/me/Reports/c.pdf']);
+  });
+
+  it('keys a file the desktop picked by its own path, under the folder it was added to', () => {
+    const word = keepNativePath(new File([new Uint8Array([1])], 'letter.docx'), 'C:\\Users\\me\\letter.docx');
+    const { files } = filesFromPicker([word, new File([new Uint8Array([1])], 'b.pdf')], 'files');
+    expect(files.map((one) => one.key)).toEqual(['C:\\Users\\me\\letter.docx', 'files/b.pdf']);
+    const meta: LibraryMeta = {
+      folders: [{ id: 'files', label: 'Chosen files', source: 'files' }, { id: 'C:\\Users', label: 'Users', source: 'path' }],
+      files: { 'C:\\Users\\me\\letter.docx': { key: 'C:\\Users\\me\\letter.docx', name: 'letter.docx', folder: 'files', kind: 'docx' as LibraryKind } },
+    };
+    expect(folderOf(meta, 'C:\\Users\\me\\letter.docx')?.id).toBe('files');
+    expect(isDevicePath('C:\\Users\\me\\letter.docx')).toBe(true);
+    expect(isDevicePath('\\\\server\\share\\a.pdf')).toBe(true);
+    expect(isDevicePath('/Users/me/a.pdf')).toBe(true);
+    expect(isDevicePath('files/a.pdf')).toBe(false);
+    expect(isDevicePath('dir:Papers/a.pdf')).toBe(false);
+  });
+
+  it('opens a file added this session from anywhere, and asks again only for one it no longer has', async () => {
+    const meta: LibraryMeta = {
+      folders: [{ id: 'files', label: 'Chosen files', source: 'files' }],
+      files: { 'files/a.pdf': { key: 'files/a.pdf', name: 'a.pdf', folder: 'files', kind: 'pdf' } },
+    };
+    expect(mustChooseAgain(meta, 'files/a.pdf')).toBe(true);
+    const file = new File([new Uint8Array([1])], 'a.pdf');
+    heldFiles.set('files/a.pdf', file);
+    try {
+      expect(mustChooseAgain(meta, 'files/a.pdf')).toBe(false);
+      expect(await fileForKey(meta, 'files/a.pdf')).toBe(file);
+    } finally {
+      heldFiles.delete('files/a.pdf');
+    }
   });
 });
 
