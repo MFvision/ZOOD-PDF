@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { isTauriHost } from '../core/host-tauri';
 import { useT } from '../i18n/useT';
-import { fileForKey, folderOf } from '../library/sources';
+import { chooseAgain, fileForKey, mustChooseAgain } from '../library/sources';
 import { useServices } from '../state/AppContext';
 import { readRecentThumbnails } from '../state/recent';
 import { unstar, useStarred } from '../state/starred';
@@ -56,13 +56,15 @@ export function StarredView({ index }: { index: LibraryIndex }) {
     }
     const key = item.id.slice('library:'.length);
     void (async () => {
-      const folder = folderOf(index.meta, key);
-      if (folder?.source === 'files') {
+      if (mustChooseAgain(index.meta, key)) {
         setProblem({ id: item.id, note: t('starred.chooseAgain', { name: item.name }) });
-        services.requestOpenFile();
+        const chosen = await chooseAgain(key, item.name);
+        if (!chosen) return;
+        setProblem(null);
+        await services.openFile(chosen);
         return;
       }
-      const file = await fileForKey(index.meta, key, new Map()).catch(() => null);
+      const file = await fileForKey(index.meta, key).catch(() => null);
       if (!file) {
         setProblem({ id: item.id, note: t('starred.libraryMissing', { name: item.name }) });
         return;

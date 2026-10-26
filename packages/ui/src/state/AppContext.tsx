@@ -565,11 +565,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [toastNonce]);
 
+  const dropTarget = useRef<DropTarget | null>(null);
+  const createFiles = useRef<File[]>([]);
+  const startCreate = useCallback((files: readonly File[]) => {
+    if (files.length === 0) return;
+    // An open Create panel has claimed the window's drops: the files join its list.
+    if (dropTarget.current && stateRef.current.rightPane.activeTool === 'create') {
+      dropTarget.current.take([...files]);
+      return;
+    }
+    createFiles.current = [...files];
+    dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'create' });
+  }, []);
+
   const openFile = useCallback(
     async (file: File, password?: string, options?: OpenOptions) => {
       // By content, not by name: see `pdfFile.ts`.
       if (!(await isPdf(file))) {
-        dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
+        // A Word, Excel or other file Create can make a PDF of goes there,
+        // wherever it was opened from (Folders, the Library, Starred, search).
+        if (namedForCreate(file)) startCreate([file]);
+        else dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
         return;
       }
       // A file already open in a tab is shown there, not opened twice.
@@ -688,7 +704,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
       }
     },
-    [client, forgetLayerView, commitTabs, setSaveTarget],
+    [client, forgetLayerView, commitTabs, setSaveTarget, startCreate],
   );
 
   const unlockFile = useCallback(
@@ -713,7 +729,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [openFile],
   );
 
-  const dropTarget = useRef<DropTarget | null>(null);
   const [dropLabel, setDropLabel] = useState<TKey>('drop.overlay');
   const claimDrops = useCallback((target: DropTarget | null) => {
     dropTarget.current = target;
@@ -721,18 +736,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const combineDrop = useRef<File[]>([]);
   const takeCombineDrop = useCallback(() => combineDrop.current.splice(0), []);
-  const createFiles = useRef<File[]>([]);
   const takeCreateFiles = useCallback(() => createFiles.current.splice(0), []);
-  const startCreate = useCallback((files: readonly File[]) => {
-    if (files.length === 0) return;
-    // An open Create panel has claimed the window's drops: the files join its list.
-    if (dropTarget.current && stateRef.current.rightPane.activeTool === 'create') {
-      dropTarget.current.take([...files]);
-      return;
-    }
-    createFiles.current = [...files];
-    dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'create' });
-  }, []);
   const dropFiles = useCallback(
     (files: ArrayLike<File>, intent?: DropIntent) => {
       const list = Array.from(files);

@@ -27,6 +27,7 @@ pub mod menu;
 pub mod neural;
 pub mod packaged;
 pub mod parked;
+pub mod places;
 pub mod presence;
 pub mod print;
 pub mod profile;
@@ -358,6 +359,7 @@ pub fn run() {
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
+        .manage(places::PlacesState::default())
         .manage(updates::UpdateState::default())
         .manage(updates::UnsavedState::default())
         .manage(remote::RemoteState::default())
@@ -376,6 +378,8 @@ pub fn run() {
             let bridge = core_bridge::setup(app.handle());
             println!("warraq: core engine = {}", bridge.engine());
             app.manage(bridge);
+            // The Library's folders and files, readable again (src/places.rs).
+            places::restore(app.handle());
 
             app.manage(quick::QuickState::default());
             app.manage(sort::SortState::default());
@@ -494,6 +498,8 @@ pub fn run() {
             recent::recent_remember,
             recent::recent_path,
             recent::recent_forget,
+            places::library_places_remember,
+            places::library_places_forget,
             updates::update_check,
             updates::update_install,
             updates::unsaved_report,

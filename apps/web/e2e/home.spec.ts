@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { unzipSync } from 'fflate';
 import { expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
@@ -14,6 +15,7 @@ import type { Reply } from './helpers';
  */
 
 const THREE = corpus('generated/chrome-notonaskh-justified-3pages.pdf');
+const WORD = fileURLToPath(new URL('../../../tests/fixtures/create/report-ar.docx', import.meta.url));
 const KEY = 'sk-ant-api03-e2e-not-a-real-key-0000';
 const ANTHROPIC = 'https://api.anthropic.com/';
 const OLLAMA = 'http://localhost:11434/';
@@ -119,13 +121,43 @@ test.describe('the home screen', () => {
     await searchBox(page).fill('الثالث');
     const hit = results(page).getByRole('button', { name: 'Open chrome-notonaskh-justified-3pages.pdf at page 3' });
     await expect(hit).toBeVisible({ timeout: 60_000 });
-    // A file added one at a time cannot be read back by a browser: the hit
-    // says so and asks for it, and the file then opens at the page of the match.
-    await hit.click();
-    await expect(results(page).getByRole('alert')).toContainText('choose it again');
-    await page.locator('input.sr-only[type="file"]').setInputFiles(THREE);
+    // A file added one at a time cannot be read back by a browser after a
+    // reload: the hit says so and asks for it — any kind the Library reads,
+    // not only PDFs — and the file then opens at the page of the match.
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), hit.click()]);
+    await expect(results(page).getByRole('alert')).toContainText('chosen once more');
+    await chooser.setFiles(THREE);
     await expect.poll(() => embedTiles(page)).toBeGreaterThan(0);
     await expect(documentStatus(page)).toContainText('Page 3 of 3', { timeout: 60_000 });
+  });
+
+  test('files added with New folder open from their folder with one click; a Word file becomes a PDF', async ({ page, stayLocal: _ }) => {
+    test.setTimeout(300_000);
+    await home(page);
+    await sidebar(page).getByRole('button', { name: 'Folders', exact: true }).click();
+    await page.getByRole('button', { name: 'New folder' }).click();
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('menuitem', { name: 'Add files…' }).click()]);
+    expect(chooser.isMultiple()).toBe(true);
+    await chooser.setFiles([THREE, WORD]);
+    const library = page.locator('.pane-end');
+    await expect(library.getByText('Opening the index…')).toHaveCount(0);
+    test.skip(await library.getByText('This build has no Library engine').isVisible(), 'this build has no library.* operations');
+    await expect(library.getByText(/^Added: \d+\./)).toContainText('Added: 2.', { timeout: 180_000 });
+    // The folder is there in Folders, and its files open: not asked for again.
+    await page.getByRole('button', { name: 'Open the folder Chosen files' }).click();
+    const files = page.locator('.folders-files');
+    await expect(files.getByRole('button')).toHaveCount(2);
+    await files.getByRole('button', { name: /chrome-notonaskh-justified-3pages/ }).click();
+    await expect(documentStatus(page)).toContainText('Page 1 of 3', { timeout: 30_000 });
+    await expect(page.getByText(/chosen once more/)).toHaveCount(0);
+    // A Word file is made into a PDF, which opens, instead of "not a PDF".
+    await page.getByRole('button', { name: 'Close chrome-notonaskh-justified-3pages.pdf' }).click();
+    await expect(page.locator('.home')).toBeVisible();
+    await sidebar(page).getByRole('button', { name: 'Folders', exact: true }).click();
+    await page.getByRole('button', { name: 'Open the folder Chosen files' }).click();
+    await files.getByRole('button', { name: /report-ar/ }).click();
+    await expect(page.locator('.pane-end').getByRole('status').first()).toHaveText('Made “report-ar.pdf”.', { timeout: 60_000 });
+    await expect(page.getByRole('toolbar')).toContainText('report-ar');
   });
 
   test('a suggestion chip goes into the AI tool\'s chat, which names the provider and sends nothing before its Send', async ({

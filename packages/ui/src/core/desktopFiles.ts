@@ -1,4 +1,4 @@
-import { isTauriHost, pickFiles, saveFileAs } from './host-tauri';
+import { isTauriHost, keepNativePath, pickFiles, saveFileAs } from './host-tauri';
 import type { FileFilter } from './host-tauri';
 
 /**
@@ -116,9 +116,12 @@ export function installDesktopFileBridge(): () => void {
       return;
     }
     const transfer = new DataTransfer();
+    // Where each one is, for whoever needs it again (the Library, the recent list).
     for (const file of picked)
-      transfer.items.add(new File([file.bytes], file.name, { type: mimeFor(file.name) }));
+      transfer.items.add(keepNativePath(new File([file.bytes], file.name, { type: mimeFor(file.name) }), file.path));
     input.files = transfer.files;
+    // A webview that hands back its own copies of the files gets told too.
+    for (const [at, file] of [...input.files].entries()) keepNativePath(file, picked[at]?.path);
     input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
     input.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   };

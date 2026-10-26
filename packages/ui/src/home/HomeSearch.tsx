@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useI18n } from '../i18n/useT';
 import type { SearchHit } from '../library/ops';
-import { fileForKey, folderOf } from '../library/sources';
+import { chooseAgain, fileForKey, mustChooseAgain } from '../library/sources';
 import { snippet } from '../library/snippet';
 import { useServices } from '../state/AppContext';
 import type { LibraryIndex } from './useLibraryIndex';
@@ -76,13 +76,16 @@ export function HomeSearch({ index }: { index: LibraryIndex }) {
   const openHit = (hit: SearchHit) => {
     void (async () => {
       setMissing(null);
-      if (folderOf(index.meta, hit.key)?.source === 'files') {
+      if (mustChooseAgain(index.meta, hit.key)) {
         setMissing({ key: hit.key, note: t('starred.chooseAgain', { name: hit.name }) });
+        const chosen = await chooseAgain(hit.key, hit.name);
+        if (!chosen) return;
+        setMissing(null);
+        await services.openFile(chosen);
         requestPage(hit.page);
-        services.requestOpenFile();
         return;
       }
-      const file = await fileForKey(index.meta, hit.key, new Map()).catch(() => null);
+      const file = await fileForKey(index.meta, hit.key).catch(() => null);
       if (!file) {
         setMissing({ key: hit.key, note: t('library.missing', { name: hit.name }) });
         return;

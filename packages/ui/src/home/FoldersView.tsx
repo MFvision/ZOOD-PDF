@@ -14,7 +14,7 @@ import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import { LIBRARY_ACCEPT } from '../library/kinds';
 import { postLibraryRequest } from '../library/request';
-import { fileForKey, folderOf, keysUnder } from '../library/sources';
+import { chooseAgain, fileForKey, keysUnder, mustChooseAgain } from '../library/sources';
 import type { FolderRecord, LibraryStore } from '../library/store';
 import { useAppDispatch, useServices } from '../state/AppContext';
 import { FolderCard, LOCAL_TONES } from './FolderCard';
@@ -365,12 +365,15 @@ function FolderFiles({ index, folder, keys, onBack }: { index: LibraryIndex; fol
     setProblem(null);
     const name = nameOf(index, key);
     void (async () => {
-      if (folderOf(index.meta, key)?.source === 'files') {
+      if (mustChooseAgain(index.meta, key)) {
         setProblem({ key, note: t('starred.chooseAgain', { name }) });
-        services.requestOpenFile();
+        const chosen = await chooseAgain(key, name);
+        if (!chosen) return;
+        setProblem(null);
+        await services.openFile(chosen);
         return;
       }
-      const file = await fileForKey(index.meta, key, new Map()).catch(() => null);
+      const file = await fileForKey(index.meta, key).catch(() => null);
       if (!file) {
         setProblem({ key, note: t('starred.libraryMissing', { name }) });
         return;

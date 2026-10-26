@@ -15,6 +15,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { forgetLibraryPlace, rememberLibraryPlaces } from '../core/host-tauri';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { Dialog } from '../components/Dialog';
@@ -35,11 +36,15 @@ import { announceLibraryChanged, onLibraryRequest, takeLibraryRequest } from './
 import { addRule, parseTags, removeRule, ruleKey, ruleWords } from './rules';
 import { snippet } from './snippet';
 import {
+  chooseAgain,
   directoryPickerAvailable,
   fileForKey,
   filesFromPicker,
   folderOf,
+  heldFiles,
+  isDevicePath,
   keysUnder,
+  mustChooseAgain,
   nativeFolders,
   onNativeWatch,
   pickDirectory,
@@ -83,7 +88,6 @@ export function LibraryPanel() {
   const store = useRef(libraryStore());
   const ledger = useRef(storedLedger());
   const ops = useRef(coreLibrary(services.client));
-  const held = useRef(new Map<string, File>());
   const stopper = useRef<AbortController | null>(null);
   const filesInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -308,7 +312,9 @@ export function LibraryPanel() {
         setError(t('library.error.noneReadable'));
         return;
       }
-      for (const [key, file] of taken) held.current.set(key, file);
+      for (const [key, file] of taken) heldFiles.set(key, file);
+      // On the desktop each is kept by its own path, readable after a restart.
+      rememberLibraryPlaces([...taken.keys()].filter(isDevicePath));
       void run(files, folder);
     },
     [run, t],
@@ -338,6 +344,8 @@ export function LibraryPanel() {
         if (nativeFolders()) {
           const paths = await pickNativeFolderPaths();
           if (paths.length === 0) return;
+          // Readable again after the app restarts, not only until it closes.
+          rememberLibraryPlaces(paths);
           setPassedOver([]);
           setGone([]);
           setWalkTruncated(false);
@@ -468,7 +476,15 @@ export function LibraryPanel() {
     void (async () => {
       setMissing(null);
       try {
-        const file = await fileForKey(meta, hit.key, held.current);
+        if (mustChooseAgain(meta, hit.key)) {
+          // Added by itself, in a browser that has since been reloaded: asked for again.
+          const chosen = await chooseAgain(hit.key, hit.name);
+          if (!chosen) return;
+          await services.openFile(chosen);
+          requestPage(hit.page);
+          return;
+        }
+        const file = await fileForKey(meta, hit.key);
         if (!file) {
           setMissing(hit.key);
           return;
@@ -533,11 +549,13 @@ export function LibraryPanel() {
         const before = await store.current.readMeta().catch(emptyMeta);
         const keys = keysUnder(before, folder);
         if (keys.length > 0) await ops.current.forget(handle, keys);
+        if (folder.source === 'path' && folder.path) forgetLibraryPlace(folder.path);
+        for (const key of keys) if (isDevicePath(key) && folder.source === 'files') forgetLibraryPlace(key);
         ledger.current.forget(keys);
         const files = { ...before.files };
         for (const key of keys) {
           delete files[key];
-          held.current.delete(key);
+          heldFiles.delete(key);
         }
         await rememberMeta({ folders: before.folders.filter((one) => one.id !== folder.id), files });
         await keep(handle);
@@ -559,7 +577,7 @@ export function LibraryPanel() {
       const files = { ...before.files };
       for (const key of keys) {
         delete files[key];
-        held.current.delete(key);
+        heldFiles.delete(key);
       }
       await rememberMeta({ ...before, files });
       await keep(handle);
@@ -619,7 +637,8 @@ export function LibraryPanel() {
         if (handle !== null) await ops.current.close(handle).catch(() => undefined);
         await store.current.forgetEverything();
         ledger.current.clear();
-        held.current.clear();
+        heldFiles.clear();
+        forgetLibraryPlace();
         const { handle: fresh } = await ops.current.open();
         setHandle(fresh);
         setMeta(emptyMeta());

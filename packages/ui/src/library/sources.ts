@@ -1,5 +1,7 @@
 import {
   hasLibraryHost,
+  keepNativePath,
+  nativePathOf,
   onLibraryScan,
   pickLibraryFolders,
   readLibraryFile,
@@ -85,6 +87,17 @@ function folderId(): string {
 /** A browser key: the folder's own id, then the file's place under it. */
 export const browserKey = (folder: string, relative: string): string => `${folder}/${relative}`;
 
+/** A key that is a file's own path on this device (`C:\…`, `\\server\…`, `/…`), as the desktop's keys are. */
+export const isDevicePath = (key: string): boolean => /^(?:[a-zA-Z]:[\\/]|\\\\|\/)/.test(key);
+
+/**
+ * The files added in this session, by key: the panel and the home screen's
+ * views (Folders, Starred, the search) open them from here, so a file just
+ * added opens with one click wherever it is shown. Memory only — it goes
+ * with the window.
+ */
+export const heldFiles = new Map<string, File>();
+
 function fromFile(key: string, file: File): IngestFile {
   return {
     key,
@@ -114,7 +127,10 @@ export function filesFromPicker(
       ignored += 1;
       continue;
     }
-    const key = browserKey(folder, relative);
+    // The desktop knows where a chosen file is: keyed by that path, as its
+    // folders' files are, it is read from there again after a restart.
+    const path = nativePathOf(file);
+    const key = path && isDevicePath(path) ? path : browserKey(folder, relative);
     taken.push(fromFile(key, file));
     held.set(key, file);
   }
@@ -294,6 +310,11 @@ export type { LibraryWatchAnswer, LibraryWatchEvent } from '../core/host-tauri';
 
 /** The folder a key came from, by the records the store kept. */
 export function folderOf(meta: LibraryMeta, key: string): FolderRecord | undefined {
+  // A file chosen by itself on the desktop is keyed by its own path, so its
+  // record names the folder it was added under.
+  const named = meta.files[key]?.folder;
+  const under = named ? meta.folders.find((folder) => folder.id === named && folder.source === 'files') : undefined;
+  if (under) return under;
   return meta.folders.find((folder) => key === folder.id || key.startsWith(`${folder.id}/`) || key.startsWith(`${folder.id}\\`));
 }
 
@@ -309,14 +330,14 @@ export function keysUnder(meta: LibraryMeta, folder: FolderRecord): string[] {
  * folder through its path. `null` means the file has moved or gone — the
  * panel says so and offers to forget it.
  */
-export async function fileForKey(meta: LibraryMeta, key: string, held: ReadonlyMap<string, File>): Promise<File | null> {
+export async function fileForKey(meta: LibraryMeta, key: string, held: ReadonlyMap<string, File> = heldFiles): Promise<File | null> {
   const inHand = held.get(key);
   if (inHand) return inHand;
   const folder = folderOf(meta, key);
   const name = meta.files[key]?.name ?? key.split(/[\\/]/).pop() ?? key;
-  if (folder?.source === 'path' || (!folder && hasLibraryHost())) {
+  if (folder?.source === 'path' || (hasLibraryHost() && (!folder || isDevicePath(key)))) {
     try {
-      return new File([await readLibraryFile(key)], name, { type: mimeOf(name) });
+      return keepNativePath(new File([await readLibraryFile(key)], name, { type: mimeOf(name) }), key);
     } catch {
       return null;
     }
@@ -337,6 +358,40 @@ export async function fileForKey(meta: LibraryMeta, key: string, held: ReadonlyM
     }
   }
   return null;
+}
+
+/**
+ * Whether a file added by itself has to be chosen again before it opens: a
+ * browser keeps no way back to it once the page has been reloaded. On the
+ * desktop it is read from its own path instead.
+ */
+export function mustChooseAgain(meta: LibraryMeta, key: string): boolean {
+  if (heldFiles.has(key) || (hasLibraryHost() && isDevicePath(key))) return false;
+  return folderOf(meta, key)?.source === 'files';
+}
+
+/**
+ * Asks for such a file again: the picker takes every kind the Library reads,
+ * not only PDFs, and the file chosen — the same one, by name — is held, so it
+ * opens with one click from then on. `null` when the person cancels.
+ */
+export function chooseAgain(key: string, name: string): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = LIBRARY_ACCEPT;
+    input.addEventListener(
+      'change',
+      () => {
+        const file = input.files?.[0] ?? null;
+        if (file && file.name === name) heldFiles.set(key, file);
+        resolve(file);
+      },
+      { once: true },
+    );
+    input.addEventListener('cancel', () => resolve(null), { once: true });
+    input.click();
+  });
 }
 
 const MIME: Record<string, string> = {

@@ -227,7 +227,7 @@ export function AiPanel() {
           return;
         }
         const meta = await libraryStore().readMeta().catch(() => null);
-        const opened = meta ? await fileForKey(meta, file.key, new Map()).catch(() => null) : null;
+        const opened = meta ? await fileForKey(meta, file.key).catch(() => null) : null;
         if (!opened) {
           dispatch({ type: 'TOAST', key: 'ai.scope.fileMissing' });
           return;

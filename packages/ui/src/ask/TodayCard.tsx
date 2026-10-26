@@ -64,7 +64,7 @@ export function TodayCard({ index }: { index: LibraryIndex }) {
   };
   const open = (end: LooseEnd) => {
     void (async () => {
-      const file = await fileForKey(index.meta, end.key, new Map()).catch(() => null);
+      const file = await fileForKey(index.meta, end.key).catch(() => null);
       if (!file) return services.requestOpenFile();
       await services.openFile(file);
       requestPage(end.page);
