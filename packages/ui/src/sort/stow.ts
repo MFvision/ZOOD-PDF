@@ -126,6 +126,27 @@ export function formatsFor(names: readonly string[], webp = true): FormatChip[] 
   return chips;
 }
 
+/**
+ * The row under the formats: the rest of ZOOD, kept to a few so the panel
+ * stays calm. Ask ZOOD (its own AI, on this computer, about the PDF: the
+ * editor opens at the AI chat), Organize (the Sort window: merges, splits,
+ * names, folders, by click or voice), to the phone when one is paired, and
+ * All tools (the quick window: every tool that fits, with the pages to
+ * see). Each sends the drop on through `zone_act`.
+ */
+export type MoreId = 'ask' | 'organize' | 'phone' | 'tools';
+
+export function moreFor(names: readonly string[], phone = false): MoreId[] {
+  const kinds = kindsOf(names);
+  if (kinds.size === 0) return [];
+  const more: MoreId[] = [];
+  if (kinds.has('pdf')) more.push('ask');
+  more.push('organize');
+  if (phone) more.push('phone');
+  more.push('tools');
+  return more;
+}
+
 /** Of these files, by place, the ones each way of making takes: one run per way. */
 export function runsFor(names: readonly string[], makes: Partial<Record<HandKind, Make>>): { make: Make; at: number[] }[] {
   const runs: { make: Make; at: number[] }[] = [];

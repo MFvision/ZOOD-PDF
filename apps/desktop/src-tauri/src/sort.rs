@@ -49,7 +49,7 @@ pub const SAY_EVENT: &str = "sort://say";
 /// The pill first seen at the top, and the zone it opens into, in points.
 const PEEK: (f64, f64) = (196.0, 58.0);
 /// Open, it is the panel of tiles (`StowPanel.tsx`).
-const OPEN: (f64, f64) = (660.0, 226.0);
+const OPEN: (f64, f64) = (660.0, 290.0);
 /// A short note at the top: what a tile or Put away did, with Undo and Show.
 const NOTE: (f64, f64) = (440.0, 48.0);
 /// The shelf at rest (a tab that says how many files wait) and open (`shelf.rs`).
@@ -623,6 +623,68 @@ pub fn zone_took(id: u64, tile: String) {
         }
     }
     log(&format!("dropped on the {tile} tile"));
+}
+
+/// The page sends the drop `id` on to one of ZOOD's other places: talk
+/// about it with ZOOD's own AI (`ask`, the editor's AI panel), Organize
+/// (the Sort window), open it in ZOOD, send it to the phone, All tools
+/// (`tools`, the quick window's chooser) or one quick tool (`quick:<tool>`). Only
+/// the files of that drop, never a path from the page.
+#[tauri::command]
+pub fn zone_act<R: Runtime>(app: AppHandle<R>, id: u64, act: String) -> bool {
+    let files = match PENDING.lock() {
+        Ok(mut pending) if pending.as_ref().is_some_and(|(at, _)| *at == id) => {
+            pending.take().map(|(_, files)| files).unwrap_or_default()
+        }
+        _ => return false,
+    };
+    if files.is_empty() {
+        return false;
+    }
+    log(&format!("dropped on {act}"));
+    let pdf = || {
+        files
+            .iter()
+            .find(|f| f.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+            .cloned()
+    };
+    match act.as_str() {
+        "ask" => {
+            crate::open_in_editor_at(&app, pdf().or_else(|| files.first().cloned()), Some("ai"))
+        }
+        "open" => crate::open_in_editor_at(&app, files.first().cloned(), None),
+        "organize" => open(&app, files),
+        "tools" => crate::quick::request(&app, crate::quick::QuickRequest { tool: None, files }),
+        "phone" => {
+            let app = app.clone();
+            std::thread::spawn(move || {
+                let sent = crate::remote::give_paths(&app, &files, None);
+                log(&format!(
+                    "{sent} of {} dropped files to the phone",
+                    files.len()
+                ));
+            });
+        }
+        other => {
+            let Some(tool) = other
+                .strip_prefix("quick:")
+                .and_then(|t| crate::quick::TOOLS.iter().find(|known| **known == t))
+            else {
+                crate::shelf::add(&app, &files, false);
+                show_look(&app, "shelf");
+                return false;
+            };
+            crate::quick::request(
+                &app,
+                crate::quick::QuickRequest {
+                    tool: Some(tool.to_string()),
+                    files,
+                },
+            );
+        }
+    }
+    rest(&app);
+    true
 }
 
 /// The page shows a short note at the top ("1 done · next to the

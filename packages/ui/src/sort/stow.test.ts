@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, runsFor, tilesFor } from './stow';
+import { dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, moreFor, runsFor, tilesFor } from './stow';
 
 describe('the drop zone tiles', () => {
   it('knows pictures, PDFs and documents', () => {
@@ -60,5 +60,14 @@ describe('the drop zone tiles', () => {
     expect(dropTargetAt(10, 10, doc)).toBe('tile:web');
     expect(dropTargetAt(20, 10, doc)).toBeNull();
     expect(dropTargetAt(-1, -1, doc)).toBeNull();
+  });
+});
+
+describe('the row to the rest of ZOOD', () => {
+  it('stays short: Ask ZOOD for PDFs, Organize, the phone when paired, All tools', () => {
+    expect(moreFor(['a.pdf'])).toEqual(['ask', 'organize', 'tools']);
+    expect(moreFor(['a.pdf', 'b.jpg'], true)).toEqual(['ask', 'organize', 'phone', 'tools']);
+    expect(moreFor(['photo.jpg'])).toEqual(['organize', 'tools']);
+    expect(moreFor(['setup.exe'])).toEqual([]);
   });
 });

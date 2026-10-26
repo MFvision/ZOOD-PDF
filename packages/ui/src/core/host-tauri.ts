@@ -518,6 +518,8 @@ export interface ZoneDropped {
 
 export const zoneKeep = (id: number) => shelfCall('zone_keep', { id });
 export const zoneTook = (id: number, tile: string) => shelfCall('zone_took', { id, tile });
+/** Sends the drop `id` on: `ask` (ZOOD's AI about it), `organize`, `open`, `phone`, or `quick:<tool>`. */
+export const zoneAct = (id: number, act: string) => shelfCall('zone_act', { id, act });
 export const zoneNote = (show: boolean) => shelfCall('zone_note', { show });
 export const zoneMade = (paths: readonly string[]) => shelfCall('zone_made', { paths });
 export const zoneShowMade = () => shelfCall('zone_show_made');

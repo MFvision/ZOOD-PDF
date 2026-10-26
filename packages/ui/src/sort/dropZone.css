@@ -494,12 +494,115 @@ html.zood-drop-page body {
 
   display: grid;
   grid-template-columns: 150px 1fr;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   align-items: stretch;
   gap: 10px;
-  padding: 12px 16px 14px;
+  padding: 8px 16px 14px;
   border-radius: 0 0 34px 34px;
-  animation: zood-drop-open 240ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  transform-origin: 50% 0;
+
+  /* Out of the top edge like a notch growing: a spring, then the parts in turn. */
+  animation: stow-drop 460ms cubic-bezier(0.32, 1.32, 0.5, 1) both;
+}
+
+.zood-drop-stow > * {
+  animation: stow-part 320ms cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+
+.zood-drop-stow > .stow-hand {
+  animation-delay: 90ms;
+}
+
+.zood-drop-stow > .stow-tiles {
+  animation-delay: 130ms;
+}
+
+.zood-drop-stow > .stow-formats {
+  animation-delay: 180ms;
+}
+
+.zood-drop-stow > .stow-more {
+  animation-delay: 220ms;
+}
+
+@keyframes stow-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.42, 0.18);
+    border-radius: 0 0 60px 60px;
+  }
+
+  60% {
+    opacity: 1;
+  }
+}
+
+@keyframes stow-part {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.stow-top {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-inline-size: 0;
+  block-size: 26px;
+}
+
+.stow-top-words {
+  overflow: hidden;
+  color: var(--zone-muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 140ms ease;
+}
+
+.stow-top-words.is-hot {
+  color: var(--zone-bronze);
+  font-weight: 600;
+}
+
+/* The rest of ZOOD, kept to a few calm pills. */
+.stow-more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.stow-more-pill {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-inline-size: 0;
+  block-size: 32px;
+  padding-inline: 10px;
+  border-radius: 16px;
+  background: var(--zone-card);
+  color: var(--zone-ink);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+.stow-more-pill svg {
+  flex: none;
+  color: var(--zone-bronze);
+}
+
+.stow-more-pill.is-hot {
+  background: var(--zone-card-hot);
+  transform: translateY(-2px);
 }
 
 .zood-drop-stow.is-over {
@@ -510,7 +613,7 @@ html.zood-drop-page body {
 
 .stow-hand {
   display: flex;
-  grid-row: 1 / 3;
+  grid-row: 2 / 5;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -677,12 +780,6 @@ html.zood-drop-page body {
   transform: translateY(-3px);
 }
 
-.stow-format-word {
-  color: var(--zone-bronze);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 /* ------------------------------------------------ the note at the top */
 
 /* What a tile or Put away did, with Undo and Show; it goes after a while. */
@@ -767,6 +864,8 @@ html.zood-drop-page body {
 
 @media (prefers-reduced-motion: reduce) {
   .zood-drop-stow,
+  .zood-drop-stow > *,
+  .stow-more-pill,
   .zood-drop-note,
   .note-icon,
   .stow-tile,

@@ -541,6 +541,7 @@ pub fn run() {
             shelf::shelf_phone,
             sort::zone_keep,
             sort::zone_took,
+            sort::zone_act,
             sort::zone_note,
             sort::zone_made,
             sort::zone_undo_made,

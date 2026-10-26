@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Combine, File, FileImage, FileText, Globe, Inbox, Printer, Send } from 'lucide-react';
+import { Combine, File, FileImage, FileText, Globe, Inbox, LayoutGrid, MessageCircle, Printer, Send, Smartphone, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { ZoodMark } from '../components/ZoodMark';
 import { readBatchFile } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { handKind } from './stow';
-import type { FormatChip, Tile, TileId } from './stow';
+import type { FormatChip, MoreId, Tile, TileId } from './stow';
 
 /**
  * The drop zone open under the top of the screen while files are dragged
@@ -23,6 +24,7 @@ export interface InHand {
 }
 
 const TILE_ICONS: Record<TileId, LucideIcon> = { web: Globe, send: Send, print: Printer };
+const MORE_ICONS: Record<MoreId, LucideIcon> = { ask: MessageCircle, organize: Sparkles, phone: Smartphone, tools: LayoutGrid };
 
 /** A tile's one word, and what it does for the first kind of file in hand. */
 export function tileDetail(tile: Tile, names: readonly string[]): TKey {
@@ -65,11 +67,30 @@ function HandPreview({ hand }: { hand: InHand }) {
   );
 }
 
-export function StowPanel({ hand, tiles, formats, hot, over }: { hand: InHand; tiles: Tile[]; formats: FormatChip[]; hot: string | null; over: boolean }) {
+/** What the target under the pointer will do, for the line at the top. */
+function hotWords(hot: string | null, tiles: Tile[], formats: FormatChip[], names: readonly string[], t: (key: TKey, params?: Record<string, string | number>) => string): string {
+  if (!hot) return t('stow.hint');
+  if (hot === 'keep') return t('stow.keep');
+  if (hot.startsWith('tile:')) {
+    const tile = tiles.find((one) => `tile:${one.id}` === hot);
+    return tile ? t(tileDetail(tile, names)) : t('stow.hint');
+  }
+  if (hot === 'format:merge') return t('stow.merge');
+  if (hot.startsWith('format:')) return t('stow.formatTo', { format: formats.find((c) => `format:${c.id}` === hot)?.label ?? '' });
+  if (hot.startsWith('more:')) return t(`stow.moreNote.${hot.slice(5)}` as TKey);
+  return t('stow.hint');
+}
+
+export function StowPanel({ hand, tiles, formats, more, hot, over }: { hand: InHand; tiles: Tile[]; formats: FormatChip[]; more: MoreId[]; hot: string | null; over: boolean }) {
   const { t } = useI18n();
   const keepHot = hot === 'keep';
   return (
     <main className={over ? 'zood-drop zood-drop-stow is-over' : 'zood-drop zood-drop-stow'} aria-label={t('stow.label')}>
+      <div className="stow-top">
+        <ZoodMark size={22} loop={over} />
+        <span className={hot ? 'stow-top-words is-hot' : 'stow-top-words'}>{hotWords(hot, tiles, formats, hand.names, t)}</span>
+      </div>
+
       <div className={keepHot ? 'stow-hand is-hot' : 'stow-hand'} data-drop="keep">
         <HandPreview hand={hand} />
         <bdi className="stow-hand-name">{hand.names.length > 1 ? t('stow.files', { count: hand.names.length }) : (hand.names[0] ?? t('stow.dropHere'))}</bdi>
@@ -109,10 +130,22 @@ export function StowPanel({ hand, tiles, formats, hot, over }: { hand: InHand; t
         <span className={keepHot ? 'stow-format is-keep is-hot' : 'stow-format is-keep'} data-drop="keep" title={t('stow.keep')}>
           <Inbox size={15} aria-hidden="true" />
         </span>
-        {hot && hot !== 'keep' && hot.startsWith('format:') ? (
-          <span className="stow-format-word">{hot === 'format:merge' ? t('stow.merge') : t('stow.formatTo', { format: formats.find((c) => `format:${c.id}` === hot)?.label ?? '' })}</span>
-        ) : null}
       </div>
+
+      {more.length > 0 ? (
+        <div className="stow-more">
+          {more.map((id) => {
+            const Icon = MORE_ICONS[id];
+            const isHot = hot === `more:${id}`;
+            return (
+              <span key={id} className={isHot ? 'stow-more-pill is-hot' : 'stow-more-pill'} data-drop={`more:${id}`}>
+                <Icon size={14} aria-hidden="true" />
+                {t(`stow.more.${id}` as TKey)}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
     </main>
   );
 }

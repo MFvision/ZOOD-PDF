@@ -56,6 +56,7 @@ import {
   zoneMade,
   zoneNote,
   zoneShowMade,
+  zoneAct,
   zoneTook,
   zoneUndoMade,
 } from '../core/host-tauri';
@@ -70,7 +71,7 @@ import { runQuick, wantsPassword } from '../quick/runQuick';
 import { CONVERT_ROW, THUMB_MAX_BYTES, THUMB_TYPES, actionsFor, convertibleTo, fittingFor, targetsOf, typeOf } from './shelf';
 import type { ShelfAction } from './shelf';
 import { StowPanel } from './StowPanel';
-import { dropTargetAt, formatsFor, runsFor, tilesFor } from './stow';
+import { dropTargetAt, formatsFor, moreFor, runsFor, tilesFor } from './stow';
 import { canWriteWebp, runStow } from './stowRun';
 
 /**
@@ -213,6 +214,7 @@ function Zone() {
       onHostEvent<ZoneHand>(ZONE_HAND_EVENT, (next) => {
         setHand(next);
         setHot(null);
+        void shelfHasPhone().then(setPhone);
       }),
       onHostEvent<[number, number]>(ZONE_POINTER_EVENT, ([x, y]) => setHot(dropTargetAt(x, y))),
       onHostEvent<ZoneDropped>(ZONE_DROPPED_EVENT, (dropped) => onDropped(dropped)),
@@ -263,6 +265,12 @@ function Zone() {
     const target = dropTargetAt(dropped.x, dropped.y);
     setHot(null);
     const names = dropped.names;
+    // The rest of ZOOD (Ask ZOOD, Organize, the phone, All tools): the host takes it from here.
+    if (target?.startsWith('more:')) {
+      const act = target.slice(5);
+      void zoneAct(dropped.id, act);
+      return;
+    }
     const makes = target?.startsWith('tile:')
       ? tilesFor(names).find((tile) => `tile:${tile.id}` === target)?.makes
       : target?.startsWith('format:')
@@ -632,7 +640,7 @@ function Zone() {
   }
 
   if ((look === 'open' || look === 'over') && hand.names.length > 0) {
-    return <StowPanel hand={hand} tiles={tilesFor(hand.names)} formats={formatsFor(hand.names, webp)} hot={hot} over={look === 'over'} />;
+    return <StowPanel hand={hand} tiles={tilesFor(hand.names)} formats={formatsFor(hand.names, webp)} more={moreFor(hand.names, phone)} hot={hot} over={look === 'over'} />;
   }
 
   const open = look === 'open' || look === 'over';
