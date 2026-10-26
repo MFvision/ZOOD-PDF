@@ -320,40 +320,51 @@ Check ((Log) -match '1 files dropped on the drop zone') 'a shortcut let go on th
 # 7. As on a real desktop: two shortcuts to PDFs with Arabic names, made in
 # another folder and copied here (so the path each keeps relative to itself
 # leads nowhere), picked together and dragged up onto the shelf at once.
-$arabic = Join-Path $folder 'arabic'
-New-Item -ItemType Directory -Force -Path $arabic | Out-Null
-$made = Join-Path $env:RUNNER_TEMP 'ring-links'
-New-Item -ItemType Directory -Force -Path $made | Out-Null
-foreach ($n in 'a', 'b') {
-  $name = (-join [char[]](0x622, 0x641, 0x627, 0x20, 0x622, 0x64A)) + " $n.pdf"
-  Copy-Item $Sample (Join-Path $arabic $name)
-  $link = $shell.CreateShortcut((Join-Path $made "arabic-$n.lnk"))
-  $link.TargetPath = (Join-Path $arabic $name)
-  $link.Save()
-  Copy-Item (Join-Path $made "arabic-$n.lnk") (Join-Path $folder "arabic-$n - Copy.lnk")
+try {
+  $arabic = Join-Path $folder 'arabic'
+  New-Item -ItemType Directory -Force -Path $arabic | Out-Null
+  # Each shortcut made the way Explorer makes one (right-click > Create
+  # shortcut, the Shell's "link" verb), beside its PDF, then copied here: the
+  # path it keeps relative to itself now leads nowhere, as on a real desktop.
+  $shellApp = New-Object -ComObject Shell.Application
+  foreach ($n in 'a', 'b') {
+    $name = (-join [char[]](0x622, 0x641, 0x627, 0x20, 0x622, 0x64A)) + " $n.pdf"
+    Copy-Item $Sample (Join-Path $arabic $name)
+    $before = @(Get-ChildItem $arabic -Filter '*.lnk').Count
+    try { $shellApp.Namespace($arabic).ParseName($name).InvokeVerb('link') } catch { Write-Host "link verb: $_" }
+    foreach ($try in 1..20) {
+      if (@(Get-ChildItem $arabic -Filter '*.lnk').Count -gt $before) { break }
+      Start-Sleep -Milliseconds 500
+    }
+    $lnk = Get-ChildItem $arabic -Filter '*.lnk' | Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($lnk) { Copy-Item $lnk.FullName (Join-Path $folder "arabic-$n - Copy.lnk") }
+    else { Write-Host "no shortcut was made for $n" }
+  }
+  Start-Sleep -Seconds 3
+  $a = FileItem 'arabic-a - Copy'
+  $b = FileItem 'arabic-b - Copy'
+  [Input]::Mouse($a[0], $a[1], 0); [Input]::Mouse($a[0], $a[1], 0x0002); [Input]::Mouse($a[0], $a[1], 0x0004)
+  Start-Sleep -Milliseconds 300
+  [Input]::Key(0x11, $false)
+  [Input]::Mouse($b[0], $b[1], 0); [Input]::Mouse($b[0], $b[1], 0x0002); [Input]::Mouse($b[0], $b[1], 0x0004)
+  [Input]::Key(0x11, $true)
+  Start-Sleep -Milliseconds 500
+  [Input]::Mouse($b[0], $b[1], 0x0002); Start-Sleep -Milliseconds 200
+  foreach ($step in 1..30) {
+    [Input]::Mouse($b[0] + $step * ($zx - $b[0]) / 30, $b[1] + $step * ($zy - $b[1]) / 30, 0)
+    Start-Sleep -Milliseconds 50
+  }
+  foreach ($step in 1..10) { [Input]::Mouse($zx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+  Start-Sleep -Milliseconds 600
+  Shot 'zone-7-over.png'
+  [Input]::Mouse($zx, $zy, 0x0004)
+  Start-Sleep -Seconds 3
+  Shot 'zone-7-after.png'
+  Check ((Log) -match '2 files dropped on the drop zone') 'two copied shortcuts to Arabic-named PDFs are both taken'
+  Check ((Log) -notmatch 'dropped not taken') 'no dropped shortcut is left out'
+} catch {
+  Check $false "the Arabic shortcut step ran ($_)"
 }
-Start-Sleep -Seconds 3
-$a = FileItem 'arabic-a - Copy'
-$b = FileItem 'arabic-b - Copy'
-[Input]::Mouse($a[0], $a[1], 0); [Input]::Mouse($a[0], $a[1], 0x0002); [Input]::Mouse($a[0], $a[1], 0x0004)
-Start-Sleep -Milliseconds 300
-[Input]::Key(0x11, $false)
-[Input]::Mouse($b[0], $b[1], 0); [Input]::Mouse($b[0], $b[1], 0x0002); [Input]::Mouse($b[0], $b[1], 0x0004)
-[Input]::Key(0x11, $true)
-Start-Sleep -Milliseconds 500
-[Input]::Mouse($b[0], $b[1], 0x0002); Start-Sleep -Milliseconds 200
-foreach ($step in 1..30) {
-  [Input]::Mouse($b[0] + $step * ($zx - $b[0]) / 30, $b[1] + $step * ($zy - $b[1]) / 30, 0)
-  Start-Sleep -Milliseconds 50
-}
-foreach ($step in 1..10) { [Input]::Mouse($zx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
-Start-Sleep -Milliseconds 600
-Shot 'zone-7-over.png'
-[Input]::Mouse($zx, $zy, 0x0004)
-Start-Sleep -Seconds 3
-Shot 'zone-7-after.png'
-Check ((Log) -match '2 files dropped on the drop zone') 'two copied shortcuts to Arabic-named PDFs are both taken'
-Check ((Log) -notmatch 'dropped not taken') 'no dropped shortcut is left out'
 
 Set-Content (Join-Path $Out 'ring.log') (Log)
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
