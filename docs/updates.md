@@ -105,10 +105,9 @@ individuals only from the USA and Canada.
 
 A signed installer still meets a milder SmartScreen notice for its first weeks,
 until Windows has seen enough downloads of ZOOD signed with this certificate.
-The same signed installer is what the Microsoft Store takes for an "EXE or MSI
-app" listing (it links to the installer here). An MSIX package was ruled out:
-the right-click tools write Explorer verbs to the registry, which MSIX hides
-from Explorer.
+The Microsoft Store needs none of this: the Store package (`.msix`, see
+[store.md](store.md)) is signed by the Store itself, and its right-click menu
+and sign-in start are declared in the package instead of the registry.
 
 ## Not covered yet
 
