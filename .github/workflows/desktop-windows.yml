@@ -103,6 +103,15 @@ jobs:
         shell: pwsh
         run: ./scripts/ci/ring-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Sample tests/fixtures/layers/layers.pdf -Out ring-check
 
+      # How heavy the app sits on the machine: CPU and memory of the app and
+      # its WebView2 helpers for a minute after launch, then with Settings
+      # open, then after it closes. Numbers and screenshots go to ci-logs.
+      - name: measure the app's weight
+        id: perf
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/ci/perf-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Out perf-check
+
       # After the installer is out, so a failing test never withholds it: the
       # core's own tests on Windows — among them the installed-font lookup
       # against this machine's real fonts — and the desktop host's.
@@ -145,9 +154,11 @@ jobs:
             echo "release: $(cat ../release-tag.txt 2>/dev/null || echo none)"
             echo "ring check: ${{ steps.ring.outcome }}"
             echo "remote check: ${{ steps.remote.outcome }}"
+            echo "perf check: ${{ steps.perf.outcome }}"
             echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
           } > status.txt
           [ -d ../ring-check ] && cp -r ../ring-check ring-check
+          [ -d ../perf-check ] && cp -r ../perf-check perf-check
           for f in build test-core test-desktop test-remote; do
             [ -f "../$f.log" ] && tail -n 250 "../$f.log" > "$f.log"
           done
