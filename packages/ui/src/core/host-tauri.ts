@@ -199,7 +199,7 @@ export async function pickFiles(filters: FileFilter[], multiple: boolean): Promi
       ? [picked]
       : [];
   const files: PickedFile[] = [];
-  for (const path of paths) files.push({ name: baseName(path), bytes: toArrayBuffer(await readFile(path)) });
+  for (const path of paths) files.push({ name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path });
   return files;
 }
 
@@ -1321,6 +1321,22 @@ export function onLibraryScan(onEvent: (event: LibraryScanEvent) => void): () =>
  */
 export async function readLibraryFile(path: string): Promise<ArrayBuffer> {
   return toArrayBuffer(await invoke('library_read_file', { path }));
+}
+
+/**
+ * Keeps the folders and files the Library was given (`src-tauri/src/places.rs`),
+ * so they can still be read after the app restarts. The host refuses a path
+ * the person did not choose. Never fails the caller.
+ */
+export function rememberLibraryPlaces(paths: readonly string[]): void {
+  if (!internals() || paths.length === 0) return;
+  invoke('library_places_remember', { paths }).catch(() => undefined);
+}
+
+/** Forgets a Library folder or file (a folder with what is under it), or every one when `path` is absent. Never fails the caller. */
+export function forgetLibraryPlace(path?: string): void {
+  if (!internals()) return;
+  invoke('library_places_forget', { path: path ?? null }).catch(() => undefined);
 }
 
 /** Whether a file is still there, and still what the index holds. */

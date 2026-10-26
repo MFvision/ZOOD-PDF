@@ -77,10 +77,12 @@ export const CHAPTERS = [
       en: 'Copy, search and edit with Arabic kept in order, and an AI assistant that runs on your computer.',
     },
     facts: [
-      { ar: 'مجاني', en: 'Free' },
-      { ar: 'بلا حساب', en: 'No account' },
-      { ar: 'يعمل دون إنترنت', en: 'Works offline' },
-      { ar: 'ويندوز وماك', en: 'Windows and Mac' },
+      { icon: 'free', ar: 'مجاني', en: 'Free' },
+      { icon: 'account', ar: 'بلا حساب', en: 'No account' },
+      { icon: 'ads', ar: 'بلا إعلانات', en: 'No ads' },
+      { icon: 'offline', ar: 'يعمل دون إنترنت', en: 'Works offline' },
+      { icon: 'ai', ar: 'ذكاء اصطناعي على جهازك', en: 'AI on your computer' },
+      { icon: 'computer', ar: 'ويندوز وماك', en: 'Windows and Mac' },
     ],
     // The button names the visitor's own computer when it can tell (main.js).
     cta: {
@@ -309,12 +311,24 @@ export const CHAPTERS = [
     eyebrow: { ar: 'الخصوصية', en: 'Privacy' },
     title: { ar: 'ملفاتك [[تبقى لك]].', en: 'Your files [[stay yours]].' },
     points: [
-      { ar: 'بلا حساب، أبدًا.', en: 'No account, ever.' },
+      { icon: 'account', ar: 'بلا حساب، أبدًا.', en: 'No account, ever.' },
       {
+        icon: 'ads',
+        ar: 'بلا إعلانات، فلا شيء يقاطع عملك.',
+        en: 'No ads, so nothing interrupts your work.',
+      },
+      {
+        icon: 'ai',
+        ar: 'يعمل المساعد الذكي على حاسوبك افتراضيًا، فيبقى ملفك عندك.',
+        en: 'The AI assistant runs on your computer by default, so your file stays with you.',
+      },
+      {
+        icon: 'device',
         ar: 'تبقى ملفاتك على هذا الجهاز ما لم تختر إجراءً سحابيًا أو إجراءً بالذكاء الاصطناعي.',
         en: 'Your files stay on this device unless you choose a cloud or AI action.',
       },
       {
+        icon: 'telemetry',
         ar: 'لا نجمع أي بيانات استخدام، ويبقى الملف الأصلي كما هو حتى تحفظ.',
         en: 'No telemetry, and the original file stays untouched until you save.',
       },

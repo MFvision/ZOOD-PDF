@@ -1935,7 +1935,7 @@
   "starred.recentNote": "A starred recent file is remembered by name only: choosing it asks for the file again.",
   "starred.recentNoteDesktop": "A starred recent file opens from where it was last opened; if it has moved, you are asked for it.",
   "starred.libraryMissing": "{name} is not where it was. It may have been moved or deleted.",
-  "starred.chooseAgain": "{name} was added to the Library one file at a time, so it cannot be opened from here; choose it again.",
+  "starred.chooseAgain": "{name} was added by itself before this page was reloaded, so the browser needs it chosen once more; after that it opens from here.",
   "tags.title": "Tags",
   "tags.intro": "The Library's tags, with how many documents carry each. Choose one to search the Library by it.",
   "tags.empty": "The Library has no tags yet. Tag a document in the Library, or add a tag rule there.",

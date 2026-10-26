@@ -30,6 +30,7 @@ import { askScene, askFrame } from './ask-room.js';
 import { tryScene, tryFrame } from './try-room.js';
 import { toolsScene, toolsFrame } from './tools-room.js';
 import { snapTitle } from './hero-snap.js';
+import { ICONS } from './icons.js';
 import { startPageMorph } from './page-morph.js';
 import { startFoldable } from './foldable.js';
 
@@ -183,7 +184,8 @@ export function headlineFont() {
 // download comes first. Phones and unknown systems keep the list's own order.
 function visitorSystem() {
   const p = `${navigator.userAgentData?.platform ?? ''} ${navigator.platform ?? ''} ${navigator.userAgent}`;
-  if (/iPhone|iPad|iPod|Android/i.test(p) || navigator.maxTouchPoints > 1 && /Mac/i.test(p)) return '';
+  if (/iPhone|iPad|iPod|Android/i.test(p) || (navigator.maxTouchPoints > 1 && /Mac/i.test(p)))
+    return '';
   if (/Win/i.test(p)) return 'windows';
   if (/Mac/i.test(p)) return 'mac';
   return '';
@@ -198,7 +200,7 @@ function chapterBody(c, index) {
   let body = `${eyebrow}<${heading} class="title" id="${id}">${titleHtml(c.title)}</${heading}>`;
   if (c.lead) body += `<p class="lead">${escape(t(c.lead))}</p>`;
   if (c.points)
-    body += `<ul class="points">${c.points.map((p, k) => `<li style="--pi:${k}">${escape(t(p))}</li>`).join('')}</ul>`;
+    body += `<ul class="points${c.points.some((p) => p.icon) ? ' with-icons' : ''}">${c.points.map((p, k) => `<li style="--pi:${k}">${p.icon ? ICONS[p.icon] : ''}${escape(t(p))}</li>`).join('')}</ul>`;
   if (c.kind === 'platforms') {
     body += `<ul class="platforms">${PLATFORMS.map((p, k) => `<li style="--li:${k}"><strong>${escape(t(p.name))}</strong><span>${escape(t(p.status))}</span></li>`).join('')}</ul>`;
   }
@@ -222,7 +224,7 @@ function chapterBody(c, index) {
   }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
   if (c.facts)
-    body += `<ul class="facts">${c.facts.map((f) => `<li>${escape(t(f))}</li>`).join('')}</ul>`;
+    body += `<ul class="facts">${c.facts.map((f) => `<li>${f.icon ? ICONS[f.icon] : ''}${escape(t(f))}</li>`).join('')}</ul>`;
   if (c.cta || c.more) body += '<div class="actions">';
   if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta[visitorSystem()] ?? c.cta.label)));
   if (c.more) {
@@ -268,7 +270,6 @@ const ROOMS = {
   film: { scene: () => filmScene(t, escape, lang), frame: filmFrame },
   try: { scene: () => tryScene(t, escape), frame: tryFrame },
   tools: { scene: () => toolsScene(t, escape, media), frame: toolsFrame(media, t) },
-
 };
 
 function roomHtml(c, index) {
