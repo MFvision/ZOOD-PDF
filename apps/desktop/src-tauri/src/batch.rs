@@ -246,6 +246,9 @@ pub fn batch_write<R: Runtime>(
     };
     let written = write_new(&dir, &name, bytes).map_err(|e| format!("E_IO: {e}"))?;
     debug_log(format!("batch: wrote {}", written.display()));
+    // What the app made, it may hand on: onto the shelf, the drop zone's
+    // Undo and Show (`shelf_made`, `zone_made`), or the phone.
+    let _ = scope.allow_file(&written);
     Ok(written.to_string_lossy().into_owned())
 }
 

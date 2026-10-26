@@ -11,17 +11,17 @@ describe('the shelf', () => {
     expect(targetsOf(items, new Set(['/gone.pdf']))).toEqual(items);
   });
 
-  it('offers merging first for several PDFs, and Organize always', () => {
+  it('offers Organize first, then merging for several PDFs', () => {
     const kinds = actionsFor(['a.pdf', 'b.pdf'], false).map((a) => (a.kind === 'tool' ? a.tool : a.kind));
-    expect(kinds[0]).toBe('combine');
+    expect(kinds[0]).toBe('organize');
+    expect(kinds[1]).toBe('combine');
     expect(kinds).toContain('compress');
-    expect(kinds).toContain('organize');
     expect(kinds).not.toContain('phone');
     expect(kinds).not.toContain('open');
   });
 
   it('makes one PDF of several pictures, and opens a single file', () => {
-    expect(actionsFor(['a.jpg', 'b.png'], true)[0]).toEqual({ kind: 'tool', tool: 'topdf', onePdf: true });
+    expect(actionsFor(['a.jpg', 'b.png'], true)[1]).toEqual({ kind: 'tool', tool: 'topdf', onePdf: true });
     expect(actionsFor(['a.jpg', 'b.png'], true).at(-1)).toEqual({ kind: 'phone' });
     expect(actionsFor(['report.pdf'], false).map((a) => a.kind)).toContain('open');
     expect(actionsFor([], false)).toEqual([]);
@@ -40,7 +40,7 @@ describe('the shelf', () => {
     // Combine needs two PDFs.
     expect(fittingFor('combine', ['a.pdf', 'photo.jpg'])).toEqual([]);
     const kinds = actionsFor(mix, false).map((a) => (a.kind === 'tool' ? `${a.tool}${a.onePdf ? '-one' : ''}` : a.kind));
-    expect(kinds.slice(0, 3)).toEqual(['combine', 'topdf-one', 'compress']);
+    expect(kinds.slice(0, 4)).toEqual(['organize', 'combine', 'topdf-one', 'compress']);
     expect(convertibleTo(mix).has('topdf') && convertibleTo(mix).has('word')).toBe(true);
   });
 

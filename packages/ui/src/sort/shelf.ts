@@ -42,7 +42,8 @@ export function fittingFor(tool: QuickToolId, names: readonly string[]): number[
 }
 
 /**
- * The "Do it now" buttons for these files, best first. A mix of kinds still
+ * The "Do it now" buttons for these files: Organize first (ZOOD sorting them
+ * is what the shelf is for), then the tools, best first. A mix of kinds still
  * gets its tools: each runs on the files it takes (Merge on the PDFs, Make
  * one PDF on the pictures and documents).
  */
@@ -50,12 +51,11 @@ export function actionsFor(names: readonly string[], phone: boolean): ShelfActio
   if (names.length === 0) return [];
   const pdfs = names.filter(isPdfName).length;
   const others = names.filter(isConvertibleName).length;
-  const actions: ShelfAction[] = [];
+  const actions: ShelfAction[] = [{ kind: 'organize' }];
   if (pdfs >= 2) actions.push({ kind: 'tool', tool: 'combine' });
   if (others >= 2) actions.push({ kind: 'tool', tool: 'topdf', onePdf: true });
   if (pdfs >= 1) actions.push({ kind: 'tool', tool: 'compress' }, { kind: 'tool', tool: 'ocr' }, { kind: 'tool', tool: 'split' }, { kind: 'tool', tool: 'protect' });
   if (names.length === 1 && (pdfs || others)) actions.push({ kind: 'open' });
-  actions.push({ kind: 'organize' });
   if (phone) actions.push({ kind: 'phone' });
   return actions;
 }

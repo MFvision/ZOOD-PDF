@@ -2,7 +2,12 @@
 //! point at: a shortcut to a PDF on the desktop is sorted, or run through a
 //! tool, as that PDF.
 //!
-//! The shortcut is read as Microsoft documents it ([MS-SHLLINK]): the target's
+//! On Windows the system reads the shortcut first (the Shell's own
+//! `IShellLinkW`), as Explorer does: it knows the target from the shortcut's
+//! item list, which holds the full Unicode name even where the rest has only
+//! the PC's code page (an Arabic name) and the relative path is stale (a
+//! shortcut copied to another folder). Without it, or where it finds no
+//! file, the shortcut is read as Microsoft documents it ([MS-SHLLINK]): the target's
 //! full path from its LinkInfo (the Unicode one when there, which Arabic names
 //! need), else its path relative to the shortcut. Shortcuts to folders, to
 //! things that are not files, or to files that are gone stand for nothing.
@@ -142,6 +147,10 @@ pub fn file_of(path: &Path) -> Option<PathBuf> {
     if !is_shortcut(path) {
         return Some(path.to_path_buf());
     }
+    #[cfg(target_os = "windows")]
+    if let Some(found) = shell_target(path).filter(|p| p.is_file() && !is_shortcut(p)) {
+        return Some(found);
+    }
     let file = std::fs::File::open(path).ok()?;
     let mut bytes = Vec::new();
     use std::io::Read;
@@ -157,6 +166,41 @@ pub fn file_of(path: &Path) -> Option<PathBuf> {
         .into_iter()
         .flatten()
         .find(|p| p.is_file() && !is_shortcut(p))
+}
+
+/// The shortcut's target as the Windows Shell reads it, without resolving
+/// it (no search for a moved target, no window).
+#[cfg(target_os = "windows")]
+fn shell_target(path: &Path) -> Option<PathBuf> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows::core::{Interface, HSTRING};
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER,
+        COINIT_APARTMENTTHREADED, STGM_READ,
+    };
+    use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+
+    // SAFETY: plain COM calls on this thread, every result checked; the
+    // buffer outlives the call that fills it, and its length bounds it.
+    unsafe {
+        // Already initialised on this thread (the window thread) is fine.
+        let joined = CoInitializeEx(None, COINIT_APARTMENTTHREADED).is_ok();
+        let found = (|| {
+            let link: IShellLinkW =
+                CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).ok()?;
+            let file: IPersistFile = link.cast().ok()?;
+            file.Load(&HSTRING::from(path.as_os_str()), STGM_READ)
+                .ok()?;
+            let mut buffer = vec![0u16; 32_768];
+            link.GetPath(&mut buffer, std::ptr::null_mut(), 0).ok()?;
+            let end = buffer.iter().position(|u| *u == 0)?;
+            (end > 0).then(|| PathBuf::from(std::ffi::OsString::from_wide(&buffer[..end])))
+        })();
+        if joined {
+            CoUninitialize();
+        }
+        found
+    }
 }
 
 #[cfg(test)]

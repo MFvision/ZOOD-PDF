@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Combine, FileText, Hand, Image, MousePointer2, Repeat2, Shrink, Sparkles, SquareArrowOutUpRight } from 'lucide-react';
+import { FileText, FolderInput, Globe, Hand, Image, MousePointer2, Printer, Send, Sparkles, SquareArrowOutUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import './sortScene.css';
 import { Icon } from '../components/Icon';
@@ -13,10 +13,10 @@ import type { SectionId } from '../settings/SettingsWindow';
 import { Glow, Replay, Steps, usePhases } from './scenes';
 
 /**
- * ZOOD's shelf in the tour, with practice: a pretend desktop with five
- * messy files, and ZOOD's drop zone at the top. Drag the files up (any
- * one brings the rest along, as a selection would) and the zone takes
- * them onto the shelf and shows what it offers at once. The steps play the same story,
+ * ZOOD's drop zone in the tour, with practice: a pretend desktop with five
+ * messy files, and ZOOD at the top. Drag the files up (any one brings the
+ * rest along, as a selection would) and the zone opens its tiles, Web,
+ * Send and Print, with Put away for tidying the Desktop on its own. The steps play the same story,
  * and the two real switches sit under it: keep ZOOD ready, so it is there
  * when files need sorting, and the drop zone itself.
  */
@@ -37,10 +37,10 @@ const FILES: { name: string; icon: LucideIcon }[] = [
 ];
 
 const IDEAS: { icon: LucideIcon; text: TKey }[] = [
-  { icon: Combine, text: 'tour.sort.idea1' },
-  { icon: Shrink, text: 'tour.sort.idea2' },
-  { icon: Repeat2, text: 'tour.sort.idea3' },
-  { icon: Sparkles, text: 'tour.sort.idea4' },
+  { icon: Globe, text: 'tour.sort.idea1' },
+  { icon: Send, text: 'tour.sort.idea2' },
+  { icon: Printer, text: 'tour.sort.idea3' },
+  { icon: FolderInput, text: 'tour.sort.idea4' },
 ];
 
 export function SortScene({ onSettings }: { onSettings: (section: SectionId) => void }) {
