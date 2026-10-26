@@ -448,7 +448,7 @@ export const DROP_ZONE_EVENT = 'drop://state';
 export const SORT_SAY_EVENT = 'sort://say';
 /** The drop zone's look and the shelf's count (`sort.rs`, ZoneState). */
 export interface DropZoneState {
-  look: 'hidden' | 'peek' | 'open' | 'over' | 'tab' | 'shelf';
+  look: 'hidden' | 'peek' | 'open' | 'over' | 'tab' | 'shelf' | 'note';
   count: number;
   /** Files dragged over the open shelf. */
   over: boolean;
@@ -489,6 +489,89 @@ export const shelfSort = (paths: readonly string[]) => shelfCall('shelf_sort', {
 /** A tool that needs the person: its quick window opens on these files. */
 export const shelfQuick = (tool: string, paths: readonly string[]) => shelfCall('shelf_quick', { tool, paths });
 export const shelfPhone = (paths: readonly string[]) => shelfCall('shelf_phone', { paths });
+
+/* ------------------------------------------------- the drop zone's tiles */
+
+/** What is in hand over the open drop zone (`src-tauri/src/sort.rs`). */
+export const ZONE_HAND_EVENT = 'drop://hand';
+/** Where the pointer is over it, in the page's points. */
+export const ZONE_POINTER_EVENT = 'drop://pointer';
+/** Files let go on it: the page says where they go (`zoneKeep` or `zoneTook`). */
+export const ZONE_DROPPED_EVENT = 'drop://dropped';
+/** Put away moved files (`src-tauri/src/putaway.rs`). */
+export const PUT_AWAY_EVENT = 'drop://putaway';
+
+export interface ZoneHand {
+  names: string[];
+  pictures: string[];
+}
+
+export interface ZoneDropped {
+  id: number;
+  paths: string[];
+  names: string[];
+  sizes: number[];
+  missed: number;
+  x: number;
+  y: number;
+}
+
+export const zoneKeep = (id: number) => shelfCall('zone_keep', { id });
+export const zoneTook = (id: number, tile: string) => shelfCall('zone_took', { id, tile });
+export const zoneNote = (show: boolean) => shelfCall('zone_note', { show });
+export const zoneMade = (paths: readonly string[]) => shelfCall('zone_made', { paths });
+export const zoneShowMade = () => shelfCall('zone_show_made');
+export async function zoneUndoMade(): Promise<number> {
+  return ((await invoke('zone_undo_made').catch(() => 0)) as number) ?? 0;
+}
+
+/* --------------------------------------------------------------- put away */
+
+export interface PutAwayRule {
+  name: string;
+  icon: string;
+  exts: string[];
+  words: string[];
+  /** The folder; empty when the rule bins. */
+  to: string;
+  bin: boolean;
+  binDays: number;
+}
+
+export interface PutAwaySettings {
+  on: boolean;
+  desktop: boolean;
+  downloads: boolean;
+  waitMinutes: number;
+  madeFollow: boolean;
+  since: number;
+  rules: PutAwayRule[];
+}
+
+export interface PutAwayPlaces {
+  home: string;
+  documents: string;
+  pictures: string;
+  videos: string;
+  music: string;
+  desktop: string;
+  downloads: string;
+}
+
+export interface PutAwayBatch {
+  count: number;
+  /** How many went to each rule's place: [name, count]. */
+  places: [string, number][];
+  show: string | null;
+}
+
+export const putAwayGet = () => invoke('putaway_get') as Promise<PutAwaySettings>;
+export const putAwaySet = (settings: PutAwaySettings) => invoke('putaway_set', { settings }) as Promise<PutAwaySettings>;
+export const putAwayPlaces = () => invoke('putaway_places') as Promise<PutAwayPlaces>;
+export const putAwayNow = () => invoke('putaway_now') as Promise<PutAwayBatch>;
+export const putAwayUndo = () => invoke('putaway_undo') as Promise<{ back: number; inBin: number }>;
+export const putAwayShow = (path: string) => shelfCall('putaway_show', { path });
+export const putAwayLog = () => shelfCall('putaway_log');
 
 /** Files a tool on the shelf made go onto it; answers how many wait now. */
 export function shelfMade(paths: readonly string[]): Promise<number> {

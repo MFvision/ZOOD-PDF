@@ -13,7 +13,9 @@
 #   6. drags a shortcut to the file plainly to the top of the screen and lets
 #      go on the drop zone there: it takes the shortcut as the PDF;
 #   7. drags two copied shortcuts to Arabic-named PDFs there at once: the
-#      shelf takes both PDFs.
+#      shelf takes both PDFs;
+#   8. drags the PDF itself up and lets go on a tile: what it makes lands
+#      beside the original.
 # Each step is checked in the app's ring.log and in the folder, and by where
 # the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
@@ -364,6 +366,41 @@ try {
   Check ((Log) -notmatch 'dropped not taken') 'no dropped shortcut is left out'
 } catch {
   Check $false "the Arabic shortcut step ran ($_)"
+}
+
+# 8. Let go on a tile (after "Stow"): the PDF itself dragged up and let go
+# off centre, on the tile there (Send with the panel left to right, Web
+# right to left). What the tile makes lands beside the original.
+try {
+  # First the shelf folds away, so the next drag opens the tiles again.
+  [Input]::Mouse(400, 600, 0)
+  Start-Sleep -Seconds 5
+  $arabic = Join-Path $folder 'arabic'
+  $t0 = Get-Date
+  $at = FileItem 'sample'
+  $tx = $zx + 80
+  [Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
+  [Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 200
+  foreach ($step in 1..30) {
+    [Input]::Mouse($at[0] + $step * ($tx - $at[0]) / 30, $at[1] + $step * ($zy - $at[1]) / 30, 0)
+    Start-Sleep -Milliseconds 50
+  }
+  foreach ($step in 1..10) { [Input]::Mouse($tx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+  Start-Sleep -Milliseconds 600
+  Shot 'zone-8-tile.png'
+  [Input]::Mouse($tx, $zy, 0x0004)
+  $made = @()
+  foreach ($try in 1..30) {
+    Start-Sleep -Seconds 1
+    $made = @(Get-ChildItem $folder -Recurse -File | Where-Object { $_.LastWriteTime -gt $t0 -and $_.Extension -ne '.lnk' -and $_.FullName -notlike "$arabic*" })
+    if ($made.Count -gt 0) { break }
+  }
+  Shot 'zone-8-note.png'
+  Write-Host "made by the tile: $($made.FullName -join ', ')"
+  Check ((Log) -match 'dropped on the \w+ tile') 'letting go on a tile runs it'
+  Check ($made.Count -gt 0) 'what the tile makes lands beside the original'
+} catch {
+  Check $false "the tile step ran ($_)"
 }
 
 Set-Content (Join-Path $Out 'ring.log') (Log)

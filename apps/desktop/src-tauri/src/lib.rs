@@ -31,6 +31,7 @@ pub mod places;
 pub mod presence;
 pub mod print;
 pub mod profile;
+pub mod putaway;
 pub mod quick;
 pub mod recent;
 pub mod remote;
@@ -405,6 +406,7 @@ pub fn run() {
             ring::start(app.handle(), hidden);
             ask::start(app.handle());
             presence::start(app.handle());
+            putaway::start(app.handle());
             #[cfg(target_os = "macos")]
             if hidden {
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -537,6 +539,19 @@ pub fn run() {
             shelf::shelf_quick,
             shelf::shelf_has_phone,
             shelf::shelf_phone,
+            sort::zone_keep,
+            sort::zone_took,
+            sort::zone_note,
+            sort::zone_made,
+            sort::zone_undo_made,
+            sort::zone_show_made,
+            putaway::putaway_get,
+            putaway::putaway_set,
+            putaway::putaway_places,
+            putaway::putaway_now,
+            putaway::putaway_undo,
+            putaway::putaway_show,
+            putaway::putaway_log,
             remote::remote_start,
             remote::remote_stop,
             remote::remote_status,
@@ -640,7 +655,13 @@ pub fn run() {
             }
             // Files let go on ZOOD's drop zone or on the ZOOD bubble: sorted (src/sort.rs).
             if window.label() == sort::ZONE_LABEL {
-                sort::on_drag(window, drag);
+                let at = match drag {
+                    DragDropEvent::Enter { position, .. }
+                    | DragDropEvent::Over { position }
+                    | DragDropEvent::Drop { position, .. } => Some(logical(window, position)),
+                    _ => None,
+                };
+                sort::on_drag(window, drag, at);
                 return;
             }
             if window.label() == presence::BUBBLE_LABEL {

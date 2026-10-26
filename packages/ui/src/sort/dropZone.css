@@ -482,3 +482,296 @@ html.zood-drop-page body {
     animation: none;
   }
 }
+
+/* ------------------------------------------------- the tiles (StowPanel.tsx) */
+
+/* Open under the top edge while files are dragged there: what is in hand,
+   three tiles that say what the files are for, and the formats below. */
+.zood-drop-stow {
+  --zone-card: rgb(246 241 234 / 7%);
+  --zone-card-hot: rgb(232 184 120 / 26%);
+  --zone-bronze: #e8b878;
+
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  grid-template-rows: 1fr auto;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border-radius: 0 0 34px 34px;
+  animation: zood-drop-open 240ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.zood-drop-stow.is-over {
+  box-shadow:
+    inset 0 -2px 0 rgb(232 184 120 / 55%),
+    inset 0 0 0 1px rgb(232 184 120 / 25%);
+}
+
+.stow-hand {
+  display: flex;
+  grid-row: 1 / 3;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-inline-size: 0;
+  padding: 10px 8px;
+  border-radius: 20px;
+  background: var(--zone-card);
+  transition: background 140ms ease;
+}
+
+.stow-hand.is-hot {
+  background: var(--zone-card-hot);
+}
+
+.stow-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 74px;
+  block-size: 74px;
+  border-radius: 16px;
+  background: rgb(246 241 234 / 10%);
+  color: var(--zone-ink);
+  box-shadow: 0 8px 18px rgb(0 0 0 / 45%);
+}
+
+.stow-preview img {
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+/* Several in hand: a stack behind the first. */
+.stow-preview.is-stack {
+  box-shadow:
+    6px -6px 0 -1px rgb(246 241 234 / 18%),
+    12px -12px 0 -2px rgb(246 241 234 / 9%),
+    0 8px 18px rgb(0 0 0 / 45%);
+}
+
+.stow-count {
+  position: absolute;
+  inset-block-start: -8px;
+  inset-inline-end: -8px;
+  display: grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding-inline: 5px;
+  border-radius: 11px;
+  background: var(--zone-bronze);
+  color: #1d1408;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stow-hand-name {
+  overflow: hidden;
+  max-inline-size: 100%;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stow-hand-keep {
+  color: var(--zone-muted);
+  font-size: 10.5px;
+}
+
+.stow-tiles {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 10px;
+  min-inline-size: 0;
+}
+
+.stow-tiles.is-empty {
+  display: grid;
+  place-items: center;
+  color: var(--zone-muted);
+  font-size: 13px;
+}
+
+.stow-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-inline-size: 0;
+  border-radius: 20px;
+  background: var(--zone-card);
+  color: var(--zone-muted);
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+.stow-tile-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 46px;
+  block-size: 46px;
+  border-radius: 50%;
+  background: rgb(246 241 234 / 8%);
+  color: var(--zone-bronze);
+}
+
+.stow-tile-word {
+  overflow: hidden;
+  max-inline-size: 92%;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The tile under the pointer lights up, bounces a little and says what it does. */
+.stow-tile.is-hot {
+  background: var(--zone-card-hot);
+  color: var(--zone-ink);
+  transform: scale(1.04);
+}
+
+.stow-tile.is-hot .stow-tile-icon {
+  background: rgb(232 184 120 / 30%);
+  color: #fff;
+}
+
+.stow-formats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+/* A format as a little document with its letters on it. */
+.stow-format {
+  display: grid;
+  place-items: center;
+  inline-size: 38px;
+  block-size: 44px;
+  border-radius: 6px 12px 6px 6px;
+  background: var(--zone-card);
+  color: var(--zone-ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  clip-path: polygon(0 0, 72% 0, 100% 22%, 100% 100%, 0 100%);
+  transition:
+    background 140ms ease,
+    transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+[dir="rtl"] .stow-format {
+  clip-path: polygon(28% 0, 100% 0, 100% 100%, 0 100%, 0 22%);
+}
+
+.stow-format.is-hot {
+  background: var(--zone-card-hot);
+  transform: translateY(-3px);
+}
+
+.stow-format-word {
+  color: var(--zone-bronze);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------ the note at the top */
+
+/* What a tile or Put away did, with Undo and Show; it goes after a while. */
+.zood-drop-note {
+  gap: 10px;
+  padding: 4px 10px 8px 16px;
+  border-radius: 0 0 22px 22px;
+  animation: zood-drop-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.note-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 50%;
+  background: rgb(232 184 120 / 22%);
+  color: #e8b878;
+  animation: note-bounce 420ms cubic-bezier(0.2, 0.9, 0.3, 1.6);
+}
+
+.note-icon.is-working {
+  animation: none;
+}
+
+.note-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.note-words strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-where {
+  overflow: hidden;
+  color: var(--zone-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-actions {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.note-actions button {
+  display: grid;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(246 241 234 / 10%);
+  color: var(--zone-ink);
+  cursor: pointer;
+}
+
+.note-actions button:hover:not(:disabled) {
+  background: rgb(246 241 234 / 20%);
+}
+
+.note-actions button:disabled {
+  opacity: 0.4;
+}
+
+@keyframes note-bounce {
+  40% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zood-drop-stow,
+  .zood-drop-note,
+  .note-icon,
+  .stow-tile,
+  .stow-format {
+    animation: none;
+    transition: none;
+  }
+}

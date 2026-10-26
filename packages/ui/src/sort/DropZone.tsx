@@ -18,6 +18,7 @@ import {
   Sparkles,
   SquareArrowOutUpRight,
   Trash2,
+  Undo2,
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -30,7 +31,13 @@ import {
   DROP_ZONE_EVENT,
   SHELF_CHANGED_EVENT,
   SHELF_MISSED_EVENT,
+  PUT_AWAY_EVENT,
+  ZONE_DROPPED_EVENT,
+  ZONE_HAND_EVENT,
+  ZONE_POINTER_EVENT,
   onHostEvent,
+  putAwayShow,
+  putAwayUndo,
   readBatchFile,
   shelfClear,
   shelfCollapse,
@@ -45,8 +52,14 @@ import {
   shelfRemove,
   shelfReveal,
   shelfSort,
+  zoneKeep,
+  zoneMade,
+  zoneNote,
+  zoneShowMade,
+  zoneTook,
+  zoneUndoMade,
 } from '../core/host-tauri';
-import type { DropZoneState, ShelfItem } from '../core/host-tauri';
+import type { DropZoneState, PutAwayBatch, ShelfItem, ZoneDropped, ZoneHand } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
@@ -56,6 +69,9 @@ import type { QuickToolId } from '../quick/plan';
 import { runQuick, wantsPassword } from '../quick/runQuick';
 import { CONVERT_ROW, THUMB_MAX_BYTES, THUMB_TYPES, actionsFor, convertibleTo, fittingFor, targetsOf, typeOf } from './shelf';
 import type { ShelfAction } from './shelf';
+import { StowPanel } from './StowPanel';
+import { dropTargetAt, formatsFor, runsFor, tilesFor } from './stow';
+import { canWriteWebp, runStow } from './stowRun';
 
 /**
  * ZOOD's drop zone and shelf (`src-tauri/src/sort.rs`, `shelf.rs`), after
@@ -96,6 +112,13 @@ const DRAG_START = 5;
 const DONE_SHOWN_MS = 4000;
 const MISSED_SHOWN_MS = 9000;
 const FAILED_SHOWN_MS = 6000;
+/** How long the note at the top stays (unless the pointer is on it). */
+const NOTE_SHOWN_MS = 6000;
+
+/** The note at the top: a tile at work or done, or what Put away did. */
+type Note =
+  | { kind: 'tile'; done: number; total: number; made: number; failed: number; end: boolean; undone?: number }
+  | { kind: 'putaway'; batch: PutAwayBatch; undone?: { back: number; inBin: number } };
 
 /** A mouse wheel turns a sideways row (the files, the buttons), towards its end in either direction. */
 function wheelSideways(event: ReactWheelEvent<HTMLElement>) {
@@ -154,6 +177,12 @@ function Zone() {
   /** Of the last drop, how many ZOOD could not take (folders, shortcuts to files that are gone). */
   const [missed, setMissed] = useState(0);
   const missedTimer = useRef<number | undefined>(undefined);
+  const [hand, setHand] = useState<ZoneHand>({ names: [], pictures: [] });
+  const [hot, setHot] = useState<string | null>(null);
+  const [topNote, setTopNote] = useState<Note | null>(null);
+  const noteTimer = useRef<number | undefined>(undefined);
+  const noteHovered = useRef(false);
+  const webp = useMemo(() => canWriteWebp(), []);
   const press = useRef<{ x: number; y: number; path: string; dragged: boolean } | null>(null);
   const endTimer = useRef<number | undefined>(undefined);
 
@@ -181,6 +210,13 @@ function Zone() {
         }
       }),
       onHostEvent<number>(SHELF_CHANGED_EVENT, () => reload()),
+      onHostEvent<ZoneHand>(ZONE_HAND_EVENT, (next) => {
+        setHand(next);
+        setHot(null);
+      }),
+      onHostEvent<[number, number]>(ZONE_POINTER_EVENT, ([x, y]) => setHot(dropTargetAt(x, y))),
+      onHostEvent<ZoneDropped>(ZONE_DROPPED_EVENT, (dropped) => onDropped(dropped)),
+      onHostEvent<PutAwayBatch>(PUT_AWAY_EVENT, (batch) => onPutAway(batch)),
       onHostEvent<number>(SHELF_MISSED_EVENT, (count) => {
         setMissed(count);
         window.clearTimeout(missedTimer.current);
@@ -194,9 +230,72 @@ function Zone() {
     () => () => {
       window.clearTimeout(endTimer.current);
       window.clearTimeout(missedTimer.current);
+      window.clearTimeout(noteTimer.current);
     },
     [],
   );
+
+  /* ------------------------------------------- the note, and the tiles */
+
+  /** The note goes after a while, unless the pointer is on it. */
+  const closeNoteLater = (ms = NOTE_SHOWN_MS) => {
+    window.clearTimeout(noteTimer.current);
+    noteTimer.current = window.setTimeout(function close() {
+      if (noteHovered.current) {
+        noteTimer.current = window.setTimeout(close, 1000);
+        return;
+      }
+      setTopNote(null);
+      void zoneNote(false);
+    }, ms);
+  };
+
+  const showNote = (next: Note) => {
+    setTopNote(next);
+    void zoneNote(true);
+    if (next.kind === 'putaway' || (next.kind === 'tile' && next.end)) closeNoteLater();
+  };
+
+  const onPutAway = useEffectEvent((batch: PutAwayBatch) => showNote({ kind: 'putaway', batch }));
+
+  /** Files let go on the open zone: run the tile or format under them, or keep them on the shelf. */
+  const onDropped = useEffectEvent((dropped: ZoneDropped) => {
+    const target = dropTargetAt(dropped.x, dropped.y);
+    setHot(null);
+    const names = dropped.names;
+    const makes = target?.startsWith('tile:')
+      ? tilesFor(names).find((tile) => `tile:${tile.id}` === target)?.makes
+      : target?.startsWith('format:')
+        ? formatsFor(names, webp).find((chip) => `format:${chip.id}` === target)?.makes
+        : undefined;
+    const runs = makes ? runsFor(names, makes) : [];
+    if (!target || runs.length === 0) return void zoneKeep(dropped.id);
+    void zoneTook(dropped.id, target.replace(/^(tile|format):/, ''));
+    const total = runs.reduce((sum, run) => sum + run.at.length, 0);
+    let before = 0;
+    let made: string[] = [];
+    let failed = 0;
+    showNote({ kind: 'tile', done: 0, total, made: 0, failed: 0, end: false });
+    void client.init();
+    void (async () => {
+      for (const run of runs) {
+        const files = run.at.map((at) => ({ name: names[at]!, path: dropped.paths[at]!, size: dropped.sizes[at] ?? 0 }));
+        const result = await runStow({
+          make: run.make,
+          files,
+          client,
+          lang,
+          t,
+          onProgress: (done) => setTopNote({ kind: 'tile', done: before + done, total, made: made.length, failed, end: false }),
+        });
+        before += files.length;
+        made = [...made, ...result.made];
+        failed += result.failed;
+      }
+      void zoneMade(made);
+      showNote({ kind: 'tile', done: total, total, made: made.length, failed, end: true });
+    })();
+  });
 
   const targets = targetsOf(items, picked);
   const names = targets.map((item) => item.name);
@@ -469,6 +568,71 @@ function Zone() {
         ) : null}
       </main>
     );
+  }
+
+  if (look === 'note' && topNote) {
+    const isTile = topNote.kind === 'tile';
+    const working = isTile && !topNote.end;
+    const words = isTile
+      ? topNote.undone !== undefined
+        ? t('stow.undone', { count: topNote.undone })
+        : !topNote.end
+          ? t('stow.working', { done: topNote.done, total: topNote.total })
+          : topNote.made > 0
+            ? t('stow.done', { count: topNote.made }) + (topNote.failed > 0 ? ` · ${t('stow.someFailed', { count: topNote.failed })}` : '')
+            : t('stow.failed')
+      : topNote.undone
+        ? t('putAway.undone', { count: topNote.undone.back }) + (topNote.undone.inBin > 0 ? ` · ${t('putAway.inBin', { count: topNote.undone.inBin })}` : '')
+        : t('putAway.done', { count: topNote.batch.count });
+    const where = !isTile && !topNote.undone ? topNote.batch.places.map(([name, count]) => t('putAway.place', { count, name })).join(lang === 'ar' ? '، ' : ', ') : '';
+    const canAct = isTile ? topNote.end && topNote.made > 0 && topNote.undone === undefined : !topNote.undone;
+    return (
+      <main
+        className="zood-drop zood-drop-note"
+        aria-live="polite"
+        onPointerEnter={() => (noteHovered.current = true)}
+        onPointerLeave={() => (noteHovered.current = false)}
+      >
+        <span className={working ? 'note-icon is-working' : 'note-icon'}>
+          {working ? <Loader2 size={16} className="shelf-spin" /> : isTile && topNote.end && topNote.made === 0 ? <CircleAlert size={16} /> : isTile ? <Check size={16} /> : <FolderOpen size={16} />}
+        </span>
+        <span className="note-words">
+          <strong>{words}</strong>
+          {where ? <bdi className="note-where">{where}</bdi> : null}
+        </span>
+        {canAct ? (
+          <span className="note-actions">
+            <button
+              type="button"
+              title={t('stow.undo')}
+              aria-label={t('stow.undo')}
+              onClick={() => {
+                if (topNote.kind === 'tile') void zoneUndoMade().then((count) => showNote({ ...topNote, undone: count, end: true }));
+                else void putAwayUndo().then((undone) => showNote({ ...topNote, undone }), () => undefined);
+              }}
+            >
+              <Undo2 size={15} />
+            </button>
+            <button
+              type="button"
+              title={t('stow.show')}
+              aria-label={t('stow.show')}
+              onClick={() => {
+                if (topNote.kind === 'tile') void zoneShowMade();
+                else if (topNote.batch.show) void putAwayShow(topNote.batch.show);
+              }}
+              disabled={topNote.kind === 'putaway' && !topNote.batch.show}
+            >
+              <FolderOpen size={15} />
+            </button>
+          </span>
+        ) : null}
+      </main>
+    );
+  }
+
+  if ((look === 'open' || look === 'over') && hand.names.length > 0) {
+    return <StowPanel hand={hand} tiles={tilesFor(hand.names)} formats={formatsFor(hand.names, webp)} hot={hot} over={look === 'over'} />;
   }
 
   const open = look === 'open' || look === 'over';

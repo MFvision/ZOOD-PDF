@@ -382,7 +382,7 @@ pub fn shelf_reveal(path: String) -> Result<(), String> {
 }
 
 #[cfg(target_os = "windows")]
-fn reveal(file: &Path) -> Result<(), String> {
+pub fn reveal(file: &Path) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     // Explorer reads its own command line: the path is quoted whole.
     std::process::Command::new("explorer.exe")
@@ -393,7 +393,7 @@ fn reveal(file: &Path) -> Result<(), String> {
 }
 
 #[cfg(target_os = "macos")]
-fn reveal(file: &Path) -> Result<(), String> {
+pub fn reveal(file: &Path) -> Result<(), String> {
     std::process::Command::new("open")
         .arg("-R")
         .arg(file)
@@ -403,7 +403,7 @@ fn reveal(file: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-fn reveal(file: &Path) -> Result<(), String> {
+pub fn reveal(file: &Path) -> Result<(), String> {
     let folder = file.parent().ok_or("E_IO: no folder")?;
     std::process::Command::new("xdg-open")
         .arg(folder)
