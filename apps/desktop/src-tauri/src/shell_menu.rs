@@ -414,7 +414,9 @@ pub fn set_run_at_sign_in(command: Option<String>) -> Result<(), String> {
 }
 
 /// Puts the menu in, in `lang`, pointing at this program; or takes it out.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shell_menu_set(
     on: bool,
     lang: String,
@@ -463,7 +465,9 @@ pub fn shell_menu_set(
 }
 
 /// Whether the menu is in.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shell_menu_state() -> MenuState {
     #[cfg(target_os = "windows")]
     {

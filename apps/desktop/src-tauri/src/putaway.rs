@@ -478,7 +478,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
 
 /* ------------------------------------------------------------- commands */
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn putaway_get<R: Runtime>(app: AppHandle<R>) -> Settings {
     settings(&app)
 }
@@ -521,7 +521,7 @@ pub struct Places {
     pub downloads: String,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn putaway_places<R: Runtime>(app: AppHandle<R>) -> Result<Places, String> {
     let path = app.path();
     let s = |p: tauri::Result<PathBuf>| {
@@ -568,7 +568,7 @@ pub async fn putaway_undo<R: Runtime>(app: AppHandle<R>) -> Result<Undone, Strin
 }
 
 /// Shows a file Put away moved, in its folder (only one of the last batch).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn putaway_show<R: Runtime>(app: AppHandle<R>, path: String) -> Result<(), String> {
     let data = data_dir(&app).ok_or_else(|| "E_IO: no data folder".to_string())?;
     let steps: Vec<Step> = std::fs::read_to_string(data.join(UNDO_FILE))
@@ -583,7 +583,7 @@ pub fn putaway_show<R: Runtime>(app: AppHandle<R>, path: String) -> Result<(), S
 }
 
 /// Opens the plain text log of every move, shown in its folder.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn putaway_log<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
     let data = data_dir(&app).ok_or_else(|| "E_IO: no data folder".to_string())?;
     let file = data.join(LOG_FILE);

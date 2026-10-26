@@ -6,7 +6,9 @@
 /// (macOS, a Windows work account), else the account name. Empty when
 /// neither can be read or the account is a shared one ("Admin", "User"),
 /// so the greeting says "Good evening" without a name rather than a wrong one.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn system_user_name() -> String {
     #[cfg(target_os = "macos")]
     {
@@ -93,7 +95,9 @@ pub fn tidy(account: &str) -> String {
 
 /// Opens Windows' "Default apps" page, where the person makes this app the
 /// one for PDFs (an app may not make itself the default). False elsewhere.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn open_default_apps() -> bool {
     #[cfg(target_os = "windows")]
     let opened = std::process::Command::new("explorer")

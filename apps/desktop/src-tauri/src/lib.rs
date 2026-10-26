@@ -42,6 +42,7 @@ pub mod shell_menu;
 pub mod signing;
 pub mod sort;
 pub mod speech;
+pub mod stall;
 pub mod system;
 pub mod updates;
 
@@ -258,7 +259,9 @@ fn debug_selfcheck<R: Runtime>(app: AppHandle<R>) -> Option<String> {
 /// the person has confirmed it in the interface (`links/openLink.ts`). The
 /// address is checked again here — only `http`, `https` and `mailto` — and
 /// handed to the system's opener as one argument, never through a shell.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 fn open_url(url: String) -> Result<(), String> {
     // An e-mail address is opened without `attach` fields (`safe_uri`).
     let Some(url) = warraq_core::safe_uri(&url) else {
@@ -377,6 +380,8 @@ pub fn run() {
         // Points warraq-render at the bundled PDFium and starts the core thread
         // before the window can invoke anything (see `core_bridge`).
         .setup(|app| {
+            // First: what holds the main thread up is written down (src/stall.rs).
+            stall::start(app.handle());
             let bridge = core_bridge::setup(app.handle());
             println!("warraq: core engine = {}", bridge.engine());
             app.manage(bridge);
@@ -431,7 +436,7 @@ pub fn run() {
             )));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(stall::timed(tauri::generate_handler![
             core_version,
             debug_selfcheck,
             open_url,
@@ -623,7 +628,7 @@ pub fn run() {
             neural::speech_synthesize,
             system::system_user_name,
             system::open_default_apps,
-        ])
+        ]))
         .on_window_event(|window, event| {
             // The last window of a run that is not kept in the background
             // ends it: the ring's hidden window must not keep it alive.
