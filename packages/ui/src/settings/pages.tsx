@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, RotateCcw } from 'lucide-react';
+import { AlignLeft, Check, CircleHelp, Clock, Cloud, Languages, Lightbulb, ListChecks, Mail, RotateCcw, Sparkles, Star, Wrench, Zap } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useConfirm } from '../components/ConfirmDialog';
 import { APP_ICON } from '../components/appIcon';
@@ -38,14 +39,16 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { LOOK_IDS } from '../state/preferences';
 import type { ThemeMode, UiLook } from '../state/preferences';
 import { ACCENTS, HOME_SECTIONS, resetSettings, updateSettings, useSettings } from '../state/settings';
-import type { Accent, AppSettings, HomeSection } from '../state/settings';
+import type { Accent, AiPrompt, AppSettings, HomeSection } from '../state/settings';
 import { openTourAt } from '../tour/Tour';
 import { openSupportAt } from '../support/open';
 import type { SupportTab } from '../support/open';
 import { readTickets } from '../support/tickets';
 import { appVersion, canUpdate, checkForUpdate, useUpdateState } from '../updates/updates';
 import { useInstallUpdate } from '../updates/UpdateBanner';
-import { ActionRow, Choice, Group, OrderedList, Pick, Row, TextSetting, Toggle } from './controls';
+import { ActionRow, Choice, Group, Pick, Row, TextSetting, Toggle } from './controls';
+import { LayoutBoard } from './LayoutBoard';
+import type { BoardLook } from './LayoutBoard';
 import { LookPreview } from './LookPreview';
 import { ShortcutField } from './ShortcutField';
 import { DropPanelSettings } from './DropPanelSettings';
@@ -387,6 +390,8 @@ export function ViewingPage() {
 
 /* --------------------------------------------------------------------- Home */
 
+const SECTION_ICON: Record<HomeSection, LucideIcon> = { actions: Zap, recent: Clock, starred: Star, tools: Wrench, assistant: Sparkles, clouds: Cloud };
+
 const SECTION_NAME: Record<HomeSection, TKey> = {
   actions: 'prefs.section.actions',
   recent: 'prefs.section.recent',
@@ -425,13 +430,19 @@ export function HomePage() {
         />
       </Group>
       <Group title={t('prefs.homeSections')}>
-        <OrderedList<HomeSection>
+        <LayoutBoard<HomeSection>
           label={t('prefs.homeSections')}
           hint={t('prefs.homeSectionsHint')}
-          items={sections}
-          hidden={settings.hiddenHomeSections}
-          name={(one) => t(SECTION_NAME[one])}
-          onChange={(items, hidden) => set({ homeSections: [...items, ...HOME_SECTIONS.filter((one) => !items.includes(one))], hiddenHomeSections: hidden })}
+          frame="home"
+          zones={[{ id: 'home', label: t('prefs.homeSections'), size: 'card' }]}
+          layout={{ home: sections.filter((one) => !settings.hiddenHomeSections.includes(one)) }}
+          hidden={sections.filter((one) => settings.hiddenHomeSections.includes(one))}
+          look={(one) => ({ icon: SECTION_ICON[one], word: t(SECTION_NAME[one]) })}
+          onChange={(next, hidden) => {
+            const shown = next.home ?? [];
+            // Clouds is set on its own page: kept as it was.
+            set({ homeSections: [...shown, ...HOME_SECTIONS.filter((one) => !shown.includes(one))], hiddenHomeSections: [...hidden, ...settings.hiddenHomeSections.filter((one) => one === 'clouds')] });
+          }}
         />
       </Group>
       <Group title={t('prefs.sidebarTools')}>
@@ -473,6 +484,10 @@ export function HomePage() {
 
 /* --------------------------------------------------------------- Quick tools */
 
+/** The ring's places (it shows at most eight of them that fit the file). */
+const RING_MAX = 9;
+const PROMPT_ICON: Record<AiPrompt, LucideIcon> = { summarize: AlignLeft, keyPoints: ListChecks, explain: Lightbulb, translate: Languages, email: Mail, quiz: CircleHelp };
+
 const MENU_TOOLS = QUICK_TOOLS.filter((tool) => tool.takes === 'pdf').map((tool) => tool.id as string);
 
 /** The key's name as this computer's keyboard has it. */
@@ -512,9 +527,11 @@ export function QuickPage() {
     };
   }, [desktop]);
 
-  const nameOf = useCallback((id: string) => {
-    const tool = QUICK_TOOLS.find((one) => one.id === id) ?? findQuickGroup(id);
-    return tool ? t(tool.labelKey) : id;
+  const toolLook = useCallback((id: string): BoardLook => {
+    const tool = QUICK_TOOLS.find((one) => one.id === id);
+    const group = findQuickGroup(id);
+    if (tool) return { icon: tool.icon, word: t(tool.labelKey), note: t(tool.noteKey) };
+    return group ? { icon: group.icon, word: t(group.labelKey) } : { icon: Wrench, word: id };
   }, [t]);
 
   if (!desktop) {
@@ -568,14 +585,16 @@ export function QuickPage() {
             }}
           />
           {prefs.menu && menu.on && (
-            <OrderedList<string>
+            <LayoutBoard<string>
               label={t('prefs.menuTools')}
               hint={t('prefs.menuToolsHint')}
-              items={menuOrder}
+              frame="menu"
+              zones={[{ id: 'menu', label: t('prefs.menuTools'), size: 'row' }]}
+              layout={{ menu: menuOrder.filter((id) => !menuHidden.includes(id)) }}
               hidden={menuHidden}
-              name={nameOf}
-              onChange={(items, hidden) => {
-                const chosen = items.filter((id) => !hidden.includes(id));
+              look={toolLook}
+              onChange={(next) => {
+                const chosen = next.menu ?? [];
                 const tools = chosen.length === MENU_TOOLS.length && chosen.every((id, i) => id === MENU_TOOLS[i]) ? [] : chosen;
                 set({ shellMenuTools: tools });
                 writeMenu(true, tools);
@@ -594,14 +613,18 @@ export function QuickPage() {
       {ring && (
         <Group title={t('prefs.ringGroup')}>
           <Toggle label={t('quick.settings.ring')} hint={t('quick.settings.ringNote')} checked={ring.ring} onChange={(on) => changeRing({ ring: on })} />
-          <OrderedList<string>
+          <LayoutBoard<string>
             label={t('prefs.ringTools')}
             hint={t('prefs.ringToolsHint')}
-            items={ringOrder}
+            frame="ring"
+            zones={[{ id: 'ring', label: t('prefs.ringTools'), size: 'ring', max: RING_MAX }]}
+            layout={{ ring: ringOrder.filter((id) => !ringHidden.includes(id)) }}
             hidden={ringHidden}
-            max={8}
-            name={nameOf}
-            onChange={(items, hidden) => set({ ringTools: items.filter((id) => !hidden.includes(id)) })}
+            look={toolLook}
+            onChange={(next) => {
+              // An empty ring would mean the ring's own choice again: at least one stays.
+              if (next.ring?.length) set({ ringTools: next.ring });
+            }}
           />
           <Choice<RingDragKey>
             label={t('prefs.ringDragKey')}
@@ -745,13 +768,15 @@ export function AiPage() {
         />
       </Group>
       <Group title={t('prefs.aiPrompts')}>
-        <OrderedList
+        <LayoutBoard<AiPrompt>
           label={t('prefs.aiPrompts')}
           hint={t('prefs.aiPromptsHint')}
-          items={settings.aiPrompts}
+          frame="chat"
+          zones={[{ id: 'chips', label: t('prefs.aiPrompts'), size: 'chip' }]}
+          layout={{ chips: settings.aiPrompts.filter((id) => !settings.hiddenAiPrompts.includes(id)) }}
           hidden={settings.hiddenAiPrompts}
-          name={(id) => t(CHIPS.find((chip) => chip.id === id)!.label)}
-          onChange={(aiPrompts, hiddenAiPrompts) => set({ aiPrompts, hiddenAiPrompts })}
+          look={(id) => ({ icon: PROMPT_ICON[id], word: t(CHIPS.find((chip) => chip.id === id)!.label) })}
+          onChange={(next, hiddenAiPrompts) => set({ aiPrompts: [...(next.chips ?? []), ...hiddenAiPrompts], hiddenAiPrompts })}
         />
       </Group>
       <Group title={t('settings.speech')}>

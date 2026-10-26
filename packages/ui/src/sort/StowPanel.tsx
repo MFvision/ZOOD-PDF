@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Combine, Feather, File, FileImage, FileText, Globe, Inbox, LayoutGrid, MessageCircle, Printer, Smartphone, Sparkles } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Combine, File, FileImage, FileText, Inbox } from 'lucide-react';
 import { ZoodMark } from '../components/ZoodMark';
 import { readBatchFile } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
+import type { DropItem } from '../state/settings';
+import { dropIcon, dropWord } from './dropItems';
 import { handKind } from './stow';
-import type { FormatChip, MoreId, Tile, TileId } from './stow';
+import type { FormatChip, PanelRows, Tile } from './stow';
 
 /**
  * The drop zone open under the top of the screen while files are dragged
  * there, after "Stow": what is in hand on the left (pictures as
- * themselves, a stack with a number for several), three big tiles that say
- * what the files are for, and the formats below. The tile under the
+ * themselves, a stack with a number for several), then three rows laid out
+ * by the person in Settings (big tiles, small chips, bottom pills); any
+ * target can sit in any row and takes that row's size. The tile under the
  * pointer lights up, gives a small bounce and only then says what it does
  * ("JPG, 2000 px"). Every target carries `data-drop`, which the zone reads
  * under the pointer (`stow.ts`, `dropTargetAt`).
@@ -22,9 +24,6 @@ export interface InHand {
   names: string[];
   pictures: string[];
 }
-
-const TILE_ICONS: Record<TileId, LucideIcon> = { web: Globe, send: Feather, print: Printer };
-const MORE_ICONS: Record<MoreId, LucideIcon> = { ask: MessageCircle, organize: Sparkles, phone: Smartphone, tools: LayoutGrid };
 
 /** A tile's one word, and what it does for the first kind of file in hand. */
 export function tileDetail(tile: Tile, names: readonly string[]): TKey {
@@ -81,9 +80,14 @@ function hotWords(hot: string | null, tiles: Tile[], formats: FormatChip[], name
   return t('stow.hint');
 }
 
-export function StowPanel({ hand, tiles, formats, more, hot, over }: { hand: InHand; tiles: Tile[]; formats: FormatChip[]; more: MoreId[]; hot: string | null; over: boolean }) {
+export function StowPanel({ hand, rows, tiles, formats, hot, over }: { hand: InHand; rows: PanelRows; tiles: Tile[]; formats: FormatChip[]; hot: string | null; over: boolean }) {
   const { t } = useI18n();
   const keepHot = hot === 'keep';
+  const nothing = rows.big.length + rows.small.length + rows.pills.length === 0;
+  const tileWords = (id: DropItem) => {
+    const tile = tiles.find((one) => `tile:${one.id}` === id);
+    return hot === id && tile ? t(tileDetail(tile, hand.names)) : dropWord(id, t);
+  };
   return (
     <main className={over ? 'zood-drop zood-drop-stow is-over' : 'zood-drop zood-drop-stow'} aria-label={t('stow.label')}>
       <div className="stow-top">
@@ -97,33 +101,49 @@ export function StowPanel({ hand, tiles, formats, more, hot, over }: { hand: InH
         <span className="stow-hand-keep">{t('stow.keep')}</span>
       </div>
 
-      {tiles.length > 0 ? (
+      {nothing ? (
+        <div className="stow-tiles is-empty">
+          <span>{t('stow.onlyKeep')}</span>
+        </div>
+      ) : rows.big.length > 0 ? (
         <div className="stow-tiles">
-          {tiles.map((tile) => {
-            const Icon = TILE_ICONS[tile.id];
-            const isHot = hot === `tile:${tile.id}`;
+          {rows.big.map((id) => {
+            const Icon = dropIcon(id);
             return (
-              <div key={tile.id} className={isHot ? 'stow-tile is-hot' : 'stow-tile'} data-drop={`tile:${tile.id}`}>
+              <div key={id} className={hot === id ? 'stow-tile is-hot' : 'stow-tile'} data-drop={id}>
                 <span className="stow-tile-icon">
                   <Icon size={22} strokeWidth={1.8} aria-hidden="true" />
                 </span>
-                <span className="stow-tile-word">{isHot ? t(tileDetail(tile, hand.names)) : t(`stow.tile.${tile.id}` as TKey)}</span>
+                <span className="stow-tile-word">{tileWords(id)}</span>
               </div>
             );
           })}
         </div>
-      ) : (
-        <div className="stow-tiles is-empty">
-          <span>{t('stow.onlyKeep')}</span>
-        </div>
-      )}
+      ) : null}
 
       <div className="stow-formats">
-        {formats.map((chip) => {
-          const isHot = hot === `format:${chip.id}`;
+        {rows.small.map((id) => {
+          const isHot = hot === id;
+          // A format is its letters; anything else moved down here keeps its icon and word.
+          if (id.startsWith('format:') && id !== 'format:merge') {
+            return (
+              <span key={id} className={isHot ? 'stow-format is-hot' : 'stow-format'} data-drop={id} title={dropWord(id, t)}>
+                {dropWord(id, t)}
+              </span>
+            );
+          }
+          if (id === 'format:merge') {
+            return (
+              <span key={id} className={isHot ? 'stow-format is-hot' : 'stow-format'} data-drop={id} title={t('stow.merge')}>
+                <Combine size={15} aria-hidden="true" />
+              </span>
+            );
+          }
+          const Icon = dropIcon(id);
           return (
-            <span key={chip.id} className={isHot ? 'stow-format is-hot' : 'stow-format'} data-drop={`format:${chip.id}`} title={chip.id === 'merge' ? t('stow.merge') : chip.label}>
-              {chip.id === 'merge' ? <Combine size={15} aria-hidden="true" /> : chip.label}
+            <span key={id} className={isHot ? 'stow-format is-word is-hot' : 'stow-format is-word'} data-drop={id}>
+              <Icon size={15} aria-hidden="true" />
+              <span>{dropWord(id, t)}</span>
             </span>
           );
         })}
@@ -132,15 +152,14 @@ export function StowPanel({ hand, tiles, formats, more, hot, over }: { hand: InH
         </span>
       </div>
 
-      {more.length > 0 ? (
+      {rows.pills.length > 0 ? (
         <div className="stow-more">
-          {more.map((id) => {
-            const Icon = MORE_ICONS[id];
-            const isHot = hot === `more:${id}`;
+          {rows.pills.map((id) => {
+            const Icon = dropIcon(id);
             return (
-              <span key={id} className={isHot ? 'stow-more-pill is-hot' : 'stow-more-pill'} data-drop={`more:${id}`}>
+              <span key={id} className={hot === id ? 'stow-more-pill is-hot' : 'stow-more-pill'} data-drop={id}>
                 <Icon size={14} aria-hidden="true" />
-                {t(`stow.more.${id}` as TKey)}
+                {dropWord(id, t)}
               </span>
             );
           })}

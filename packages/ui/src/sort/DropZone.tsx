@@ -71,8 +71,7 @@ import { runQuick, wantsPassword } from '../quick/runQuick';
 import { CONVERT_ROW, THUMB_MAX_BYTES, THUMB_TYPES, actionsFor, convertibleTo, fittingFor, targetsOf, typeOf } from './shelf';
 import type { ShelfAction } from './shelf';
 import { StowPanel } from './StowPanel';
-import { arrange, dropTargetAt, formatsFor, moreFor, runsFor, tilesFor } from './stow';
-import type { PanelPrefs } from './stow';
+import { dropTargetAt, formatsFor, moreFor, panelRows, runsFor, tilesFor } from './stow';
 import { canWriteWebp, runStow } from './stowRun';
 import { countUse, readUse } from './dropUse';
 import { useSettings } from '../state/settings';
@@ -646,14 +645,21 @@ function Zone() {
   }
 
   if ((look === 'open' || look === 'over') && hand.names.length > 0) {
-    const prefs: PanelPrefs = { order: settings.dropOrder, hidden: settings.dropHidden, byUse: settings.dropByUse };
-    const use = settings.dropByUse ? readUse() : {};
+    const tiles = tilesFor(hand.names);
+    const formats = formatsFor(hand.names, webp);
+    // What does something with these files, placed as the person laid the panel out.
+    const available = new Set<DropItem>([
+      ...tiles.map((tile) => `tile:${tile.id}` as DropItem),
+      ...formats.map((chip) => `format:${chip.id}` as DropItem),
+      ...moreFor(hand.names, phone).map((id) => `more:${id}` as DropItem),
+    ]);
+    const layout = { big: settings.dropBig, small: settings.dropSmall, pills: settings.dropPills, auto: settings.dropAuto };
     return (
       <StowPanel
         hand={hand}
-        tiles={arrange(tilesFor(hand.names), (tile) => `tile:${tile.id}` as DropItem, prefs, use)}
-        formats={arrange(formatsFor(hand.names, webp), (chip) => `format:${chip.id}` as DropItem, prefs, use)}
-        more={arrange(moreFor(hand.names, phone), (id) => `more:${id}` as DropItem, prefs, use)}
+        rows={panelRows(layout, available, settings.dropAuto ? readUse() : {})}
+        tiles={tiles}
+        formats={formats}
         hot={hot}
         over={look === 'over'}
       />

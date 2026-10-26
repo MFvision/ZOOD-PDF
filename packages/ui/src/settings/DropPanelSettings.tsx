@@ -1,63 +1,50 @@
-import { clearUse } from '../sort/dropUse';
 import { useI18n } from '../i18n/useT';
-import type { TKey } from '../i18n/messages';
-import { DROP_ITEMS, updateSettings, useSettings } from '../state/settings';
+import { dropIcon, dropNote, dropWord } from '../sort/dropItems';
+import { clearUse, readUse } from '../sort/dropUse';
+import { autoRows } from '../sort/stow';
+import { DEFAULT_SETTINGS, DROP_ITEMS, DROP_ROW_MAX, updateSettings, useSettings } from '../state/settings';
 import type { DropItem } from '../state/settings';
-import { ActionRow, Group, OrderedList, Toggle } from './controls';
+import { ActionRow, Group } from './controls';
+import { LayoutBoard } from './LayoutBoard';
 
 /**
- * Settings › Quick tools › Drop panel: what the panel at the top of the
- * screen shows (`sort/StowPanel.tsx`) and in what order, row by row (the
- * tiles, the formats, the rest of ZOOD), dragged into place; or the most
- * used first, counted on this computer (`sort/dropUse.ts`).
+ * Settings › Quick tools › Drop panel: the panel at the top of the screen
+ * (`sort/StowPanel.tsx`) as a little picture of itself. Drag any target
+ * into the big row, the small row or the bottom row, where it takes that
+ * row's size, or under the panel to stop showing it. With Auto on, ZOOD
+ * moves the most used up into the big row (counted on this computer only,
+ * `sort/dropUse.ts`), and the picture shows that.
  */
-
-const FORMAT_NAMES: Record<string, string> = { jpg: 'JPG', png: 'PNG', webp: 'WebP', pdf: 'PDF', docx: 'Word', xlsx: 'Excel', pptx: 'PowerPoint', txt: 'TXT' };
-
-const ROWS: { key: 'tile' | 'format' | 'more'; label: TKey }[] = [
-  { key: 'tile', label: 'dropPanel.tiles' },
-  { key: 'format', label: 'dropPanel.formats' },
-  { key: 'more', label: 'dropPanel.more' },
-];
-
 export function DropPanelSettings() {
   const { t } = useI18n();
   const settings = useSettings();
-  const name = (item: DropItem): string => {
-    const [row, id] = item.split(':') as [string, string];
-    if (row === 'tile') return `${t(`stow.tile.${id}` as TKey)} · ${t(`dropPanel.tileNote.${id}` as TKey)}`;
-    if (row === 'more') return t(`stow.more.${id}` as TKey);
-    return id === 'merge' ? t('stow.merge') : (FORMAT_NAMES[id] ?? id);
-  };
+  const rows = { big: settings.dropBig, small: settings.dropSmall, pills: settings.dropPills };
+  const shown = settings.dropAuto ? autoRows(rows, readUse()) : rows;
+  const placed = new Set<DropItem>([...rows.big, ...rows.small, ...rows.pills]);
   return (
     <Group title={t('dropPanel.group')} note={t('dropPanel.groupNote')}>
-      <Toggle label={t('dropPanel.byUse')} hint={t('dropPanel.byUseNote')} checked={settings.dropByUse} onChange={(dropByUse) => updateSettings({ dropByUse })} />
-      {ROWS.map((row) => {
-        const items = settings.dropOrder.filter((item) => item.startsWith(`${row.key}:`));
-        return (
-          <OrderedList<DropItem>
-            key={row.key}
-            label={t(row.label)}
-            hint={settings.dropByUse ? t('dropPanel.orderByUse') : t('dropPanel.orderNote')}
-            items={items}
-            hidden={settings.dropHidden.filter((item) => item.startsWith(`${row.key}:`))}
-            name={name}
-            onChange={(next, hidden) => {
-              // This row's new order, the other rows as they were.
-              const order = ROWS.flatMap(({ key }) => (key === row.key ? next : settings.dropOrder.filter((item) => item.startsWith(`${key}:`))));
-              const others = settings.dropHidden.filter((item) => !item.startsWith(`${row.key}:`));
-              updateSettings({ dropOrder: order, dropHidden: [...others, ...hidden] });
-            }}
-          />
-        );
-      })}
+      <LayoutBoard<DropItem>
+        label={t('dropPanel.board')}
+        hint={settings.dropAuto ? t('dropPanel.boardAuto') : t('dropPanel.boardHint')}
+        frame="island"
+        zones={[
+          { id: 'big', label: t('dropPanel.big'), size: 'big', max: DROP_ROW_MAX.big },
+          { id: 'small', label: t('dropPanel.small'), size: 'small' },
+          { id: 'pills', label: t('dropPanel.pills'), size: 'pill', max: DROP_ROW_MAX.pills },
+        ]}
+        layout={shown}
+        hidden={DROP_ITEMS.filter((item) => !placed.has(item))}
+        look={(item) => ({ icon: dropIcon(item), word: dropWord(item, t), note: dropNote(item, t) })}
+        onChange={(next) => updateSettings({ dropBig: next.big ?? [], dropSmall: next.small ?? [], dropPills: next.pills ?? [] })}
+        auto={{ on: settings.dropAuto, label: t('dropPanel.auto'), hint: t('dropPanel.autoNote'), onChange: (dropAuto) => updateSettings({ dropAuto }) }}
+      />
       <ActionRow
         label={t('dropPanel.reset')}
         hint={t('dropPanel.resetNote')}
         action={t('dropPanel.resetAction')}
         onClick={() => {
           clearUse();
-          updateSettings({ dropOrder: [...DROP_ITEMS], dropHidden: [], dropByUse: false });
+          updateSettings({ dropBig: [...DEFAULT_SETTINGS.dropBig], dropSmall: [...DEFAULT_SETTINGS.dropSmall], dropPills: [...DEFAULT_SETTINGS.dropPills], dropAuto: DEFAULT_SETTINGS.dropAuto });
         }}
       />
     </Group>

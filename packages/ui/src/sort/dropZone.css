@@ -780,6 +780,21 @@ html.zood-drop-page body {
   transform: translateY(-3px);
 }
 
+/* A tile or a button the person moved down to the small row: a chip with its icon and word. */
+.stow-format.is-word,
+[dir="rtl"] .stow-format.is-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  inline-size: auto;
+  padding-inline: 9px;
+  border-radius: 10px;
+  clip-path: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* ------------------------------------------------ the note at the top */
 
 /* What a tile or Put away did, with Undo and Show; it goes after a while. */
