@@ -12,6 +12,9 @@ $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 # Started twice below, after the first start's working folder may differ.
 $App = (Resolve-Path $App).Path
+# A copy to start again from, should the build's own file go.
+$kept = Join-Path $env:RUNNER_TEMP 'warraq-desktop-ask.exe'
+Copy-Item $App $kept -Force
 $Out = (Resolve-Path $Out).Path
 
 Add-Type -AssemblyName System.Drawing
@@ -131,6 +134,10 @@ Check ($second -and $second.Drawn -ge 0.2) 'the second tap draws the island'
 
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
+# The second start once found no file at $App (twice, in CI): say what is there.
+Write-Host "app still there: $(Test-Path $App)"
+Get-ChildItem (Split-Path $App) -Filter 'warraq-desktop*' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) $($_.Length)" }
+if (-not (Test-Path $App)) { $App = $kept }
 
 # 3. Talking, as on a PC set up for it: Ask ZOOD on (a tap listens), with
 # the ZOOD bubble on the screen. This machine has no microphone, so the
