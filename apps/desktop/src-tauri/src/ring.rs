@@ -346,6 +346,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
             let _ = ring_window(&handle);
         }
         crate::sort::prepare(&handle);
+        crate::ask::prepare(&handle);
     });
     #[cfg(target_os = "windows")]
     windows::watch();
@@ -627,8 +628,10 @@ pub fn ring_configure<R: Runtime>(
     ENABLED.store(ring, Ordering::Relaxed);
     DRAG_KEY.store(key.code(), Ordering::Relaxed);
     crate::sort::set_zone(settings.drop_zone);
-    if !settings.drop_zone {
-        crate::sort::hide_zone(&app);
+    if settings.drop_zone {
+        crate::sort::prepare(&app);
+    } else {
+        crate::sort::zone_off(&app);
     }
     BACKGROUND.store(background, Ordering::Relaxed);
     if let Some(path) = settings_path(&app) {

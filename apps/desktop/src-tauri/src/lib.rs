@@ -36,6 +36,7 @@ pub mod recent;
 pub mod remote;
 pub mod ring;
 pub mod share;
+pub mod shelf;
 pub mod shell_menu;
 pub mod signing;
 pub mod sort;
@@ -523,6 +524,19 @@ pub fn run() {
             sort::sort_close,
             sort::sort_listen,
             sort::sort_voice,
+            shelf::shelf_items,
+            shelf::shelf_remove,
+            shelf::shelf_clear,
+            shelf::shelf_made,
+            shelf::shelf_hold,
+            shelf::shelf_collapse,
+            shelf::shelf_drag,
+            shelf::shelf_open,
+            shelf::shelf_reveal,
+            shelf::shelf_sort,
+            shelf::shelf_quick,
+            shelf::shelf_has_phone,
+            shelf::shelf_phone,
             remote::remote_start,
             remote::remote_stop,
             remote::remote_status,
@@ -536,6 +550,7 @@ pub fn run() {
             ask::ask_settings,
             ask::ask_resize,
             ask::ask_hide,
+            ask::ask_window_ready,
             ask::ask_stop,
             ask::ask_notch,
             ask::ask_type_instead,

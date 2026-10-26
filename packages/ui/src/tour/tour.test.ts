@@ -39,6 +39,8 @@ describe('welcome tour', () => {
     expect(newChapters(0, true, true)).toBeNull();
     expect(newChapters(1, false, false)).toBeNull();
     expect(newChapters(12, true, true)).toEqual(['sort']);
+    // Version 14: the shelf the dropped files now stay on.
+    expect(newChapters(13, true, true)).toEqual(['sort']);
     expect(newChapters(12, false, false)).toEqual([]);
     expect(newChapters(11, true, true)).toEqual(['reach', 'sort']);
     expect(newChapters(10, true, true)).toEqual(['folders', 'reach', 'sort']);
