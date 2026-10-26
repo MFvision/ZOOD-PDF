@@ -258,7 +258,9 @@ fn debug_selfcheck<R: Runtime>(app: AppHandle<R>) -> Option<String> {
 /// the person has confirmed it in the interface (`links/openLink.ts`). The
 /// address is checked again here — only `http`, `https` and `mailto` — and
 /// handed to the system's opener as one argument, never through a shell.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 fn open_url(url: String) -> Result<(), String> {
     // An e-mail address is opened without `attach` fields (`safe_uri`).
     let Some(url) = warraq_core::safe_uri(&url) else {

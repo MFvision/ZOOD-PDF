@@ -606,7 +606,9 @@ fn session_of<R: Runtime>(window: &WebviewWindow<R>, state: &SortState) -> Resul
 }
 
 /// This Sort window's files, where they are now.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn sort_job<R: Runtime>(
     window: WebviewWindow<R>,
     state: State<'_, SortState>,
@@ -695,7 +697,9 @@ pub async fn sort_look<R: Runtime>(
 /// Files the window wrote for this session (a merge, a split): they join it,
 /// so they can go into a folder too, and Undo removes them. Only new files
 /// in the session's folder are taken.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn sort_made<R: Runtime>(
     app: AppHandle<R>,
     window: WebviewWindow<R>,

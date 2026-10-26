@@ -86,6 +86,12 @@ pub struct Tapper {
 }
 
 impl Tapper {
+    /// Whether the other keys can change what `step` makes of this reading:
+    /// only while the tap key is down, or a tap may still be followed.
+    pub fn needs_others(&self, key: bool) -> bool {
+        key || self.down.is_some() || self.first.is_some()
+    }
+
     /// One reading of the keys: is the tap key down, is anything else down.
     pub fn step(&mut self, now: Instant, key: bool, other: bool) -> Option<Tap> {
         match (self.down, key) {
@@ -165,7 +171,10 @@ pub fn configure(on: bool, key: TapKey, once: bool, mut tapped: impl FnMut(Tap) 
                 continue;
             }
             let key = TapKey::from_code(KEY.load(Ordering::Relaxed));
-            let (down, other) = system::read(key);
+            let down = system::key_down(key);
+            // Every other key is only looked at while it can matter: a
+            // round of them is some 250 questions to the system.
+            let other = tapper.needs_others(down) && system::others_down(key);
             match tapper.step(Instant::now(), down, other) {
                 Some(Tap::Once) if !ONCE.load(Ordering::Relaxed) => {}
                 Some(tap) => tapped(tap),
@@ -191,25 +200,33 @@ mod system {
         (unsafe { GetAsyncKeyState(i32::from(key)) } as u16 & 0x8000) != 0
     }
 
-    /// The tap key, and whether any other key or mouse button is down. The
-    /// generic Ctrl, Alt and Shift codes also report the tap key, so they
-    /// are not "other"; their left-hand ones are.
-    pub fn read(key: TapKey) -> (bool, bool) {
-        let (vk, generic) = match key {
+    fn codes(key: TapKey) -> (u16, u16) {
+        match key {
             TapKey::RightMain => (VK_RCONTROL, VK_CONTROL),
             TapKey::RightAlt => (VK_RMENU, VK_MENU),
             TapKey::RightShift => (VK_RSHIFT, VK_SHIFT),
-        };
+        }
+    }
+
+    /// Whether the tap key is down.
+    pub fn key_down(key: TapKey) -> bool {
+        down(codes(key).0)
+    }
+
+    /// Whether any other key or mouse button is down. The generic Ctrl, Alt
+    /// and Shift codes also report the tap key, so they are not "other";
+    /// their left-hand ones are.
+    pub fn others_down(key: TapKey) -> bool {
+        let (vk, generic) = codes(key);
         // AltGr is sent as left Ctrl with right Alt.
         let altgr_ctrl = key == TapKey::RightAlt;
         // Mouse buttons (0x01 to 0x06) are in the range too.
-        let other = (0x01u16..=0xFE).any(|code| {
+        (0x01u16..=0xFE).any(|code| {
             code != vk
                 && code != generic
                 && !(altgr_ctrl && (code == VK_LCONTROL || code == VK_CONTROL))
                 && down(code)
-        });
-        (down(vk), other)
+        })
     }
 }
 
@@ -288,6 +305,14 @@ mod system {
             .any(|code| unsafe { CGEventSourceKeyState(COMBINED, code) });
         (down, other_modifier || buttons != 0 || letter)
     }
+
+    pub fn key_down(key: TapKey) -> bool {
+        read(key).0
+    }
+
+    pub fn others_down(key: TapKey) -> bool {
+        read(key).1
+    }
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
@@ -296,8 +321,12 @@ mod system {
 
     pub const AVAILABLE: bool = false;
 
-    pub fn read(_key: TapKey) -> (bool, bool) {
-        (false, false)
+    pub fn key_down(_key: TapKey) -> bool {
+        false
+    }
+
+    pub fn others_down(_key: TapKey) -> bool {
+        false
     }
 }
 
@@ -317,6 +346,21 @@ mod tests {
                     .map(|tap| (ms, tap))
             })
             .collect()
+    }
+
+    #[test]
+    fn other_keys_are_only_read_while_a_tap_can_be_under_way() {
+        let start = Instant::now();
+        let mut tapper = Tapper::default();
+        assert!(!tapper.needs_others(false));
+        assert!(tapper.needs_others(true));
+        tapper.step(start, true, false);
+        tapper.step(start + Duration::from_millis(80), false, false);
+        // A first tap waits for a second: a key pressed now still counts.
+        assert!(tapper.needs_others(false));
+        let once = tapper.step(start + Duration::from_millis(600), false, false);
+        assert_eq!(once, Some(Tap::Once));
+        assert!(!tapper.needs_others(false));
     }
 
     #[test]

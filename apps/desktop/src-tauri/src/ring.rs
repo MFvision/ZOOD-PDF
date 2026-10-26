@@ -506,7 +506,9 @@ pub fn on_drag<R: Runtime>(
 /// The files let go on the ring, for a tool the ring runs itself (with its
 /// progress round the ring). They stay held, so `ring_pick` can still hand
 /// them to a quick window if the tool needs more (a password).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ring_take<R: Runtime>(app: AppHandle<R>) -> Vec<quick::QuickFile> {
     let files = DROPPED
         .lock()
@@ -547,7 +549,9 @@ pub fn ring_phone<R: Runtime>(app: AppHandle<R>) -> bool {
 /// The tool the files were let go on (`none`: the middle, or off the ring).
 /// `only`: of those files, these (the ones a tool run on the ring could not
 /// open without their password).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<String>>) {
     BUSY.store(false, Ordering::Relaxed);
     let mut files = DROPPED
@@ -596,7 +600,9 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<S
 /// From Settings: the ring, keeping the app ready in the background (and
 /// starting it at sign-in), the ring's size and its keyboard shortcut. A
 /// shortcut the system will not take keeps the one before, and says so.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ring_configure<R: Runtime>(
     app: AppHandle<R>,
     ring: bool,
@@ -646,7 +652,9 @@ pub fn ring_configure<R: Runtime>(
     Ok(settings)
 }
 
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ring_settings<R: Runtime>(app: AppHandle<R>) -> RingSettings {
     load_settings(&app)
 }

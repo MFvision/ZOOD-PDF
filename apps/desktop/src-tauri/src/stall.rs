@@ -44,7 +44,8 @@ pub fn log(line: &str) {
         .append(true)
         .open(path)
     {
-        let _ = file.write_all(format!("{:>8.1}s {line}\n", since_start() as f64 / 1000.0).as_bytes());
+        let _ =
+            file.write_all(format!("{:>8.1}s {line}\n", since_start() as f64 / 1000.0).as_bytes());
     }
 }
 
@@ -120,7 +121,10 @@ pub fn timed<R: Runtime>(
         }
         let took = started.elapsed();
         if took >= SLOW {
-            log(&format!("slow command on the main thread: {name} {} ms", took.as_millis()));
+            log(&format!(
+                "slow command on the main thread: {name} {} ms",
+                took.as_millis()
+            ));
         }
         handled
     }
