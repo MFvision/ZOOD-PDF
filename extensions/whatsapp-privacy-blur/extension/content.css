@@ -1,0 +1,59 @@
+/*
+ * The blur itself. content.js only sets attributes on <html>; these rules do the rest.
+ * Fail-closed: until content.js has run (or if it never does) everything stays blurred.
+ *
+ *   #pane-side  the chat list (contacts, names, last messages)
+ *   #main       the open chat: name bar, messages and the message box
+ *
+ * Items are blurred one by one, so hovering reveals only the one under the mouse:
+ *   a chat in the list  = the outermost [role="row"] or [role="listitem"] in #pane-side
+ *   a message           = the outermost [role="row"] in the message area of #main
+ * WhatsApp marks them that way for screen readers. If it ever stops, the :has() fallbacks
+ * blur the whole area instead, so nothing is left readable.
+ */
+
+/* ---- blur ---- */
+
+html:not([data-wpb-off], [data-wpb-mode="chat"])
+  #pane-side :is([role="row"], [role="listitem"]):not(:is([role="row"], [role="listitem"]) *),
+html:not([data-wpb-off], [data-wpb-mode="contacts"]) #main > :is(header, footer),
+html:not([data-wpb-off], [data-wpb-mode="contacts"])
+  #main > :not(header, footer) [role="row"]:not([role="row"] *) {
+  filter: blur(var(--wpb-blur, 6px));
+}
+
+/* Fallbacks: no items found, so blur the whole area. */
+html:not([data-wpb-off], [data-wpb-mode="chat"]) #pane-side:not(:has([role="row"], [role="listitem"])),
+html:not([data-wpb-off], [data-wpb-mode="contacts"]) #main > :not(header, footer, :has([role="row"])) {
+  filter: blur(var(--wpb-blur, 6px));
+}
+
+/* ---- hover to peek: one item at a time (each rule is more specific than its blur rule) ---- */
+
+html:not([data-wpb-nopeek])
+  #pane-side :is([role="row"], [role="listitem"]):not(:is([role="row"], [role="listitem"]) *):hover,
+html:not([data-wpb-nopeek]) #main > :is(header, footer):hover,
+html:not([data-wpb-nopeek]) #main [role="row"]:not([role="row"] *):hover,
+html:not([data-wpb-nopeek]) #pane-side:not(:has([role="row"], [role="listitem"])):hover,
+html:not([data-wpb-nopeek]) #main > :not(header, footer, :has([role="row"])):hover {
+  filter: none;
+}
+
+/* "Reveal one at a time" turned off: hovering an area reveals all of it. */
+html[data-wpb-peekall]:not([data-wpb-nopeek]) #pane-side:hover :is([role="row"], [role="listitem"]),
+html[data-wpb-peekall]:not([data-wpb-nopeek]) #main:hover > *,
+html[data-wpb-peekall]:not([data-wpb-nopeek]) #main:hover [role="row"] {
+  filter: none;
+}
+
+/* Typing: keep your own draft readable while the message box has focus. */
+html:not([data-wpb-off]) #main > footer:focus-within {
+  filter: none;
+}
+
+/* ---- smooth reveal ---- */
+
+html:not([data-wpb-instant]) :is(#pane-side, #pane-side [role="row"], #pane-side [role="listitem"]),
+html:not([data-wpb-instant]) :is(#main > *, #main [role="row"]) {
+  transition: filter 0.2s ease;
+}
