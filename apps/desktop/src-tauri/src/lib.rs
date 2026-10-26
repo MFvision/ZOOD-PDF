@@ -25,6 +25,7 @@ pub mod library;
 pub mod lnk;
 pub mod menu;
 pub mod neural;
+pub mod packaged;
 pub mod parked;
 pub mod presence;
 pub mod print;

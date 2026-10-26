@@ -104,6 +104,11 @@ pub async fn update_check(
     app: AppHandle,
     state: State<'_, UpdateState>,
 ) -> Result<Option<UpdateInfo>, String> {
+    // The Store updates its own copy, and its rules forbid an app updating
+    // itself (src/packaged.rs): this copy never finds an update.
+    if crate::packaged::is_packaged() {
+        return Ok(None);
+    }
     let updater = app
         .updater_builder()
         .timeout(CHECK_TIMEOUT)

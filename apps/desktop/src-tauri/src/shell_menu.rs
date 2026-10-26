@@ -10,6 +10,12 @@
 //! "Show more options" (or Shift + right-click): the new short menu takes
 //! only packaged extensions.
 //!
+//! Windows, the Store copy (`packaged.rs`): the package declares the menu
+//! (`windows/store/AppxManifest.xml`) and a COM add-on shows it
+//! (`shell-ext/`), in the short menu too. The app writes the same menu, in
+//! its language and with the chosen tools, to a file the add-on reads
+//! (`packaged_menu`); turned off, the entries are hidden.
+//!
 //! macOS: one service, "Quick PDF tools", declared in `Info.plist` and
 //! answered by the running app (`services` below); Finder lists it under
 //! Quick Actions or Services. macOS itself turns it on or off (System
@@ -74,6 +80,30 @@ fn arabic(lang: &str) -> bool {
     !lang.starts_with("en")
 }
 
+fn pdf_title(ar: bool) -> &'static str {
+    if ar {
+        "محرر زود PDF: أدوات سريعة"
+    } else {
+        "ZOOD PDF: quick tools"
+    }
+}
+
+fn all_tools_label(ar: bool) -> &'static str {
+    if ar {
+        "كل الأدوات…"
+    } else {
+        "All tools…"
+    }
+}
+
+fn to_pdf_label(ar: bool) -> &'static str {
+    if ar {
+        "تحويل إلى PDF (محرر زود PDF)"
+    } else {
+        "Convert to PDF (ZOOD PDF)"
+    }
+}
+
 /// `"exe" --quick --tool=<tool> "%1"`: Explorer puts the file where `%1` is.
 fn command(exe: &str, tool: Option<&str>) -> String {
     match tool {
@@ -116,15 +146,7 @@ pub fn plan(root: &str, exe: &str, lang: &str, tools: &[String]) -> Vec<KeySpec>
     let mut keys = vec![key(
         pdf.clone(),
         &[
-            (
-                "MUIVerb",
-                if ar {
-                    "محرر زود PDF: أدوات سريعة"
-                } else {
-                    "ZOOD PDF: quick tools"
-                }
-                .to_string(),
-            ),
+            ("MUIVerb", pdf_title(ar).to_string()),
             ("Icon", icon.clone()),
             // An empty SubCommands: the submenu is the `shell` key below.
             ("SubCommands", String::new()),
@@ -149,15 +171,7 @@ pub fn plan(root: &str, exe: &str, lang: &str, tools: &[String]) -> Vec<KeySpec>
     keys.push(key(
         all.clone(),
         &[
-            (
-                "MUIVerb",
-                if ar {
-                    "كل الأدوات…"
-                } else {
-                    "All tools…"
-                }
-                .to_string(),
-            ),
+            ("MUIVerb", all_tools_label(ar).to_string()),
             ("MultiSelectModel", "Player".to_string()),
             // ECF_SEPARATORBEFORE
             ("CommandFlags", "dword:32".to_string()),
@@ -168,15 +182,7 @@ pub fn plan(root: &str, exe: &str, lang: &str, tools: &[String]) -> Vec<KeySpec>
         keys.push(key(
             verb.clone(),
             &[
-                (
-                    "MUIVerb",
-                    if ar {
-                        "تحويل إلى PDF (محرر زود PDF)"
-                    } else {
-                        "Convert to PDF (ZOOD PDF)"
-                    }
-                    .to_string(),
-                ),
+                ("MUIVerb", to_pdf_label(ar).to_string()),
                 ("Icon", icon.clone()),
                 ("MultiSelectModel", "Player".to_string()),
             ],
@@ -189,11 +195,69 @@ pub fn plan(root: &str, exe: &str, lang: &str, tools: &[String]) -> Vec<KeySpec>
     keys
 }
 
+/// The menu the Store copy's add-on shows (`shell-ext/src/menu.rs`, `Menu`):
+/// the same entries as `plan`, with nothing of the registry in them.
+pub fn packaged_menu(on: bool, lang: &str, tools: &[String]) -> serde_json::Value {
+    let ar = arabic(lang);
+    let mut items: Vec<serde_json::Value> = chosen_tools(tools)
+        .iter()
+        .map(|(tool, name_ar, name_en)| {
+            serde_json::json!({ "tool": tool, "label": if ar { name_ar } else { name_en } })
+        })
+        .collect();
+    items.push(serde_json::json!({
+        "tool": null,
+        "label": all_tools_label(ar),
+        "separator_before": true,
+    }));
+    serde_json::json!({
+        "on": on,
+        "title": pdf_title(ar),
+        "items": items,
+        "to_pdf": to_pdf_label(ar),
+    })
+}
+
+/// Where the Store copy writes its menu: the app's local data folder, which
+/// for a package is the package's own copy of it (`shell-ext/src/menu.rs`,
+/// `menu_files`, reads both).
+#[cfg(target_os = "windows")]
+fn packaged_menu_file() -> Option<std::path::PathBuf> {
+    let dir = std::env::var_os("LOCALAPPDATA")?;
+    Some(
+        std::path::PathBuf::from(dir)
+            .join("app.warraq.desktop")
+            .join("shell-menu.json"),
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn packaged_write(on: bool, lang: &str, tools: &[String]) -> Result<(), String> {
+    let file = packaged_menu_file().ok_or("E_IO: no local app data folder")?;
+    if let Some(dir) = file.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("E_IO: {e}"))?;
+    }
+    let text =
+        serde_json::to_string(&packaged_menu(on, lang, tools)).map_err(|e| format!("E_IO: {e}"))?;
+    std::fs::write(&file, text).map_err(|e| format!("E_IO: {}: {e}", file.display()))
+}
+
+/// Whether the Store copy's menu is on: until the app writes one, the add-on
+/// shows it.
+#[cfg(target_os = "windows")]
+fn packaged_on() -> bool {
+    packaged_menu_file()
+        .and_then(|file| std::fs::read_to_string(file).ok())
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|menu| menu.get("on").and_then(|on| on.as_bool()))
+        .unwrap_or(true)
+}
+
 /// What the interface shows in Settings.
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct MenuState {
-    /// `registry` (Windows: the switch works), `service` (macOS: the system's
-    /// own switch), or `none`.
+    /// `registry` (Windows, the installer or the Store copy: the switch
+    /// works), `service` (macOS: the system's own switch), or `none`.
     pub kind: &'static str,
     pub on: bool,
 }
@@ -339,9 +403,13 @@ const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const RUN_VALUE: &str = "ZoodPDF";
 
 /// Starts `command` at sign-in, or nothing when `None` (the ring's
-/// "Keep the quick tools ready", `ring.rs`).
+/// "Keep the quick tools ready", `ring.rs`). The Store copy turns its
+/// package's startup task on or off instead, which starts it the same way.
 #[cfg(target_os = "windows")]
 pub fn set_run_at_sign_in(command: Option<String>) -> Result<(), String> {
+    if crate::packaged::is_packaged() {
+        return crate::packaged::set_start_at_sign_in(command.is_some());
+    }
     registry::set_value(RUN, RUN_VALUE, command.as_deref())
 }
 
@@ -355,6 +423,13 @@ pub fn shell_menu_set(
     let tools = tools.unwrap_or_default();
     #[cfg(target_os = "windows")]
     {
+        if crate::packaged::is_packaged() {
+            packaged_write(on, &lang, &tools)?;
+            return Ok(MenuState {
+                kind: "registry",
+                on,
+            });
+        }
         let exe = std::env::current_exe().map_err(|e| format!("E_IO: {e}"))?;
         let exe = exe.to_string_lossy();
         if on {
@@ -394,7 +469,11 @@ pub fn shell_menu_state() -> MenuState {
     {
         MenuState {
             kind: "registry",
-            on: registry::exists(&verb_roots(CLASSES)[0]),
+            on: if crate::packaged::is_packaged() {
+                packaged_on()
+            } else {
+                registry::exists(&verb_roots(CLASSES)[0])
+            },
         }
     }
     #[cfg(target_os = "macos")]
@@ -577,6 +656,52 @@ mod tests {
         assert!(keys[0]
             .values
             .contains(&("MUIVerb".into(), "ZOOD PDF: quick tools".into())));
+    }
+
+    #[test]
+    fn the_store_copy_gets_the_same_menu_as_a_file() {
+        let menu = packaged_menu(true, "en", &["word".into(), "compress".into()]);
+        assert_eq!(menu["on"], true);
+        assert_eq!(menu["title"], "ZOOD PDF: quick tools");
+        assert_eq!(menu["to_pdf"], "Convert to PDF (ZOOD PDF)");
+        let items = menu["items"].as_array().unwrap();
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0]["tool"], "word");
+        assert_eq!(items[0]["label"], "Convert to Word");
+        assert_eq!(items[1]["tool"], "compress");
+        assert!(items[2]["tool"].is_null());
+        assert_eq!(items[2]["separator_before"], true);
+        let ar = packaged_menu(false, "ar", &[]);
+        assert_eq!(ar["on"], false);
+        assert_eq!(ar["items"].as_array().unwrap().len(), PDF_TOOLS.len() + 1);
+        assert_eq!(ar["items"][0]["label"], "ضغط الحجم");
+    }
+
+    /// The package declares its menu once, at install: on the same files as
+    /// the registry menu, every picture included.
+    #[test]
+    fn the_store_package_offers_the_menu_on_the_same_files() {
+        let manifest = include_str!("../windows/store/AppxManifest.xml");
+        assert!(manifest.contains(r#"<desktop5:ItemType Type=".pdf">"#));
+        for kind in TO_PDF_TYPES {
+            let kinds: &[&str] = if *kind == "image" {
+                &[
+                    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tif", ".tiff", ".heic",
+                ]
+            } else {
+                std::slice::from_ref(kind)
+            };
+            for kind in kinds {
+                assert!(
+                    manifest.contains(&format!(r#"<desktop5:ItemType Type="{kind}">"#)),
+                    "{kind}"
+                );
+            }
+        }
+        assert!(manifest.contains(r#"uap10:Parameters="--background""#));
+        assert_eq!(crate::ring::BACKGROUND_FLAG, "--background");
+        #[cfg(target_os = "windows")]
+        assert!(manifest.contains(&format!(r#"TaskId="{}""#, crate::packaged::STARTUP_TASK)));
     }
 
     #[test]
