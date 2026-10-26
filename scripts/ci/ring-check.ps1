@@ -403,6 +403,7 @@ try {
   Write-Host "made by the tile: $($made.FullName -join ', ')"
   Check ((Log) -match 'dropped on the \w+ tile') 'letting go on a tile runs it'
   Check ($made.Count -gt 0) 'what the tile makes lands beside the original'
+  Check ((Log) -match 'a tile made [1-9]') 'what the tile made is kept for Undo and Show'
 } catch {
   Check $false "the tile step ran ($_)"
 }
