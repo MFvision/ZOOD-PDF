@@ -43,6 +43,15 @@ function Shot($name) {
 }
 
 $cores = [Environment]::ProcessorCount
+# Set up as people run it: the ring and drop zone on and kept in the
+# background, Ask ZOOD's keys and taps on, and the ZOOD bubble on screen.
+$data = Join-Path $env:APPDATA 'app.warraq.desktop'
+New-Item -ItemType Directory -Force -Path $data | Out-Null
+'{"ring":true,"background":true,"scale":1,"shortcut":"Ctrl+Alt+Z","dragKey":"any","dropZone":true}' |
+  Set-Content -Encoding utf8 (Join-Path $data 'quick-tools.json')
+'{"enabled":true,"shortcut":"","sees":false,"taps":true,"tap_key":"right-main","tap_to_type":true,"tap_speaks":true,"glow":true}' |
+  Set-Content -Encoding utf8 (Join-Path $data 'ask.json')
+'{"bubble":true,"lang":"en"}' | Set-Content -Encoding utf8 (Join-Path $data 'presence.json')
 Remove-Item (Join-Path $env:APPDATA 'app.warraq.desktop\stall.log') -ErrorAction SilentlyContinue
 $app = Start-Process -FilePath $App -PassThru
 $root = $app.Id
