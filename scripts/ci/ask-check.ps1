@@ -145,6 +145,8 @@ if ($bubble -ne [IntPtr]::Zero) {
   $rect = New-Object AskInput+RECT
   [AskInput]::GetWindowRect($bubble, [ref]$rect) | Out-Null
   Write-Host "bubble: visible=$([AskInput]::IsWindowVisible($bubble)) at $($rect.Left),$($rect.Top) to $($rect.Right),$($rect.Bottom)"
+  $w = $rect.Right - $rect.Left; $h = $rect.Bottom - $rect.Top
+  Check ([Math]::Abs($w - $h) -le 2) "the bubble is round (window ${w}x${h})"
 } else { Write-Host 'bubble: no window' }
 Tap
 Start-Sleep -Seconds 4

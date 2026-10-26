@@ -253,6 +253,10 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
         )
         .title("ZOOD")
         .inner_size(BUBBLE_SIDE, BUBBLE_SIDE)
+        // Without a smallest size of its own, Windows keeps a window at
+        // least as wide as a title bar needs (SM_CXMINTRACK, ~140 px), and
+        // the round bubble came out a flat oval.
+        .min_inner_size(BUBBLE_SIDE, BUBBLE_SIDE)
         .decorations(false)
         .resizable(false)
         .shadow(false)
