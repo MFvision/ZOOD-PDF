@@ -192,3 +192,9 @@ lto = "thin"
 # frame aborts on its own rather than being undefined behaviour.
 panic = "unwind"
 strip = true
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+# Files dragged off ZOOD's shelf into Explorer, Finder, an email or a chat
+# (src/shelf.rs): the system's own drag of files out of a window
+# (CrabNebula's drag, Apache-2.0 OR MIT; what tauri-plugin-drag uses).
+drag = "2.1"

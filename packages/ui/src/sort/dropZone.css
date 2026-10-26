@@ -101,3 +101,367 @@ html.zood-drop-page body {
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ the shelf (shelf.rs) */
+
+/* At rest: a tab at the top middle that says how many files wait; the pointer on it opens the shelf. */
+.zood-drop-tab {
+  gap: 8px;
+  padding: 2px 16px 6px;
+  border-radius: 0 0 18px 18px;
+  animation: zood-drop-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.shelf-tab-words {
+  color: var(--zone-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.zood-drop-shelf {
+  --zone-line: rgb(246 241 234 / 12%);
+  --zone-chip: rgb(246 241 234 / 8%);
+  --zone-chip-hover: rgb(246 241 234 / 16%);
+  --zone-bronze: #e8b878;
+
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 10px 18px 12px;
+  border-radius: 0 0 30px 30px;
+  animation: zood-drop-open 260ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.zood-drop-shelf.is-over {
+  box-shadow:
+    inset 0 -2px 0 rgb(232 184 120 / 70%),
+    inset 0 0 0 1px rgb(232 184 120 / 40%);
+}
+
+.shelf-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 28px;
+}
+
+.shelf-title {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.shelf-count {
+  color: var(--zone-muted);
+  font-size: 12px;
+}
+
+.shelf-gap {
+  flex: 1;
+}
+
+.zood-drop-shelf button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.zood-drop-shelf button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.zood-drop-shelf button:focus-visible {
+  outline: 2px solid var(--zone-bronze);
+  outline-offset: 2px;
+}
+
+.shelf-text-button,
+.shelf-icon-button {
+  display: inline-grid;
+  place-items: center;
+  block-size: 28px;
+  padding-inline: 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  font-size: 12px;
+}
+
+.shelf-icon-button {
+  inline-size: 28px;
+  padding: 0;
+}
+
+.shelf-text-button:hover:not(:disabled),
+.shelf-icon-button:hover:not(:disabled) {
+  background: var(--zone-chip-hover);
+}
+
+/* The files, in a row that scrolls sideways. */
+.shelf-tiles {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 2px 2px 4px;
+  overflow: auto hidden;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--zone-line) transparent;
+}
+
+.shelf-tile {
+  position: relative;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  inline-size: 82px;
+  padding: 6px 4px 4px;
+  border-radius: 14px;
+  cursor: grab;
+  transition: background-color 140ms ease;
+}
+
+.shelf-tile:hover {
+  background: var(--zone-chip);
+}
+
+.shelf-tile:active {
+  cursor: grabbing;
+}
+
+.shelf-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 60px;
+  block-size: 60px;
+  border-radius: 12px;
+  background: var(--zone-chip);
+  box-shadow: inset 0 0 0 1px var(--zone-line);
+  overflow: hidden;
+}
+
+.shelf-tile.is-picked .shelf-thumb {
+  box-shadow: inset 0 0 0 2px var(--zone-bronze);
+}
+
+.shelf-thumb-picture {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.shelf-thumb-icon {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  color: var(--zone-ink);
+}
+
+.shelf-type {
+  color: var(--zone-bronze);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.shelf-check {
+  position: absolute;
+  inset-block-start: 4px;
+  inset-inline-start: 4px;
+  display: grid;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 50%;
+  color: #000;
+  background: var(--zone-bronze);
+}
+
+.shelf-new {
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  color: #000;
+  background: var(--zone-bronze);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.shelf-name {
+  display: -webkit-box;
+  max-inline-size: 100%;
+  overflow: hidden;
+  color: var(--zone-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Show in folder and take off: on the tile's corner, while the pointer is on it. */
+.shelf-tile-tools {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.shelf-tile:hover .shelf-tile-tools,
+.shelf-tile:focus-within .shelf-tile-tools {
+  opacity: 1;
+}
+
+.shelf-tile-tools button {
+  display: grid;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(40 36 32 / 92%);
+  box-shadow: 0 0 0 1px var(--zone-line);
+}
+
+.shelf-tile-tools button:hover:not(:disabled) {
+  background: #3a332c;
+}
+
+.shelf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-inline-size: 0;
+}
+
+.shelf-row-label {
+  flex: none;
+  inline-size: 74px;
+  color: var(--zone-muted);
+  font-size: 11.5px;
+}
+
+.shelf-chips {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-inline-size: 0;
+  overflow: auto hidden;
+  scrollbar-width: none;
+
+  /* More buttons past the edge: the row fades out there. */
+  mask-image: linear-gradient(to var(--shelf-end, right), #000 calc(100% - 28px), transparent);
+}
+
+[dir="rtl"] .shelf-chips {
+  --shelf-end: left;
+}
+
+.shelf-action,
+.shelf-format {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  block-size: 30px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--zone-chip);
+  box-shadow: inset 0 0 0 1px var(--zone-line);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+}
+
+.shelf-format {
+  padding-inline: 11px;
+  font-weight: 600;
+}
+
+.shelf-action:hover:not(:disabled),
+.shelf-format:hover:not(:disabled) {
+  background: var(--zone-chip-hover);
+}
+
+.shelf-action:active:not(:disabled),
+.shelf-format:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.shelf-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 18px;
+  margin-block-start: auto;
+  color: var(--zone-muted);
+  font-size: 11.5px;
+}
+
+.shelf-foot-words {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shelf-progress {
+  flex: 1;
+  block-size: 3px;
+  border-radius: 2px;
+  background: var(--zone-line);
+  overflow: hidden;
+}
+
+.shelf-progress > span {
+  display: block;
+  block-size: 100%;
+  background: var(--zone-bronze);
+  transition: inline-size 200ms ease;
+}
+
+.shelf-spin {
+  animation: shelf-spin 900ms linear infinite;
+}
+
+/* Files over the open shelf: it says it takes them. */
+.shelf-over {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  border-radius: inherit;
+  background: rgb(0 0 0 / 82%);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+@keyframes shelf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zood-drop-tab,
+  .zood-drop-shelf,
+  .shelf-spin {
+    animation: none;
+  }
+}

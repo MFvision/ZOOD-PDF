@@ -32,7 +32,7 @@ import { loadWallet } from '../ai/profile/walletState';
 import { targetWords, valueOf } from '../ai/profile/wallet';
 import type { Target, WalletProfile } from '../ai/profile/wallet';
 import { getSharedCoreClient } from '../core/client';
-import { invokeHost, isTauriHost, onHostEvent, saveDeck, sortVoice, uiLog } from '../core/host-tauri';
+import { announceReady, invokeHost, isTauriHost, onHostEvent, saveDeck, sortVoice, uiLog } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import { translate } from '../i18n/messages';
@@ -1389,6 +1389,8 @@ function Island() {
         }
         onDraft();
       }),
+      // Last: anything said while this page loaded comes now, to the listeners above.
+      announceReady(),
     ];
     return () => stops.forEach((stop) => stop());
   }, []);

@@ -450,7 +450,8 @@ fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
     // said at once, as letting go would have.
     if let (Some(problem), Opened::Tapped) = (&failed, opened) {
         show_island(app);
-        let _ = app.emit_to(
+        tell(
+            app,
             LABEL,
             HEARD_EVENT,
             Heard {
@@ -494,7 +495,8 @@ fn pressed<R: Runtime>(app: &AppHandle<R>, opened: Opened) {
     if glow {
         show_glow(app);
     }
-    let _ = app.emit_to(
+    tell(
+        app,
         LABEL,
         LISTEN_EVENT,
         Listening {
@@ -595,7 +597,8 @@ fn summoned<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap, asked: bool) {
             }
         });
     }
-    let _ = app.emit_to(
+    tell(
+        app,
         LABEL,
         TAP_EVENT,
         Tapped {
@@ -663,7 +666,7 @@ fn released<R: Runtime>(app: &AppHandle<R>, how: Option<Opened>) {
             problem: Some("E_MIC: the microphone did not start".into()),
         },
     };
-    let _ = app.emit_to(LABEL, HEARD_EVENT, heard);
+    tell(app, LABEL, HEARD_EVENT, heard);
 }
 
 /// From the island: the person is done speaking — they went quiet after a
@@ -703,6 +706,115 @@ pub fn ask_type_instead<R: Runtime>(app: AppHandle<R>, state: State<'_, AskState
 
 /* ------------------------------------------------------------- windows */
 
+/// Which of Ask ZOOD's windows have their page loaded and listening, and
+/// what was said to the others meanwhile. A window is made the first time
+/// it is needed, and its page takes a moment to load (longer on Windows,
+/// where WebView2 starts): what was said to it before it listened was lost,
+/// so the island stayed empty and invisible the first time on a PC.
+#[derive(Default)]
+struct Told {
+    ready: Vec<String>,
+    waiting: Vec<(String, &'static str, serde_json::Value)>,
+}
+
+static TOLD: Mutex<Told> = Mutex::new(Told {
+    ready: Vec::new(),
+    waiting: Vec::new(),
+});
+
+/// Says `event` to the window `label`, or keeps it until that window's page
+/// listens (`ask_window_ready`). Of what waits, only the last of each event
+/// is kept, and a new turn (listening, a tap) forgets the turn before.
+fn tell<R: Runtime, S: Serialize + Clone>(
+    app: &AppHandle<R>,
+    label: &str,
+    event: &'static str,
+    payload: S,
+) {
+    let Ok(mut told) = TOLD.lock() else {
+        let _ = app.emit_to(label, event, payload);
+        return;
+    };
+    if told.ready.iter().any(|l| l == label) {
+        drop(told);
+        let _ = app.emit_to(label, event, payload);
+        return;
+    }
+    let Ok(value) = serde_json::to_value(payload) else {
+        return;
+    };
+    let new_turn = event == LISTEN_EVENT || event == TAP_EVENT;
+    told.waiting
+        .retain(|(l, e, _)| l != label || (*e != event && !new_turn));
+    told.waiting.push((label.to_string(), event, value));
+}
+
+/// An Ask ZOOD window's page listens now: what waited for it is said.
+#[tauri::command]
+pub fn ask_window_ready<R: Runtime>(app: AppHandle<R>, window: tauri::WebviewWindow<R>) {
+    let label = window.label().to_string();
+    let waiting = match TOLD.lock() {
+        Ok(mut told) => {
+            if !told.ready.contains(&label) {
+                told.ready.push(label.clone());
+            }
+            let (mine, others) = std::mem::take(&mut told.waiting)
+                .into_iter()
+                .partition(|(l, _, _)| *l == label);
+            told.waiting = others;
+            mine
+        }
+        Err(_) => Vec::new(),
+    };
+    for (_, event, value) in waiting {
+        let _ = app.emit_to(label.as_str(), event, value);
+    }
+}
+
+/// The island made ahead, out of sight, a few seconds after start, so the
+/// first tap finds its page loaded (`ring.rs` calls it with the ring's).
+pub fn prepare<R: Runtime>(app: &AppHandle<R>) {
+    let enabled = app
+        .try_state::<AskState>()
+        .and_then(|state| state.settings.lock().ok().map(|s| s.enabled))
+        .unwrap_or(false);
+    if !enabled {
+        return;
+    }
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if handle.get_webview_window(LABEL).is_none() {
+            let _ = island_window(&handle);
+        }
+    });
+}
+
+fn island_window<R: Runtime>(handle: &AppHandle<R>) -> Option<tauri::WebviewWindow<R>> {
+    match WebviewWindowBuilder::new(handle, LABEL, WebviewUrl::App("index.html?ask=1".into()))
+        .title("Ask ZOOD")
+        .inner_size(ISLAND_WIDTH, 120.0)
+        .decorations(false)
+        .resizable(false)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .focused(false)
+        .focusable(false)
+        .visible(false)
+        .transparent(true)
+        .build()
+    {
+        Ok(window) => {
+            notch::above_menu_bar(&window);
+            Some(window)
+        }
+        Err(e) => {
+            debug_log(format!("ask: cannot make the island: {e}"));
+            None
+        }
+    }
+}
+
 fn monitor_at_pointer<R: Runtime>(
     app: &AppHandle<R>,
 ) -> Option<(PhysicalPosition<i32>, PhysicalSize<u32>, f64)> {
@@ -726,32 +838,9 @@ fn show_island<R: Runtime>(app: &AppHandle<R>) {
     let _ = app.run_on_main_thread(move || {
         let window = match handle.get_webview_window(LABEL) {
             Some(window) => window,
-            None => match WebviewWindowBuilder::new(
-                &handle,
-                LABEL,
-                WebviewUrl::App("index.html?ask=1".into()),
-            )
-            .title("Ask ZOOD")
-            .inner_size(ISLAND_WIDTH, 120.0)
-            .decorations(false)
-            .resizable(false)
-            .shadow(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .focused(false)
-            .focusable(false)
-            .visible(false)
-            .transparent(true)
-            .build()
-            {
-                Ok(window) => {
-                    notch::above_menu_bar(&window);
-                    window
-                }
-                Err(e) => {
-                    debug_log(format!("ask: cannot make the island: {e}"));
-                    return;
-                }
+            None => match island_window(&handle) {
+                Some(window) => window,
+                None => return,
             },
         };
         // Flush with the top of the screen, in the middle: it grows out of
@@ -823,7 +912,7 @@ fn show_glow<R: Runtime>(app: &AppHandle<R>) {
         let _ = window.set_size(PhysicalSize::new(size.width, size.height.saturating_sub(1)));
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.show();
-        let _ = window.emit_to(GLOW_LABEL, LISTEN_EVENT, true);
+        tell(&handle, GLOW_LABEL, LISTEN_EVENT, true);
     });
 }
 
@@ -831,7 +920,7 @@ fn hide_glow<R: Runtime>(app: &AppHandle<R>) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         if let Some(window) = handle.get_webview_window(GLOW_LABEL) {
-            let _ = window.emit_to(GLOW_LABEL, LISTEN_EVENT, false);
+            tell(&handle, GLOW_LABEL, LISTEN_EVENT, false);
             let _ = window.hide();
         }
     });
