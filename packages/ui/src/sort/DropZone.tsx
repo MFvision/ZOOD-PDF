@@ -71,8 +71,11 @@ import { runQuick, wantsPassword } from '../quick/runQuick';
 import { CONVERT_ROW, THUMB_MAX_BYTES, THUMB_TYPES, actionsFor, convertibleTo, fittingFor, targetsOf, typeOf } from './shelf';
 import type { ShelfAction } from './shelf';
 import { StowPanel } from './StowPanel';
-import { dropTargetAt, formatsFor, moreFor, runsFor, tilesFor } from './stow';
+import { dropTargetAt, formatsFor, moreFor, panelRows, runsFor, tilesFor } from './stow';
 import { canWriteWebp, runStow } from './stowRun';
+import { countUse, readUse } from './dropUse';
+import { useSettings } from '../state/settings';
+import type { DropItem } from '../state/settings';
 
 /**
  * ZOOD's drop zone and shelf (`src-tauri/src/sort.rs`, `shelf.rs`), after
@@ -168,6 +171,7 @@ function Thumb({ item }: { item: ShelfItem }) {
 
 function Zone() {
   const { t, lang } = useI18n();
+  const settings = useSettings();
   const client = useMemo(() => getSharedCoreClient(), []);
   const [state, setState] = useState<DropZoneState>({ look: 'hidden', count: 0, over: false });
   const [items, setItems] = useState<ShelfItem[]>([]);
@@ -264,6 +268,7 @@ function Zone() {
   const onDropped = useEffectEvent((dropped: ZoneDropped) => {
     const target = dropTargetAt(dropped.x, dropped.y);
     setHot(null);
+    if (target) countUse(target);
     const names = dropped.names;
     // The rest of ZOOD (Ask ZOOD, Organize, the phone, All tools): the host takes it from here.
     if (target?.startsWith('more:')) {
@@ -640,7 +645,25 @@ function Zone() {
   }
 
   if ((look === 'open' || look === 'over') && hand.names.length > 0) {
-    return <StowPanel hand={hand} tiles={tilesFor(hand.names)} formats={formatsFor(hand.names, webp)} more={moreFor(hand.names, phone)} hot={hot} over={look === 'over'} />;
+    const tiles = tilesFor(hand.names);
+    const formats = formatsFor(hand.names, webp);
+    // What does something with these files, placed as the person laid the panel out.
+    const available = new Set<DropItem>([
+      ...tiles.map((tile) => `tile:${tile.id}` as DropItem),
+      ...formats.map((chip) => `format:${chip.id}` as DropItem),
+      ...moreFor(hand.names, phone).map((id) => `more:${id}` as DropItem),
+    ]);
+    const layout = { big: settings.dropBig, small: settings.dropSmall, pills: settings.dropPills, auto: settings.dropAuto };
+    return (
+      <StowPanel
+        hand={hand}
+        rows={panelRows(layout, available, settings.dropAuto ? readUse() : {})}
+        tiles={tiles}
+        formats={formats}
+        hot={hot}
+        over={look === 'over'}
+      />
+    );
   }
 
   const open = look === 'open' || look === 'over';

@@ -1,7 +1,5 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import { Icon } from '../components/Icon';
 import { radioTabIndex, useRadioGroupKeyboard } from '../components/useRadioGroupKeyboard';
 import { useI18n } from '../i18n/useT';
 
@@ -176,62 +174,3 @@ export function ActionRow({ label, hint, action, onClick, danger = false, disabl
   );
 }
 
-/**
- * A list the person orders and switches: each entry with its switch and a
- * move up and a move down button (which work with the keyboard and a screen
- * reader, as dragging would not).
- */
-export function OrderedList<T extends string>({
-  label,
-  hint,
-  items,
-  hidden,
-  name,
-  onChange,
-  max,
-}: {
-  label: string;
-  hint?: ReactNode;
-  items: readonly T[];
-  hidden: readonly T[];
-  name: (item: T) => string;
-  onChange: (items: T[], hidden: T[]) => void;
-  /** At most this many on at once (the ring's eight places). */
-  max?: number;
-}) {
-  const { t } = useI18n();
-  const id = useId();
-  const onCount = items.filter((item) => !hidden.includes(item)).length;
-  const move = (index: number, by: -1 | 1) => {
-    const next = [...items];
-    const [item] = next.splice(index, 1);
-    next.splice(index + by, 0, item!);
-    onChange(next, [...hidden]);
-  };
-  const toggle = (item: T, on: boolean) => onChange([...items], on ? hidden.filter((one) => one !== item) : [...hidden, item]);
-  return (
-    <Row label={label} hint={hint} labelId={id} stacked>
-      <ul className="prefs-order" aria-labelledby={id}>
-        {items.map((item, index) => {
-          const on = !hidden.includes(item);
-          return (
-            <li key={item} className={on ? 'prefs-order-item' : 'prefs-order-item is-off'}>
-              <label className="prefs-order-name">
-                <input type="checkbox" checked={on} disabled={!on && max !== undefined && onCount >= max} onChange={(event) => toggle(item, event.target.checked)} />
-                <span>{name(item)}</span>
-              </label>
-              <span className="prefs-order-moves">
-                <button type="button" className="prefs-icon-button" aria-label={t('prefs.moveUp', { name: name(item) })} disabled={index === 0} onClick={() => move(index, -1)}>
-                  <Icon of={ArrowUp} size={14} />
-                </button>
-                <button type="button" className="prefs-icon-button" aria-label={t('prefs.moveDown', { name: name(item) })} disabled={index === items.length - 1} onClick={() => move(index, 1)}>
-                  <Icon of={ArrowDown} size={14} />
-                </button>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </Row>
-  );
-}

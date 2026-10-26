@@ -16,7 +16,7 @@ import { Glow, Replay, Steps, usePhases } from './scenes';
  * ZOOD's drop zone in the tour, with practice: a pretend desktop with five
  * messy files, and ZOOD at the top. Drag the files up (any one brings the
  * rest along, as a selection would) and the zone opens its tiles, Web,
- * Send and Print, with Put away for tidying the Desktop on its own. The steps play the same story,
+ * Lighter and Print, with Put away for tidying the Desktop on its own. The steps play the same story,
  * and the two real switches sit under it: keep ZOOD ready, so it is there
  * when files need sorting, and the drop zone itself.
  */

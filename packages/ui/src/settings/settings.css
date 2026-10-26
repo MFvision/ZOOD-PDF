@@ -494,50 +494,7 @@ html[data-look="mono"] .prefs-nav-icon {
 .accent-swatch[data-accent-swatch="graphite"] { --swatch: #8e8e93; }
 .accent-swatch[data-accent-swatch="look"][aria-checked="true"] { box-shadow: 0 0 0 2px var(--control-background), 0 0 0 4px var(--accent); }
 
-/* ---- Ordered lists (home sections, tools, prompts) --------------------------- */
-
-.prefs-order {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border: 1px solid var(--separator);
-  border-radius: var(--radius-8);
-}
-
-.prefs-order-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
-}
-
-[dir="rtl"] .prefs-order-item {
-  padding: var(--space-3) var(--space-5) var(--space-3) var(--space-3);
-}
-
-.prefs-order-item + .prefs-order-item {
-  border-block-start: 1px solid var(--separator);
-}
-
-.prefs-order-name {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  font-size: var(--text-body);
-}
-
-.prefs-order-item.is-off .prefs-order-name {
-  color: var(--secondary-label);
-}
-
-.prefs-order-moves {
-  display: flex;
-  gap: var(--space-1);
-}
+/* ---- Small icon buttons ------------------------------------------------------ */
 
 .prefs-icon-button {
   display: grid;
@@ -854,4 +811,425 @@ html[data-reduce-motion="on"] .prefs-kbd.is-listening {
   margin: var(--space-5) var(--space-5) var(--space-2);
   font-size: var(--text-headline);
   font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ boards */
+
+/* A setting that arranges things, shown as the thing itself (LayoutBoard.tsx). */
+.board,
+.board-ghost {
+  --board-ink: #f6f1ea;
+  --board-muted: rgb(246 241 234 / 62%);
+  --board-card: rgb(246 241 234 / 8%);
+  --board-bronze: #e8b878;
+}
+
+.board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-inline-size: 0;
+  touch-action: none;
+}
+
+.board.is-dragging,
+.board.is-dragging * {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.board-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.board-place {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.board-place-label {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--secondary-label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.board-place-count {
+  color: var(--tertiary-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-zone {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-block-size: 40px;
+  padding: 6px;
+  border: 1px dashed transparent;
+  border-radius: 14px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+/* Where the one in hand would land, and every place a picked-up one can go. */
+.board-place.is-over > .board-zone,
+.board-place.is-open > .board-zone {
+  border-color: var(--board-bronze);
+  background: rgb(232 184 120 / 8%);
+}
+
+.board-zone-empty {
+  padding-inline: 6px;
+  color: var(--tertiary-label);
+  font-size: 12px;
+}
+
+.board-item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: grab;
+  touch-action: none;
+}
+
+.board-item:focus-visible {
+  outline: 2px solid var(--focus, var(--accent));
+  outline-offset: 2px;
+}
+
+.board-item-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+.board-item-word {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The one being moved stays in its new place as a faint outline; the pointer carries it. */
+.board-item.is-dragged {
+  opacity: 0.28;
+}
+
+.board-item.is-held {
+  outline: 2px solid var(--board-bronze);
+  outline-offset: 2px;
+  animation: board-held 900ms ease-in-out infinite alternate;
+}
+
+@keyframes board-held {
+  to {
+    transform: translateY(-2px);
+  }
+}
+
+.board-ghost.board-item {
+  position: fixed;
+  z-index: 10000;
+  margin: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 35%);
+}
+
+.board-ghost.board-item-big {
+  inline-size: 120px;
+}
+
+/* Out of the panel's black, the one in hand keeps it. */
+.board-ghost.board-item-big,
+.board-ghost.board-item-small,
+.board-ghost.board-item-pill,
+.board-ghost.board-item-ring {
+  background-color: #1d1814;
+}
+
+.board-ghost.board-item-row,
+.board-ghost.board-item-card {
+  min-inline-size: 200px;
+  background: var(--control-background);
+}
+
+.board-said {
+  position: absolute;
+  overflow: hidden;
+  inline-size: 1px;
+  block-size: 1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- the drop panel: the notch's black, big tiles, small chips, bottom pills */
+.board-frame-island {
+  position: relative;
+  padding: 26px 14px 14px;
+  border-radius: 0 0 30px 30px;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgb(174 139 102 / 26%), transparent 62%),
+    #000;
+  color: var(--board-ink);
+}
+
+.board-island-mark {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+}
+
+[dir="rtl"] .board-island-mark {
+  translate: 50% 0;
+}
+
+.board-frame-island .board-place-label,
+.board-frame-ring .board-place-label {
+  color: var(--board-muted);
+}
+
+.board-frame-island .board-place-count,
+.board-frame-island .board-zone-empty {
+  color: rgb(246 241 234 / 40%);
+}
+
+.board-zone-big {
+  flex-wrap: nowrap;
+  min-block-size: 92px;
+}
+
+.board-item-big {
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 8px;
+  min-inline-size: 0;
+  max-inline-size: 140px;
+  block-size: 86px;
+  padding-inline: 6px;
+  border-radius: 18px;
+  background: var(--board-card);
+  color: var(--board-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.board-item-big .board-item-icon {
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  background: rgb(246 241 234 / 8%);
+  color: var(--board-bronze);
+}
+
+.board-item-big .board-item-word {
+  max-inline-size: 100%;
+}
+
+.board-item-small {
+  block-size: 34px;
+  padding-inline: 10px;
+  border-radius: 10px;
+  background: var(--board-card);
+  color: var(--board-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.board-item-small .board-item-icon {
+  color: var(--board-bronze);
+}
+
+.board-item-pill {
+  block-size: 28px;
+  padding-inline: 11px;
+  border-radius: 999px;
+  background: rgb(246 241 234 / 6%);
+  color: var(--board-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* --- the ring: slots round a circle, clockwise from the top */
+.board-frame-ring {
+  align-items: center;
+}
+
+.board-zone-ring {
+  display: block;
+  flex: none;
+  inline-size: 260px;
+  block-size: 260px;
+  padding: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, transparent 38%, rgb(246 241 234 / 7%) 39%, rgb(246 241 234 / 7%) 61%, transparent 62%),
+    radial-gradient(circle at 50% 40%, #2a2420, #0b0908);
+  color: var(--board-ink);
+}
+
+.board-item-ring {
+  position: absolute;
+  inline-size: 46px;
+  block-size: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: rgb(246 241 234 / 10%);
+  color: var(--board-bronze);
+}
+
+.board-ring-mark {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  margin: -17px 0 0 -17px;
+  pointer-events: none;
+}
+
+[dir="rtl"] .board-ring-mark {
+  margin: -17px -17px 0 0;
+}
+
+.board-zone-ring > .board-zone-empty {
+  position: absolute;
+  inset: auto 0 30%;
+  text-align: center;
+}
+
+/* --- the right-click menu: a light menu card, one line each */
+.board-frame-menu {
+  gap: 0;
+  max-inline-size: 280px;
+  padding: 6px;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--control-background);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.board-menu-title {
+  padding: 4px 8px 6px;
+  color: var(--secondary-label);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.board-zone-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  padding: 2px;
+}
+
+.board-item-row {
+  justify-content: flex-start;
+  gap: 10px;
+  block-size: 30px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  color: var(--label);
+  font-size: var(--text-callout);
+}
+
+.board-item-row:hover {
+  background: var(--accent-soft);
+}
+
+.board-item-row .board-item-icon {
+  color: var(--accent);
+}
+
+/* --- Home: a little window with its sections one under another */
+.board-frame-home {
+  padding: 12px;
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  background: var(--control-background);
+}
+
+.board-zone-card {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.board-item-card {
+  justify-content: flex-start;
+  gap: 12px;
+  block-size: 46px;
+  padding-inline: 12px;
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+  background: var(--tertiary-fill, rgb(0 0 0 / 3%));
+  color: var(--label);
+  font-size: var(--text-body);
+}
+
+.board-item-card .board-item-icon {
+  color: var(--accent);
+}
+
+/* --- the AI chat: its chips above the box you type in */
+.board-frame-chat {
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  background: var(--control-background);
+}
+
+.board-chat-input {
+  padding: 9px 12px;
+  border: 1px solid var(--control-border, var(--separator));
+  border-radius: 10px;
+  color: var(--tertiary-label);
+  font-size: var(--text-callout);
+}
+
+.board-item-chip {
+  block-size: 30px;
+  padding-inline: 12px;
+  border: 1px solid var(--separator);
+  border-radius: 999px;
+  background: var(--control-background);
+  color: var(--label);
+  font-size: 12.5px;
+}
+
+.board-item-chip .board-item-icon {
+  color: var(--accent);
+}
+
+/* The tray: what is not shown, to drag back in. */
+.board > .board-place > .board-zone-chip {
+  border-color: var(--separator);
+  background: var(--tertiary-fill, rgb(0 0 0 / 3%));
+}
+
+.board > .board-place > .board-zone-chip .board-item-chip {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-item.is-held {
+    animation: none;
+  }
 }

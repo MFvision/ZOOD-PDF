@@ -1,5 +1,6 @@
 import { isConvertibleName, isPdfName } from '../quick/plan';
 import type { QuickToolId } from '../quick/plan';
+import type { DropItem } from '../state/settings';
 
 /**
  * The drop zone's tiles, after the owner's "Stow" (Julien Design Craft's
@@ -178,4 +179,57 @@ export function dropTargetAt(x: number, y: number, doc: Pick<Document, 'elementF
   const element = doc.elementFromPoint(x, y);
   const target = element?.closest<HTMLElement>('[data-drop]');
   return target?.dataset.drop ?? null;
+}
+
+/** The panel's rows, top to bottom: big tiles, small chips, the bottom pills. */
+export type DropRow = 'big' | 'small' | 'pills';
+export const DROP_ROWS: readonly DropRow[] = ['big', 'small', 'pills'];
+export type PanelRows<T = DropItem> = Record<DropRow, T[]>;
+
+/** How the person laid the panel out (Settings › Quick tools › Drop panel). */
+export interface PanelLayout extends PanelRows {
+  auto: boolean;
+}
+
+/**
+ * Auto: the most used move up into the big row, each swapping places with
+ * the big one it pushes out, so the rest stays where the person put it.
+ * Never used, or used alike, everything stays as laid out.
+ */
+export function autoRows(rows: PanelRows, use: Readonly<Record<string, number>>): PanelRows {
+  const all = DROP_ROWS.flatMap((row) => rows[row]);
+  const ranked = all
+    .map((id, at) => ({ id, at, uses: use[id] ?? 0 }))
+    .sort((a, b) => b.uses - a.uses || a.at - b.at)
+    .slice(0, rows.big.length)
+    .map((one) => one.id);
+  const up = ranked.filter((id) => !rows.big.includes(id));
+  const down = rows.big.filter((id) => !ranked.includes(id));
+  const swap = (id: DropItem) => {
+    const at = up.indexOf(id);
+    return at < 0 ? id : down[at]!;
+  };
+  return { big: ranked, small: rows.small.map(swap), pills: rows.pills.map(swap) };
+}
+
+/**
+ * The panel for the files in hand: each row as laid out, keeping only the
+ * targets that do something with these files; with Auto, the most used of
+ * those in the big row.
+ */
+export function panelRows(layout: PanelLayout, available: ReadonlySet<DropItem>, use: Readonly<Record<string, number>> = {}): PanelRows {
+  const fitting: PanelRows = { big: [], small: [], pills: [] };
+  for (const row of DROP_ROWS) fitting[row] = layout[row].filter((id) => available.has(id));
+  if (!layout.auto) return fitting;
+  // Big targets that do nothing with these files leave room: the most used of the rest fill it.
+  const fill = [...fitting.small, ...fitting.pills]
+    .filter((id) => (use[id] ?? 0) > 0)
+    .sort((a, b) => (use[b] ?? 0) - (use[a] ?? 0))
+    .slice(0, Math.max(0, layout.big.length - fitting.big.length));
+  const lifted: PanelRows = {
+    big: [...fitting.big, ...fill],
+    small: fitting.small.filter((id) => !fill.includes(id)),
+    pills: fitting.pills.filter((id) => !fill.includes(id)),
+  };
+  return autoRows(lifted, use);
 }

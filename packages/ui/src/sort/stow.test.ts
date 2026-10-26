@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, moreFor, runsFor, tilesFor } from './stow';
+import { autoRows, dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, moreFor, panelRows, runsFor, tilesFor } from './stow';
+import type { PanelLayout } from './stow';
+import type { DropItem } from '../state/settings';
 
 describe('the drop zone tiles', () => {
   it('knows pictures, PDFs and documents', () => {
@@ -69,5 +71,36 @@ describe('the row to the rest of ZOOD', () => {
     expect(moreFor(['a.pdf', 'b.jpg'], true)).toEqual(['ask', 'organize', 'phone', 'tools']);
     expect(moreFor(['photo.jpg'])).toEqual(['organize', 'tools']);
     expect(moreFor(['setup.exe'])).toEqual([]);
+  });
+});
+
+describe('the panel as the person laid it out', () => {
+  const layout: PanelLayout = {
+    big: ['tile:print', 'tile:web', 'tile:send'],
+    small: ['format:jpg', 'format:pdf', 'more:ask'],
+    pills: ['more:organize', 'more:tools'],
+    auto: false,
+  };
+  const all = new Set<DropItem>([...layout.big, ...layout.small, ...layout.pills]);
+  it('keeps each row as laid out, only what does something with the files', () => {
+    expect(panelRows(layout, all)).toEqual({ big: layout.big, small: layout.small, pills: layout.pills });
+    expect(panelRows(layout, new Set<DropItem>(['tile:web', 'format:pdf', 'more:tools']))).toEqual({ big: ['tile:web'], small: ['format:pdf'], pills: ['more:tools'] });
+  });
+  it('with Auto, swaps the most used up into the big row and the rest stays put', () => {
+    const use = { 'more:ask': 9, 'tile:web': 3 };
+    expect(panelRows({ ...layout, auto: true }, all, use)).toEqual({
+      big: ['more:ask', 'tile:web', 'tile:print'],
+      small: ['format:jpg', 'format:pdf', 'tile:send'],
+      pills: layout.pills,
+    });
+    // Never used: as laid out.
+    expect(panelRows({ ...layout, auto: true }, all, {})).toEqual({ big: layout.big, small: layout.small, pills: layout.pills });
+  });
+  it('with Auto, fills big places the files leave empty with the most used', () => {
+    const fits = new Set<DropItem>(['tile:web', 'format:pdf', 'more:ask', 'more:tools']);
+    expect(panelRows({ ...layout, auto: true }, fits, { 'more:tools': 2 })).toEqual({ big: ['more:tools', 'tile:web'], small: ['format:pdf', 'more:ask'], pills: [] });
+  });
+  it('moves nothing when the big row is empty', () => {
+    expect(autoRows({ big: [], small: ['format:pdf'], pills: [] }, { 'format:pdf': 4 })).toEqual({ big: [], small: ['format:pdf'], pills: [] });
   });
 });
