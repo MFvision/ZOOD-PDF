@@ -60,8 +60,16 @@ Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 2
 Start-Process -FilePath $App | Out-Null
 Start-Sleep -Milliseconds 500
-$root = (Get-Process warraq-desktop -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1).Id
+# The process started may hand over to another and leave (its Id is then
+# gone), so the app is found by name.
+$root = $null
+foreach ($try in 1..20) {
+  $root = (Get-Process warraq-desktop -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1).Id
+  if ($root) { break }
+  Start-Sleep -Milliseconds 250
+}
 if (-not $root) { throw 'the app did not start' }
+Write-Host "measuring app process $root"
 
 # The app and everything it started (WebView2 browser, renderers, GPU ...).
 function Tree {
@@ -117,7 +125,8 @@ Sample 'launch' 60
 Shot 'perf-1-launch.png'
 
 # Ctrl+, opens Settings in the focused editor window.
-$main = Get-Process -Id $root -ErrorAction SilentlyContinue
+$main = Get-Process warraq-desktop -ErrorAction SilentlyContinue |
+  Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } | Select-Object -First 1
 if ($main -and $main.MainWindowHandle -ne [IntPtr]::Zero) {
   [Keys2]::Tap(0x12)
   [Keys2]::SetForegroundWindow($main.MainWindowHandle) | Out-Null
@@ -159,7 +168,7 @@ if (Test-Path $stalls) {
 $text | Set-Content (Join-Path $Out 'perf.txt')
 Write-Host $text
 
-Stop-Process -Id $root -Force -ErrorAction SilentlyContinue
+Get-Process warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 $settled = ($report | Where-Object phase -in 'launch', 'after' | Measure-Object cpuSettled -Maximum).Maximum
