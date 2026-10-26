@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Combine, FileText, FolderTree, Hand, Image, Mic, MousePointer2, PenLine, Scissors, Sparkles } from 'lucide-react';
+import { Combine, FileText, Hand, Image, MousePointer2, Repeat2, Shrink, Sparkles, SquareArrowOutUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import './sortScene.css';
 import { Icon } from '../components/Icon';
@@ -13,10 +13,10 @@ import type { SectionId } from '../settings/SettingsWindow';
 import { Glow, Replay, Steps, usePhases } from './scenes';
 
 /**
- * Sort with ZOOD in the tour, with practice: a pretend desktop with five
+ * ZOOD's shelf in the tour, with practice: a pretend desktop with five
  * messy files, and ZOOD's drop zone at the top. Drag the files up (any
  * one brings the rest along, as a selection would) and the zone takes
- * them and shows what ZOOD would suggest. The steps play the same story,
+ * them onto the shelf and shows what it offers at once. The steps play the same story,
  * and the two real switches sit under it: keep ZOOD ready, so it is there
  * when files need sorting, and the drop zone itself.
  */
@@ -25,7 +25,7 @@ const STEPS: { icon: LucideIcon; text: TKey }[] = [
   { icon: MousePointer2, text: 'tour.sort.s1' },
   { icon: Hand, text: 'tour.sort.s2' },
   { icon: Sparkles, text: 'tour.sort.s3' },
-  { icon: Mic, text: 'tour.sort.s4' },
+  { icon: SquareArrowOutUpRight, text: 'tour.sort.s4' },
 ];
 
 const FILES: { name: string; icon: LucideIcon }[] = [
@@ -38,9 +38,9 @@ const FILES: { name: string; icon: LucideIcon }[] = [
 
 const IDEAS: { icon: LucideIcon; text: TKey }[] = [
   { icon: Combine, text: 'tour.sort.idea1' },
-  { icon: Scissors, text: 'tour.sort.idea2' },
-  { icon: PenLine, text: 'tour.sort.idea3' },
-  { icon: FolderTree, text: 'tour.sort.idea4' },
+  { icon: Shrink, text: 'tour.sort.idea2' },
+  { icon: Repeat2, text: 'tour.sort.idea3' },
+  { icon: Sparkles, text: 'tour.sort.idea4' },
 ];
 
 export function SortScene({ onSettings }: { onSettings: (section: SectionId) => void }) {

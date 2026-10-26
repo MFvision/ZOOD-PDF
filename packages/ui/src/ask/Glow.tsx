@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import './glow.css';
 import { useReducedMotion } from '../components/useReducedMotion';
-import { isTauriHost, onHostEvent } from '../core/host-tauri';
+import { announceReady, isTauriHost, onHostEvent } from '../core/host-tauri';
 import { applyAppearance } from '../settings/SettingsEffects';
 
 /** True in the window that glows round the screen while Ask ZOOD listens. */
@@ -63,6 +63,7 @@ export function AskGlowApp() {
       onHostEvent<number>('ask://level', (value) =>
         setLevel((before) => before * 0.5 + value * 0.5),
       ),
+      announceReady(),
     ];
     return () => stops.forEach((stop) => stop());
   }, []);

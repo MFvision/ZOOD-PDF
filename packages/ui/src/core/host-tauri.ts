@@ -73,6 +73,19 @@ export function onHostEvent<T>(event: string, handle: (payload: T) => void): () 
 }
 
 /**
+ * Tells the host this window's page listens now, a moment after its
+ * listeners were asked for (they register over the same channel, in order):
+ * what Ask ZOOD said to the window while its page was still loading is
+ * said again (`ask_window_ready`). Without it the island missed its first
+ * "listening" on a PC, where WebView2 loads slowly, and showed nothing.
+ */
+export function announceReady(): () => void {
+  if (!internals()) return () => {};
+  const timer = globalThis.setTimeout(() => void invoke('ask_window_ready').catch(() => undefined), 120);
+  return () => globalThis.clearTimeout(timer);
+}
+
+/**
  * Tells the desktop host's `WARRAQ_DEBUG` log what happened in the webview
  * (the host prints nothing unless that is set). A no-op in a browser; never
  * fails the caller.
@@ -433,6 +446,57 @@ export const isDropZoneWindow = () => hasParam('dropzone');
 export const DROP_ZONE_EVENT = 'drop://state';
 /** Words Ask ZOOD heard for this Sort window. */
 export const SORT_SAY_EVENT = 'sort://say';
+/** The drop zone's look and the shelf's count (`sort.rs`, ZoneState). */
+export interface DropZoneState {
+  look: 'hidden' | 'peek' | 'open' | 'over' | 'tab' | 'shelf';
+  count: number;
+  /** Files dragged over the open shelf. */
+  over: boolean;
+}
+
+/** The shelf's files changed (`shelf.rs`); the payload is how many wait. */
+export const SHELF_CHANGED_EVENT = 'shelf://changed';
+
+/** A file on ZOOD's shelf at the top of the screen (`src-tauri/src/shelf.rs`). */
+export interface ShelfItem {
+  name: string;
+  path: string;
+  size: number;
+  /** pdf, images, documents, spreadsheets, presentations, archives, audio, video, installers, other. */
+  kind: string;
+  /** Made by a tool run on the shelf. */
+  made: boolean;
+}
+
+export async function shelfItems(): Promise<ShelfItem[]> {
+  return ((await invoke('shelf_items')) as ShelfItem[] | null) ?? [];
+}
+
+const shelfCall = (command: string, args?: Record<string, unknown>) => invoke(command, args).then(() => undefined, () => undefined);
+
+export const shelfRemove = (paths: readonly string[]) => shelfCall('shelf_remove', { paths });
+export const shelfClear = () => shelfCall('shelf_clear');
+export const shelfHold = (on: boolean) => shelfCall('shelf_hold', { on });
+export const shelfCollapse = () => shelfCall('shelf_collapse');
+/** Starts the system's drag of these files out of the shelf (a copy; they stay). */
+export const shelfDrag = (paths: readonly string[]) => shelfCall('shelf_drag', { paths });
+export const shelfOpen = (path: string) => shelfCall('shelf_open', { path });
+export const shelfReveal = (path: string) => shelfCall('shelf_reveal', { path });
+/** Organize with ZOOD: the Sort window, on these files. */
+export const shelfSort = (paths: readonly string[]) => shelfCall('shelf_sort', { paths });
+/** A tool that needs the person: its quick window opens on these files. */
+export const shelfQuick = (tool: string, paths: readonly string[]) => shelfCall('shelf_quick', { tool, paths });
+export const shelfPhone = (paths: readonly string[]) => shelfCall('shelf_phone', { paths });
+
+/** Files a tool on the shelf made go onto it; answers how many wait now. */
+export function shelfMade(paths: readonly string[]): Promise<number> {
+  return invoke('shelf_made', { paths }).then((n) => Number(n) || 0, () => 0);
+}
+
+export function shelfHasPhone(): Promise<boolean> {
+  return invoke('shelf_has_phone').then((on) => on === true, () => false);
+}
+
 /** Files dragged over the ZOOD bubble (true) or away (false). */
 export const BUBBLE_DRAG_EVENT = 'bubble://drag';
 

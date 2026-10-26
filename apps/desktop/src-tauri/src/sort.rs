@@ -3,11 +3,13 @@
 //! While ZOOD runs (kept ready in the background, `ring.rs`), dragging files
 //! out of File Explorer or Finder, with no key held, towards the top of the
 //! screen brings ZOOD's drop zone down from there, where Ask ZOOD's island
-//! lives: a small pill at first, opening into "Drop here to sort" when the
-//! pointer comes near. Files let go there (or on the ZOOD bubble,
-//! `presence.rs`, or on the ring's Sort place) open a Sort window
-//! (`index.html?sort=1`) that reads them and suggests merging, splitting,
-//! folders and better names (`packages/ui/src/sort/`).
+//! lives: a small pill at first, opening into "Drop here" when the pointer
+//! comes near. Files let go there go onto ZOOD's shelf (`shelf.rs`), which
+//! holds them, runs the quick tools on them at once and hands them back by
+//! drag; its "Organize" (or files dropped on the ZOOD bubble, `presence.rs`,
+//! or on the ring's Sort place) opens a Sort window (`index.html?sort=1`)
+//! that reads them and suggests merging, splitting, folders and better names
+//! (`packages/ui/src/sort/`).
 //!
 //! The window only ever names files by their place in the session's list:
 //! the host keeps the paths. Files are moved or renamed, never overwritten,
@@ -20,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tauri::{
@@ -41,6 +43,9 @@ pub const SAY_EVENT: &str = "sort://say";
 /// The pill first seen at the top, and the zone it opens into, in points.
 const PEEK: (f64, f64) = (196.0, 58.0);
 const OPEN: (f64, f64) = (400.0, 168.0);
+/// The shelf at rest (a tab that says how many files wait) and open (`shelf.rs`).
+const TAB: (f64, f64) = (210.0, 34.0);
+const SHELF: (f64, f64) = (680.0, 272.0);
 /// How near the top, and how far either side of the middle, opens the zone, in points.
 const NEAR_TOP: f64 = 240.0;
 /// How near the top the pointer comes before the zone peeks at all: a drag
@@ -49,6 +54,9 @@ const PEEK_TOP: f64 = 460.0;
 const NEAR_SIDE: f64 = 340.0;
 /// After the button is let go, how long a drop on the zone has to arrive.
 const DROP_GRACE: Duration = Duration::from_millis(700);
+/// After a drop, the pointer moves the watcher saw before the button came up
+/// are old news: they must not bring the zone down again over the shelf.
+const AFTER_DROP: Duration = Duration::from_millis(1200);
 /// More than anyone drops at once; a bound on one session.
 const MAX_FILES: usize = 300;
 /// A PDF is read for its words only up to this size, and this many pages.
@@ -63,10 +71,16 @@ static ZONE_ON: AtomicBool = AtomicBool::new(true);
 static UP: AtomicBool = AtomicBool::new(false);
 static NEAR: AtomicBool = AtomicBool::new(false);
 static DROPPED: AtomicBool = AtomicBool::new(false);
+/// When files were last let go on the zone.
+static DROPPED_AT: Mutex<Option<Instant>> = Mutex::new(None);
 /// A screen: left, top, width, height in the watcher's units, and its scale.
 type Screen = (f64, f64, f64, f64, f64);
 /// The screen the zone is on.
 static SCREEN: Mutex<Option<Screen>> = Mutex::new(None);
+/// A place on the screens: left, top, width, height in the watcher's units.
+pub type Rect = (f64, f64, f64, f64);
+/// What the zone shows now, and where it is.
+static LOOK: Mutex<(&str, Rect)> = Mutex::new(("hidden", (0.0, 0.0, 0.0, 0.0)));
 /// A Sort window asked Ask ZOOD to listen: the next words are for it.
 static VOICE_FOR: Mutex<Option<String>> = Mutex::new(None);
 
@@ -76,6 +90,11 @@ pub fn set_zone(on: bool) {
 
 pub fn zone_on() -> bool {
     ZONE_ON.load(Ordering::Relaxed)
+}
+
+/// A drag of files has the zone down now.
+pub fn is_dragging() -> bool {
+    UP.load(Ordering::Relaxed)
 }
 
 /// Is the pointer near enough the top middle of `screen` to open the zone?
@@ -96,6 +115,21 @@ pub fn zone_place(screen: (f64, f64, f64, f64), size: (f64, f64)) -> (f64, f64) 
     ((left + (width - size.0) / 2.0).round(), top)
 }
 
+/// Were files let go on the zone just now, so this pointer move is old news?
+pub fn just_dropped(at: Option<Instant>, now: Instant) -> bool {
+    at.is_some_and(|at| now.saturating_duration_since(at) < AFTER_DROP)
+}
+
+/// The size of each look, in points.
+pub fn size_of(look: &str) -> (f64, f64) {
+    match look {
+        "open" | "over" => OPEN,
+        "tab" => TAB,
+        "shelf" => SHELF,
+        _ => PEEK,
+    }
+}
+
 fn screen_at<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) -> Option<(f64, f64, f64, f64, f64)> {
     // Physical pixels on Windows, points on macOS: as the watchers give them.
     let windows = cfg!(target_os = "windows");
@@ -111,6 +145,27 @@ fn screen_at<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) -> Option<(f64, f64
         let scale = if windows { m.scale_factor() } else { 1.0 };
         inside.then_some((left, top, width, height, scale))
     })
+}
+
+/// The screen the zone was last on, or the main one (a shelf kept from before a restart).
+fn zone_screen<R: Runtime>(app: &AppHandle<R>) -> Option<Screen> {
+    if let Some(screen) = SCREEN.lock().ok().and_then(|s| *s) {
+        return Some(screen);
+    }
+    let windows = cfg!(target_os = "windows");
+    let main = app.primary_monitor().ok().flatten()?;
+    let unit = if windows { 1.0 } else { main.scale_factor() };
+    let screen = (
+        f64::from(main.position().x) / unit,
+        f64::from(main.position().y) / unit,
+        f64::from(main.size().width) / unit,
+        f64::from(main.size().height) / unit,
+        if windows { main.scale_factor() } else { 1.0 },
+    );
+    if let Ok(mut kept) = SCREEN.lock() {
+        *kept = Some(screen);
+    }
+    Some(screen)
 }
 
 fn zone_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
@@ -131,6 +186,8 @@ fn zone_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     .skip_taskbar(true)
     .focused(false)
     .focusable(false)
+    // The shelf's buttons take the first click on a Mac, though ZOOD is not in front.
+    .accept_first_mouse(true)
     .transparent(true);
     // Made ready out of sight, so it takes drops on Windows (`parked.rs`).
     let window = crate::parked::hidden(builder)
@@ -142,24 +199,30 @@ fn zone_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     Some(window)
 }
 
-/// Made a few seconds after start, as the ring is, so the first drag finds it ready.
+/// Made a few seconds after start, as the ring is, so the first drag finds
+/// it ready; files left on the shelf before show their tab again.
 pub fn prepare<R: Runtime>(app: &AppHandle<R>) {
     if zone_on() {
         let _ = zone_window(app);
+        rest(app);
     }
 }
 
 #[derive(Clone, Serialize)]
 struct ZoneState {
-    /// "peek", "open" or "hidden".
+    /// "hidden", "peek", "open", "over", "tab" or "shelf".
     look: &'static str,
+    /// Files waiting on the shelf.
+    count: usize,
+    /// Files are dragged over the open shelf.
+    over: bool,
 }
 
 fn place_zone<R: Runtime>(
     window: &WebviewWindow<R>,
     screen: (f64, f64, f64, f64, f64),
     size: (f64, f64),
-) {
+) -> Rect {
     let (left, top, width, height, scale) = screen;
     let size = (size.0 * scale, size.1 * scale);
     let (x, y) = zone_place((left, top, width, height), size);
@@ -170,12 +233,87 @@ fn place_zone<R: Runtime>(
         let _ = window.set_size(tauri::LogicalSize::new(size.0, size.1));
         let _ = window.set_position(tauri::LogicalPosition::new(x, y));
     }
+    (x, y, size.0, size.1)
+}
+
+/// Shows the zone as `look`, sized and placed for it, on the zone's screen.
+pub fn show_look<R: Runtime>(app: &AppHandle<R>, look: &'static str) {
+    if look == "hidden" {
+        return hide_window(app);
+    }
+    let (Some(window), Some(screen)) = (zone_window(app), zone_screen(app)) else {
+        return;
+    };
+    let same = LOOK.lock().map(|l| l.0 == look).unwrap_or(false);
+    let rect = place_zone(&window, screen, size_of(look));
+    if let Ok(mut now) = LOOK.lock() {
+        *now = (look, rect);
+    }
+    let count = crate::shelf::count(app);
+    let _ = window.emit_to(
+        ZONE_LABEL,
+        ZONE_EVENT,
+        ZoneState {
+            look,
+            count,
+            over: false,
+        },
+    );
+    if !same {
+        let _ = window.show();
+    }
+    if look == "tab" || look == "shelf" {
+        crate::shelf::watch(app);
+    }
+}
+
+fn hide_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Ok(mut now) = LOOK.lock() {
+        *now = ("hidden", (0.0, 0.0, 0.0, 0.0));
+    }
+    if let Some(window) = app.get_webview_window(ZONE_LABEL) {
+        let _ = window.emit_to(
+            ZONE_LABEL,
+            ZONE_EVENT,
+            ZoneState {
+                look: "hidden",
+                count: 0,
+                over: false,
+            },
+        );
+        crate::parked::away(&window);
+    }
+}
+
+/// The shelf's look and place while no files are dragged, for its hover watch.
+pub fn rest_place() -> Option<(&'static str, Rect, f64)> {
+    let (look, rect) = *LOOK.lock().ok()?;
+    let scale = SCREEN
+        .lock()
+        .ok()
+        .and_then(|s| *s)
+        .map(|s| s.4)
+        .unwrap_or(1.0);
+    Some((look, rect, scale))
+}
+
+/// No drag: the shelf's tab while files wait on it, otherwise nothing.
+pub fn rest<R: Runtime>(app: &AppHandle<R>) {
+    if zone_on() && crate::shelf::count(app) > 0 {
+        show_look(app, "tab");
+    } else {
+        hide_window(app);
+    }
 }
 
 /// Files are being dragged, with no key held, and the pointer is here
 /// (the watcher's units): the zone comes down, and opens when near.
 pub fn dragging<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
-    if !zone_on() {
+    if !zone_on() || crate::shelf::is_outbound() {
+        return;
+    }
+    // Moves seen before a drop, handled after it: the shelf stays as it is.
+    if just_dropped(DROPPED_AT.lock().ok().and_then(|d| *d), Instant::now()) {
         return;
     }
     if !UP.load(Ordering::Relaxed) {
@@ -185,18 +323,13 @@ pub fn dragging<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
         if !may_peek(y, screen.1, screen.4) {
             return;
         }
-        let Some(window) = zone_window(app) else {
-            return;
-        };
         DROPPED.store(false, Ordering::Relaxed);
         NEAR.store(false, Ordering::Relaxed);
         if let Ok(mut kept) = SCREEN.lock() {
             *kept = Some(screen);
         }
-        place_zone(&window, screen, PEEK);
-        let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look: "peek" });
-        let _ = window.show();
         UP.store(true, Ordering::Relaxed);
+        show_look(app, "peek");
         log("files dragged: the drop zone peeks");
         return;
     }
@@ -206,25 +339,27 @@ pub fn dragging<R: Runtime>(app: &AppHandle<R>, x: f64, y: f64) {
     let (left, top, width, height, scale) = screen;
     let near = is_near((x, y), (left, top, width, height), scale);
     if near != NEAR.swap(near, Ordering::Relaxed) {
-        if let Some(window) = app.get_webview_window(ZONE_LABEL) {
-            place_zone(&window, screen, if near { OPEN } else { PEEK });
-            let look = if near { "open" } else { "peek" };
-            let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look });
-        }
+        show_look(app, if near { "open" } else { "peek" });
     }
 }
 
+/// The zone goes back to rest (the ring opened instead, or a drag ended).
 pub fn hide_zone<R: Runtime>(app: &AppHandle<R>) {
     UP.store(false, Ordering::Relaxed);
     NEAR.store(false, Ordering::Relaxed);
-    if let Some(window) = app.get_webview_window(ZONE_LABEL) {
-        let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look: "hidden" });
-        crate::parked::away(&window);
-    }
+    rest(app);
 }
 
-/// The button was let go: the zone goes unless files were dropped on it.
+/// The zone was turned off in Settings: it goes, shelf and all, until turned on.
+pub fn zone_off<R: Runtime>(app: &AppHandle<R>) {
+    UP.store(false, Ordering::Relaxed);
+    NEAR.store(false, Ordering::Relaxed);
+    hide_window(app);
+}
+
+/// The button was let go: the zone rests again unless files were dropped on it.
 pub fn released<R: Runtime>(app: &AppHandle<R>) {
+    crate::shelf::drag_ended();
     if !UP.load(Ordering::Relaxed) {
         return;
     }
@@ -255,31 +390,51 @@ pub fn files_of(paths: &[PathBuf]) -> Vec<PathBuf> {
     files
 }
 
-/// The zone's own drag and drop (`lib.rs` passes it here).
+fn emit_over<R: Runtime>(window: &tauri::Window<R>, look: &'static str, over: bool) {
+    let count = crate::shelf::count(window.app_handle());
+    let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look, count, over });
+}
+
+/// The zone's own drag and drop (`lib.rs` passes it here). Files let go on
+/// it go onto the shelf, which opens and stays (`shelf.rs`); nothing else
+/// opens, and the zone does not come down again for this drag.
 pub fn on_drag<R: Runtime>(window: &tauri::Window<R>, event: &tauri::DragDropEvent) {
+    let app = window.app_handle();
+    let look = LOOK.lock().map(|l| l.0).unwrap_or("hidden");
     match event {
         tauri::DragDropEvent::Enter { .. } | tauri::DragDropEvent::Over { .. } => {
-            if !NEAR.swap(true, Ordering::Relaxed) {
-                if let (Some(web), Some(screen)) = (
-                    window.app_handle().get_webview_window(ZONE_LABEL),
-                    SCREEN.lock().ok().and_then(|s| *s),
-                ) {
-                    place_zone(&web, screen, OPEN);
-                }
-                let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look: "open" });
+            // Over the open shelf: it takes them as it is, glowing.
+            if look == "shelf" {
+                return emit_over(window, "shelf", true);
             }
-            let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look: "over" });
+            if !NEAR.swap(true, Ordering::Relaxed) || look != "over" {
+                show_look(app, "open");
+            }
+            if let Ok(mut now) = LOOK.lock() {
+                now.0 = "over";
+            }
+            emit_over(window, "over", true);
         }
         tauri::DragDropEvent::Leave => {
-            let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look: "open" });
+            if look == "shelf" {
+                return emit_over(window, "shelf", false);
+            }
+            if let Ok(mut now) = LOOK.lock() {
+                now.0 = "open";
+            }
+            emit_over(window, "open", false);
         }
         tauri::DragDropEvent::Drop { paths, .. } => {
             DROPPED.store(true, Ordering::Relaxed);
+            if let Ok(mut at) = DROPPED_AT.lock() {
+                *at = Some(Instant::now());
+            }
             let files = files_of(paths);
             log(&format!("{} files dropped on the drop zone", files.len()));
-            let app = window.app_handle().clone();
-            hide_zone(&app);
-            open(&app, files);
+            UP.store(false, Ordering::Relaxed);
+            NEAR.store(false, Ordering::Relaxed);
+            crate::shelf::add(app, &files, false);
+            show_look(app, "shelf");
         }
         _ => {}
     }
@@ -873,6 +1028,17 @@ mod tests {
         assert!(may_peek(300.0, 0.0, 1.0));
         assert!(!may_peek(700.0, 0.0, 1.0));
         assert!(may_peek(600.0, 0.0, 1.5));
+    }
+
+    #[test]
+    fn moves_seen_before_a_drop_do_not_bring_the_zone_down_again() {
+        let now = Instant::now();
+        assert!(!just_dropped(None, now));
+        assert!(just_dropped(Some(now), now + Duration::from_millis(300)));
+        assert!(!just_dropped(Some(now), now + Duration::from_secs(2)));
+        assert_eq!(size_of("shelf"), SHELF);
+        assert_eq!(size_of("over"), OPEN);
+        assert_eq!(size_of("tab"), TAB);
     }
 
     #[test]
