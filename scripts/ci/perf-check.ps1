@@ -43,6 +43,7 @@ function Shot($name) {
 }
 
 $cores = [Environment]::ProcessorCount
+Remove-Item (Join-Path $env:APPDATA 'app.warraq.desktop\stall.log') -ErrorAction SilentlyContinue
 $app = Start-Process -FilePath $App -PassThru
 $root = $app.Id
 
@@ -134,6 +135,11 @@ $report = foreach ($phase in 'launch', 'settings', 'after') {
 $text = "cores: $cores (CPU in % of one core; 100 = one core fully busy)`n" + ($report | Format-Table -AutoSize | Out-String)
 $text += "`nper-process at the end:`n" + (Tree | Sort-Object WorkingSet64 -Descending |
   Format-Table Id, ProcessName, @{n='cpuSec';e={[math]::Round($_.TotalProcessorTime.TotalSeconds,1)}}, @{n='MB';e={[math]::Round($_.WorkingSet64/1MB)}} -AutoSize | Out-String)
+$stalls = Join-Path $env:APPDATA 'app.warraq.desktop\stall.log'
+if (Test-Path $stalls) {
+  Copy-Item $stalls (Join-Path $Out 'stall.log')
+  $text += "`nstall.log (what held the main thread up):`n" + (Get-Content $stalls -Raw)
+}
 $text | Set-Content (Join-Path $Out 'perf.txt')
 Write-Host $text
 
