@@ -53,8 +53,15 @@ New-Item -ItemType Directory -Force -Path $data | Out-Null
   Set-Content -Encoding utf8 (Join-Path $data 'ask.json')
 '{"bubble":true,"lang":"en"}' | Set-Content -Encoding utf8 (Join-Path $data 'presence.json')
 Remove-Item (Join-Path $env:APPDATA 'app.warraq.desktop\stall.log') -ErrorAction SilentlyContinue
-$app = Start-Process -FilePath $App -PassThru
-$root = $app.Id
+# A run left over from an earlier check would take this launch over (one
+# app at a time), and the numbers would be of nothing.
+Get-Process warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 2
+Start-Process -FilePath $App | Out-Null
+Start-Sleep -Milliseconds 500
+$root = (Get-Process warraq-desktop -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1).Id
+if (-not $root) { throw 'the app did not start' }
 
 # The app and everything it started (WebView2 browser, renderers, GPU ...).
 function Tree {
