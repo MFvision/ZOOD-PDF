@@ -127,5 +127,34 @@ Check ($second -and $second.Visible) 'the second tap shows the island window'
 Check ($second -and $second.Drawn -ge 0.2) 'the second tap draws the island'
 
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+
+# 3. Talking, as on a PC set up for it: Ask ZOOD on (a tap listens), with
+# the ZOOD bubble on the screen. This machine has no microphone, so the
+# island says so — but it must show, drawn, as it does when it listens.
+'{"enabled":true,"shortcut":"","sees":false,"taps":true,"tap_key":"right-main","tap_to_type":true,"tap_speaks":true,"glow":true}' |
+  Set-Content -Encoding ascii (Join-Path $data 'ask.json')
+'{"bubble":true,"lang":"en"}' | Set-Content -Encoding ascii (Join-Path $data 'presence.json')
+$app = Start-Process -FilePath $App -PassThru `
+  -RedirectStandardOutput (Join-Path $Out 'app-talk.log') -RedirectStandardError (Join-Path $Out 'app-talk-err.log')
+Start-Sleep -Seconds 14
+Shot 'ask-4-talk-started.png'
+$before = Screen
+$bubble = [AskInput]::FindWindow([NullString]::Value, 'ZOOD')
+if ($bubble -ne [IntPtr]::Zero) {
+  $rect = New-Object AskInput+RECT
+  [AskInput]::GetWindowRect($bubble, [ref]$rect) | Out-Null
+  Write-Host "bubble: visible=$([AskInput]::IsWindowVisible($bubble)) at $($rect.Left),$($rect.Top) to $($rect.Right),$($rect.Bottom)"
+} else { Write-Host 'bubble: no window' }
+Tap
+Start-Sleep -Seconds 4
+Shot 'ask-5-talk-tap.png'
+$talk = Island 'talk tap'
+Check ($talk -and $talk.Visible) 'a tap to talk shows the island window'
+Check ($talk -and $talk.Drawn -ge 0.2) 'a tap to talk draws the island'
+$glow = [AskInput]::FindWindow([NullString]::Value, 'ZOOD PDF')
+Write-Host "glow or other ZOOD PDF window: $glow"
+
+Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
 if ($failures.Count -gt 0) { throw "ask check failed: $($failures -join '; ')" }
