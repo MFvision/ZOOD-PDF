@@ -342,6 +342,10 @@ try {
     if ($lnk) { Copy-Item $lnk.FullName (Join-Path $folder "arabic-$n - Copy.lnk") }
     else { Write-Host "no shortcut was made for $n" }
   }
+  # Taller, so both new shortcuts are in sight below what earlier steps made
+  # (Explorer only lists the rows it shows).
+  $explorer = [Input]::FindWindow('CabinetWClass', [NullString]::Value)
+  [Input]::MoveWindow($explorer, 200, 150, 760, 560, $true) | Out-Null
   Start-Sleep -Seconds 3
   $a = FileItem 'arabic-a - Copy'
   $b = FileItem 'arabic-b - Copy'
