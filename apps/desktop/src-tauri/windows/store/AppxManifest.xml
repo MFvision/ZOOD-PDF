@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Microsoft Store package of ZOOD PDF (docs/store.md).
+  scripts/windows/make-store-package.ps1 fills in the $...$ values: the
+  package name, publisher and publisher name Partner Center gives the app
+  (Product management > Product identity), and the version.
+
+  What the installer copy does with registry writes, the package declares
+  here, so Windows adds it at install and takes it all away at uninstall:
+  - the right-click menu: two COM classes in zood_shell_ext.dll (shell-ext/),
+    which Windows 11 also shows in its short menu;
+  - starting at sign-in for "Keep the quick tools ready": the second
+    application, ZoodPDFBackground, which starts the app with background
+    and is off until the app asks Windows to turn it on (src/packaged.rs);
+  - PDFs: ZOOD PDF in "Open with", with the PDF document icon.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 uap10 desktop desktop4 desktop5 com rescap">
+
+  <Identity Name="$NAME$" Publisher="$PUBLISHER$" Version="$VERSION$" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>$DISPLAY_NAME$</DisplayName>
+    <PublisherDisplayName>$PUBLISHER_DISPLAY_NAME$</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <!-- 2004 (19041): uap10:Parameters, which the sign-in start needs. -->
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="ar-SA" />
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application Id="ZoodPDF" Executable="warraq-desktop.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="$DISPLAY_NAME$"
+        Description="Open, account-free, Arabic-first PDF editor"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <!-- "zoodpdf" on the command line, and how the menu starts the app
+             as the package (shell-ext/src/menu.rs, ALIAS). -->
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="warraq-desktop.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="zoodpdf.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="pdf">
+            <uap:DisplayName>PDF</uap:DisplayName>
+            <uap:Logo>Assets\PdfDocument.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/pdf">.pdf</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+
+        <!-- The right-click menu (src/shell_menu.rs lists the same files). -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+              <desktop5:ItemType Type=".pdf">
+                <desktop5:Verb Id="ZoodPDFQuick" Clsid="672e4d98-232c-4a9d-a642-feb595a16ee7" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".png">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".jpg">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".jpeg">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".gif">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".bmp">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".webp">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".tif">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".tiff">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".heic">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".heif">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".avif">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".docx">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".xlsx">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".pptx">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".txt">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".md">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".html">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".htm">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+              <desktop5:ItemType Type=".csv">
+                <desktop5:Verb Id="ZoodPDFToPdf" Clsid="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" />
+              </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="ZOOD PDF quick tools">
+              <com:Class Id="672e4d98-232c-4a9d-a642-feb595a16ee7" Path="zood_shell_ext.dll" ThreadingModel="STA" />
+              <com:Class Id="0e85bbbe-5ba1-4875-a24b-311b2ca508fa" Path="zood_shell_ext.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+
+    <!-- Started at sign-in, without a window (src/ring.rs, BACKGROUND_FLAG).
+         Not in Start's list. -->
+    <Application Id="ZoodPDFBackground" Executable="warraq-desktop.exe" EntryPoint="Windows.FullTrustApplication" uap10:Parameters="--background">
+      <uap:VisualElements
+        DisplayName="$DISPLAY_NAME$"
+        Description="ZOOD PDF quick tools, kept ready"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        AppListEntry="none" />
+      <Extensions>
+        <desktop:Extension Category="windows.startupTask" Executable="warraq-desktop.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="ZoodPDFBackground" Enabled="false" DisplayName="$DISPLAY_NAME$" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <!-- Ask ZOOD listens only while its key is held (src/ask/). -->
+    <DeviceCapability Name="microphone" />
+  </Capabilities>
+</Package>

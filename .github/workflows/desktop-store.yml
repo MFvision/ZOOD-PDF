@@ -1,0 +1,86 @@
+# Builds the Microsoft Store package of the Windows app and tries it on a
+# Windows machine (docs/store.md): the package installs, the app starts as
+# the package, and Explorer's right-click entries answer as Explorer asks
+# for them. The package here is test-signed with test identity values, so
+# it is for checking only; the Store upload comes from the release workflow
+# (desktop-release.yml), with the identity Partner Center gives the app.
+name: desktop (Store package)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/desktop/src-tauri/shell-ext/**'
+      - 'apps/desktop/src-tauri/windows/store/**'
+      - 'apps/desktop/src-tauri/src/packaged.rs'
+      - 'apps/desktop/src-tauri/src/shell_menu.rs'
+      - 'scripts/windows/*store*'
+      - '.github/workflows/desktop-store.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  store:
+    name: Store package (windows-latest)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            apps/desktop/src-tauri
+            apps/desktop/src-tauri/shell-ext
+            packages/core
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: check the right-click add-on
+        shell: bash
+        run: |
+          set -eu
+          cd apps/desktop/src-tauri/shell-ext
+          cargo fmt --check
+          cargo clippy --all-targets --locked -- -D warnings
+          cargo test --locked
+          cargo build --release --locked --examples --lib
+
+      # The program only: the package carries it, not the installer.
+      - name: build the app
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm --dir apps/desktop exec tauri build --no-bundle --config '{"version":"0.0.1"}' 2>&1 | tee build.log
+        env:
+          CI: 'true'
+
+      - name: make the Store package (test-signed)
+        shell: pwsh
+        run: ./scripts/windows/make-store-package.ps1 -Version 0.0.1 -Out out/ZOOD-PDF-store-test.msix -TestSign
+
+      - name: try the Store package
+        shell: pwsh
+        run: >-
+          ./scripts/windows/check-store-package.ps1 -Package out/ZOOD-PDF-store-test.msix
+          -Probe apps/desktop/src-tauri/shell-ext/target/release/examples/probe.exe
+          -Sample tests/fixtures/layers/layers.pdf -Out store-check
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zood-store-package-test
+          path: |
+            out/*
+            store-check/*
+          if-no-files-found: warn

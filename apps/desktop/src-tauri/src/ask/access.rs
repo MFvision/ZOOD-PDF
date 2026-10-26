@@ -257,12 +257,17 @@ mod system {
     }
 
     /// The microphone switches in Settings › Privacy: for the computer, for
-    /// this account, and "Let desktop apps access your microphone".
+    /// this account, and "Let desktop apps access your microphone" (or, for
+    /// the Store copy, its own switch in the list of apps).
     pub fn access() -> Access {
+        let app = match crate::packaged::family_name() {
+            Some(family) => format!(r"{STORE}\{family}"),
+            None => format!(r"{STORE}\NonPackaged"),
+        };
         let denied = [
             (HKEY_LOCAL_MACHINE, STORE.to_string()),
             (HKEY_CURRENT_USER, STORE.to_string()),
-            (HKEY_CURRENT_USER, format!(r"{STORE}\NonPackaged")),
+            (HKEY_CURRENT_USER, app),
         ]
         .iter()
         .any(|(root, path)| value(*root, path).as_deref() == Some("Deny"));
