@@ -36,7 +36,7 @@ download link or a build he can try at the end of each job. Arabic first in ever
 - No client secrets in binaries — one exception the owner allowed (2026-10-24): Google's
   installed-app "secret" for Google Drive, which Google says is not secret for desktop apps;
   it comes from the `WARRAQ_GOOGLE_CLIENT_SECRET` Actions secret, is compiled into the Rust
-  host only, and is never committed. The original bytes stay untouched until the person saves
+  host only (and, owner 2026-10-26, the iPhone app's Info.plist at build time), and is never committed. The original bytes stay untouched until the person saves
   (incremental updates).
 - **ZOOD's licensed font (ITF Huwiya Arabic) is never committed**: it lives in the git-ignored
   `apps/ios/PDFEditor/Resources/LicensedFonts/`; builds fall back to an OFL face without it.
