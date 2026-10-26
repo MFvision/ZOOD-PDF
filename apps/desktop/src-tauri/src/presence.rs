@@ -275,6 +275,9 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
             }
         };
         crate::parked::made(&window);
+        // Windows widened it to that smallest width while making it, before
+        // the size above applied: square again now that it does.
+        let _ = window.set_size(tauri::LogicalSize::new(BUBBLE_SIDE, BUBBLE_SIDE));
         if let Some((x, y)) = load(&handle).at.or_else(|| first_place(&handle)) {
             let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }

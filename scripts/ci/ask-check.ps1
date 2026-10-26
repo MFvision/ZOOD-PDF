@@ -137,7 +137,12 @@ Start-Sleep -Seconds 2
 # The second start once found no file at $App (twice, in CI): say what is there.
 Write-Host "app still there: $(Test-Path $App)"
 Get-ChildItem (Split-Path $App) -Filter 'warraq-desktop*' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) $($_.Length)" }
-if (-not (Test-Path $App)) { $App = $kept }
+if (-not (Test-Path $App)) {
+  # Did Windows Defender take it? (an unsigned app that reads keys and the screen)
+  Get-MpThreatDetection -ErrorAction SilentlyContinue | Select-Object -First 5 | Format-List | Out-String | Write-Host
+  Get-MpThreat -ErrorAction SilentlyContinue | Select-Object -First 5 ThreatName, Resources | Format-List | Out-String | Write-Host
+  $App = $kept
+}
 
 # 3. Talking, as on a PC set up for it: Ask ZOOD on (a tap listens), with
 # the ZOOD bubble on the screen. This machine has no microphone, so the
