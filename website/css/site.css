@@ -287,8 +287,15 @@ img {
 .switch a:lang(ar) {
   font-family: Vazirmatn, system-ui, sans-serif;
 }
+/* Each theme has its own icon; wide screens add the word beside it. */
 .theme-icon {
-  display: none;
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.theme-switch button {
+  gap: 6px;
 }
 @media (max-width: 560px) {
   .topbar {
@@ -6237,4 +6244,41 @@ main {
 .title.snap-wait .w {
   opacity: 0;
   transition: none;
+}
+
+/* Promise icons (js/icons.js): in the hero's facts and the privacy points. */
+.facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.facts .promise-icon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--bronze);
+}
+.points.with-icons li {
+  padding-inline-start: 34px;
+}
+.points.with-icons li::before {
+  content: none;
+}
+.points .promise-icon {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0.1em;
+  width: 22px;
+  height: 22px;
+  color: var(--bronze);
+}
+@media (max-width: 560px) {
+  .facts {
+    gap: 6px;
+    margin-block-start: 16px;
+  }
+  .facts li {
+    padding: 4px 10px;
+    font-size: 14px;
+  }
 }
