@@ -75,6 +75,10 @@ html.ask-glow-page .ask-glow {
     var(--ask-glow-c) 88%,
     var(--ask-glow-a)
   );
+}
+
+/* Turning only while it shows: a hidden glow costs nothing. */
+.ask-glow.is-on .ask-glow-spin {
   animation: ask-glow-turn 5.5s linear infinite;
 }
 
@@ -101,7 +105,7 @@ html.ask-glow-page .ask-glow {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ask-glow-spin,
+  .ask-glow.is-on .ask-glow-spin,
   .ask-glow.is-on .ask-glow-band {
     animation: none;
   }

@@ -1000,7 +1000,9 @@ pub fn list_indexes(dir: &Path) -> std::io::Result<Vec<IndexFile>> {
 }
 
 /// Where the indexes live, for the panel to show the person whose data it is.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn library_index_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
     Ok(index_dir(&app)?.to_string_lossy().into_owned())
 }

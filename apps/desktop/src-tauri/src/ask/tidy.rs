@@ -539,7 +539,9 @@ pub struct TidyDone {
 }
 
 /// The last tidy that can be undone, if any.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ask_tidy_last<R: Runtime>(app: AppHandle<R>) -> Result<Option<TidyDone>, String> {
     let file = journal_path(&app)?;
     let Ok(text) = std::fs::read_to_string(&file) else {

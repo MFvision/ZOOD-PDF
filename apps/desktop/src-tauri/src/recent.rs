@@ -117,7 +117,9 @@ fn checked_name(name: &str) -> Result<&str, String> {
 
 /// Keeps where `name` was opened from. Refused for a path the person did not
 /// choose (outside the file scope).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn recent_remember<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, RecentState>,
@@ -143,7 +145,9 @@ pub fn recent_remember<R: Runtime>(
 /// interface can read it as it reads any chosen file. `None` when the path is
 /// not known, or the file is no longer there (moved, renamed or deleted):
 /// the interface then asks for it.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn recent_path<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, RecentState>,
@@ -166,7 +170,9 @@ pub fn recent_path<R: Runtime>(
 }
 
 /// Forgets where `name` was, or every path when `name` is absent.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn recent_forget<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, RecentState>,

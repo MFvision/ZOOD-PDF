@@ -78,6 +78,13 @@ fn list_file<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
 /// folder with everything under it, as the folder panel gave it, a file by
 /// itself. Run once when the app starts.
 pub fn restore<R: Runtime>(app: &AppHandle<R>) {
+    // Off the main thread: a folder on a network drive that is not there
+    // can take many seconds to answer, and the windows would wait for it.
+    let app = app.clone();
+    std::thread::spawn(move || restore_now(&app));
+}
+
+fn restore_now<R: Runtime>(app: &AppHandle<R>) {
     let Ok(file) = list_file(app) else {
         return;
     };
@@ -99,7 +106,9 @@ pub fn restore<R: Runtime>(app: &AppHandle<R>) {
 
 /// Keeps the places the Library was given. Refused, as a whole, when any of
 /// them is a path the person did not choose (outside the file scope).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn library_places_remember<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, PlacesState>,
@@ -125,7 +134,9 @@ pub fn library_places_remember<R: Runtime>(
 /// Forgets a place (a folder, with everything kept under it), or every place
 /// when `path` is absent (the Library deleted). It stays readable until the
 /// app closes, as anything chosen does.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn library_places_forget<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, PlacesState>,
