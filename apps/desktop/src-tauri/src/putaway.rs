@@ -696,21 +696,21 @@ mod tests {
 
     #[test]
     fn rules_only_put_inside_the_user_folder() {
-        let home = Path::new("/home/me");
-        let data = Path::new("/home/me/.local/share/zood");
+        // Absolute on every system: C:\ on Windows, / elsewhere.
+        let root = PathBuf::from(if cfg!(windows) { "C:\\" } else { "/" });
+        let home = root.join("home").join("me");
+        let data = home.join(".local").join("share").join("zood");
+        let home = home.as_path();
+        let data = data.as_path();
         assert!(may_put_in(
-            Path::new("/home/me/Documents/Fonts"),
+            &home.join("Documents").join("Fonts"),
             home,
             Some(data)
         ));
         assert!(!may_put_in(home, home, Some(data)));
-        assert!(!may_put_in(Path::new("/etc"), home, Some(data)));
-        assert!(!may_put_in(Path::new("/home/me/../root"), home, Some(data)));
+        assert!(!may_put_in(&root.join("etc"), home, Some(data)));
+        assert!(!may_put_in(&home.join("..").join("root"), home, Some(data)));
         assert!(!may_put_in(Path::new("Documents"), home, Some(data)));
-        assert!(!may_put_in(
-            Path::new("/home/me/.local/share/zood/x"),
-            home,
-            Some(data)
-        ));
+        assert!(!may_put_in(&data.join("x"), home, Some(data)));
     }
 }
