@@ -1,15 +1,18 @@
 import type { HostMessage, PcMessage } from '../protocol';
-import { fromBase64 } from '../protocol';
-import { RemoteLink, takeCodeFromAddress } from './link';
+import { MAX_STREAM_BYTES, fromBase64 } from '../protocol';
+import { RemoteLink, readPairing, takeCodeFromAddress } from './link';
 import type { LinkState } from './link';
+import { copyToPhone, inApp, tellPaired } from './native';
+import { Download, Upload, transferId } from './streams';
+import type { Progress, SendResult } from './streams';
 
 type StateMessage = Extract<PcMessage, { t: 'state' }>;
 type FileMessage = Extract<PcMessage, { t: 'file' }>;
 type DoneMessage = Extract<PcMessage, { t: 'done' }>;
 type LandedMessage = Extract<HostMessage, { t: 'landed' }>;
 
-/** What the PC last copied: text, or a picture's address. */
-export type PcClip = { text: string } | { picture: string };
+/** What the PC last copied: text, or a picture's address; `onPhone` once the ZOOD app put it on the phone's clipboard too. */
+export type PcClip = ({ text: string } | { picture: string }) & { onPhone?: boolean };
 
 /** A file the PC sent to this phone. */
 export interface Received {
@@ -36,6 +39,14 @@ export interface PhoneSnapshot {
   received: readonly Received[];
   /** Files from the PC just come, shown full screen until put away: the newest, and how many came with it. */
   catching: { file: Received; count: number } | null;
+  /** A file on its way from the PC: its name and how much has come (0–1). */
+  coming: { name: string; done: number } | null;
+  /** The PC's system (`windows`, `macos`), for what its keys are called. */
+  pcOs: string;
+  /** Connected at least once: from then on the page stays while the link comes back. */
+  joined: boolean;
+  /** How many times the link's state changed, to tell one wait from the next. */
+  changes: number;
 }
 
 /**
@@ -44,7 +55,7 @@ export interface PhoneSnapshot {
  * The page reads it with `useSyncExternalStore`.
  */
 export class PhoneSession {
-  private snapshot: PhoneSnapshot = { link: 'connecting', pcName: '', pcControl: false, state: null, pictures: new Map(), clip: null, received: [], catching: null };
+  private snapshot: PhoneSnapshot = { link: 'connecting', pcName: '', pcControl: false, state: null, pictures: new Map(), clip: null, received: [], catching: null, coming: null, pcOs: '', joined: false, changes: 0 };
   private landedHandler: ((message: LandedMessage) => void) | null = null;
   private nextReceived = 1;
   private readonly listeners = new Set<() => void>();
@@ -52,18 +63,27 @@ export class PhoneSession {
   private docKey = '';
   private fileHandler: ((message: FileMessage) => void) | null = null;
   private doneHandler: ((message: DoneMessage) => void) | null = null;
+  private readonly uploads = new Map<string, Upload>();
+  private readonly downloads = new Map<string, Download>();
   readonly link: RemoteLink;
 
   constructor() {
     this.link = new RemoteLink(
       takeCodeFromAddress(),
-      (link) => this.update({ link }),
+      (link) => {
+        // A retry while already connecting is the same wait, not a new one.
+        if (link === this.snapshot.link) return;
+        this.update({ link, joined: this.snapshot.joined || link === 'open', changes: this.snapshot.changes + 1 });
+      },
       (message) => {
         switch (message.t) {
-          case 'ready':
+          case 'ready': {
             this.asked.clear();
-            this.update({ pcName: message.pc, pcControl: message.pcControl });
+            this.update({ pcName: message.pc, pcControl: message.pcControl, pcOs: message.os ?? '' });
+            const pairing = readPairing();
+            if (pairing) tellPaired(pairing, message.pc);
             return;
+          }
           case 'pcControl':
             this.update({ pcControl: message.on });
             return;
@@ -86,14 +106,31 @@ export class PhoneSession {
           case 'done':
             this.doneHandler?.(message);
             return;
-          case 'landed':
-            this.landedHandler?.(message);
-            return;
           case 'clip':
             this.takeClip(message);
             return;
-          case 'give':
-            this.takeFile(message);
+          case 'give': {
+            const bytes = fromBase64(message.data);
+            if (bytes) this.keepFile(message.name, message.mime, new Blob([bytes], { type: message.mime || 'application/octet-stream' }));
+            return;
+          }
+          case 'giveStart':
+          case 'givePart':
+          case 'giveEnd':
+          case 'giveStop':
+            this.takePart(message);
+            return;
+          case 'putOk':
+          case 'putNo':
+          case 'putGot':
+            this.uploads.get(message.id)?.hear(message);
+            return;
+          case 'landed':
+            if (message.id && this.uploads.has(message.id)) {
+              this.uploads.get(message.id)?.hear(message);
+              return;
+            }
+            this.landedHandler?.(message);
             return;
           default:
             return;
@@ -125,29 +162,81 @@ export class PhoneSession {
   private takeClip(message: Extract<HostMessage, { t: 'clip' }>): void {
     const old = this.snapshot.clip;
     if (old && 'picture' in old) URL.revokeObjectURL(old.picture);
-    if (typeof message.text === 'string') this.update({ clip: { text: message.text } });
+    let clip: PcClip | null = null;
+    if (typeof message.text === 'string') clip = { text: message.text };
     else if (typeof message.png === 'string') {
       const bytes = fromBase64(message.png);
-      this.update({ clip: bytes ? { picture: URL.createObjectURL(new Blob([bytes], { type: 'image/png' })) } : null });
+      clip = bytes ? { picture: URL.createObjectURL(new Blob([bytes], { type: 'image/png' })) } : null;
+    }
+    this.update({ clip });
+    // In the ZOOD app, the copy is on the phone's clipboard too, ready to paste anywhere.
+    if (clip && inApp()) {
+      const payload = typeof message.text === 'string' ? { text: message.text } : { png: message.png ?? '' };
+      void copyToPhone(payload).then((ok) => {
+        if (ok && this.snapshot.clip === clip) this.update({ clip: { ...clip, onPhone: true } });
+      });
     }
   }
 
-  private takeFile(message: Extract<HostMessage, { t: 'give' }>): void {
-    const bytes = fromBase64(message.data);
-    if (!bytes) return;
-    const mime = message.mime || 'application/octet-stream';
+  /** A file from the PC, part by part; each part answered so the PC sends the next. */
+  private takePart(message: Extract<HostMessage, { t: 'giveStart' | 'givePart' | 'giveEnd' | 'giveStop' }>): void {
+    switch (message.t) {
+      case 'giveStart':
+        if (this.downloads.size >= 4 || message.size > MAX_STREAM_BYTES) return;
+        this.downloads.set(message.id, new Download(message.id, message.name, message.mime || 'application/octet-stream', message.size));
+        this.update({ coming: { name: message.name, done: 0 } });
+        return;
+      case 'givePart': {
+        const download = this.downloads.get(message.id);
+        if (!download) return;
+        if (!download.take(message.n, message.data)) {
+          this.downloads.delete(message.id);
+          this.update({ coming: null });
+          return;
+        }
+        this.link.send({ t: 'giveGot', id: message.id, n: message.n });
+        this.update({ coming: { name: download.name, done: download.done } });
+        return;
+      }
+      case 'giveEnd': {
+        const download = this.downloads.get(message.id);
+        this.downloads.delete(message.id);
+        const blob = download?.finish();
+        this.update({ coming: null });
+        if (download && blob) this.keepFile(download.name, download.mime, blob);
+        return;
+      }
+      case 'giveStop':
+        this.downloads.delete(message.id);
+        this.update({ coming: null });
+        return;
+    }
+  }
+
+  private keepFile(name: string, mime: string, blob: Blob): void {
     const file: Received = {
       id: this.nextReceived++,
-      name: message.name,
-      mime,
-      url: URL.createObjectURL(new Blob([bytes], { type: mime })),
-      size: bytes.length,
+      name,
+      mime: mime || 'application/octet-stream',
+      url: URL.createObjectURL(blob),
+      size: blob.size,
     };
     const kept = [file, ...this.snapshot.received];
     for (const old of kept.slice(KEEP_RECEIVED)) URL.revokeObjectURL(old.url);
     const count = Math.min(KEEP_RECEIVED, (this.snapshot.catching?.count ?? 0) + 1);
     this.update({ received: kept.slice(0, KEEP_RECEIVED), catching: { file, count } });
   }
+
+  /** Sends a file of any size to the PC's Desktop, in parts, telling how far it got. */
+  readonly sendFile = async (file: File, onProgress: (progress: Progress) => void): Promise<SendResult> => {
+    const upload = new Upload(transferId(), file, (message) => this.link.send(message), onProgress);
+    this.uploads.set(upload.id, upload);
+    try {
+      return await upload.run();
+    } finally {
+      this.uploads.delete(upload.id);
+    }
+  };
 
   /** The full-screen catch is put away; the files stay under "From the computer". */
   readonly putAway = (): void => {

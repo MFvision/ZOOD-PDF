@@ -58,7 +58,7 @@ try {
   await page.mouse.up();
   step('laser');
 
-  await page.getByRole('button', { name: 'Trackpad' }).tap();
+  await page.getByRole('button', { name: 'Control', exact: true }).tap();
   await expect(page.getByText(/Trackpad and keyboard are off/)).toBeVisible();
   await page.getByRole('button', { name: 'Present', exact: true }).tap();
   step('PC control stays off until the PC allows it');
@@ -70,9 +70,19 @@ try {
   await page.getByRole('button', { name: 'Copy', exact: true }).tap();
   await expect(page.getByRole('button', { name: 'Copied', exact: true })).toBeVisible();
   await expect(page.getByText('Notes from the PC.txt')).toBeVisible();
-  step('the PC\'s clipboard and a file from the PC');
+  // A larger file from the PC came in parts, each answered, and is whole.
+  await expect(page.getByText('Site plan from the PC.bin')).toBeVisible();
+  await expect(page.locator('.phone-received li', { hasText: 'Site plan from the PC.bin' })).toContainText('1.2 MB');
+  step('the PC\'s clipboard, and files from the PC (one in parts)');
 
-  await page.locator('.phone-send input[type=file]').setInputFiles({ name: 'Receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 flicked') });
+  // The phone's clipboard to the PC: in a browser, a box to paste into.
+  await page.getByRole('button', { name: 'Paste on the computer' }).tap();
+  await page.locator('.phone-clip-field').fill('Copied on the phone');
+  await page.getByRole('button', { name: 'Send to the computer' }).tap();
+  await expect(page.getByText(/On the computer’s clipboard/)).toBeVisible();
+  step('the phone\'s clipboard went to the PC');
+
+  await page.locator('.phone-hero input[type=file]').setInputFiles({ name: 'Receipt.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 flicked') });
   // Chosen, it waits on the dark full screen, to be swiped up into the light.
   const stage = page.getByRole('dialog', { name: 'Flick to the computer' });
   await expect(stage.getByText('Receipt.pdf')).toBeVisible();
@@ -91,6 +101,21 @@ try {
   const card = page.locator('.phone-flick').first();
   await expect(card).toContainText('On the desktop');
   step('a file flicked up landed on the desktop');
+
+  // A large one goes in parts, with its progress, and lands whole.
+  const big = Buffer.alloc(3 * 1024 * 1024 + 77, 7);
+  await page.locator('.phone-hero input[type=file]').setInputFiles({ name: 'Site video.mp4', mimeType: 'video/mp4', buffer: big });
+  const bigStage = page.getByRole('dialog', { name: 'Flick to the computer' });
+  await expect(bigStage.getByText('Site video.mp4')).toBeVisible();
+  await page.waitForTimeout(400);
+  const bigAt = await bigStage.locator('.phone-launch-card').boundingBox();
+  await page.mouse.move(bigAt.x + bigAt.width / 2, bigAt.y + bigAt.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bigAt.x + bigAt.width / 2, bigAt.y + bigAt.height / 2 - 260, { steps: 5 });
+  await page.mouse.up();
+  await expect(bigStage).toBeHidden();
+  await expect(page.locator('.phone-flick').first()).toContainText('On the desktop', { timeout: 20_000 });
+  step('a 3 MB file went in parts and landed');
 
   await page.getByRole('button', { name: 'Present', exact: true }).tap();
 

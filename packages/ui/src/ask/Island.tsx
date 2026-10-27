@@ -432,6 +432,20 @@ function Island() {
     if (phase.kind === 'typing') field.current?.focus();
   }, [phase.kind]);
 
+  // Esc closes it from anywhere in the island, not only the typing box: after a
+  // typed question the box is gone but the island still has the keyboard.
+  const open = phase.kind !== 'idle';
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.isComposing) return;
+      event.preventDefault();
+      closeLater();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   /** The words of the window in front, for a model that does not see it. */
   const wordsOfWindow = (moment: HostMoment, brain: DeviceModel): Promise<string> => {
     // A model that sees is shown the picture itself, when the host took one for it.
@@ -1386,6 +1400,8 @@ function Island() {
         void hear();
       }),
       onHostEvent<{ x: number; y: number }>('ask://clicked', onClicked),
+      // The keys again while it waits for typing, from another window.
+      onHostEvent('ask://hide', () => closeLater()),
       onHostEvent<{ kind: 'draft' | 'type'; screen: boolean }>('ask://tap', (tap) => {
         restart();
         if (tap.kind === 'type') {
@@ -1762,10 +1778,7 @@ function Island() {
             aria-label={t('ask.typeTitle')}
             onChange={(event) => setTyped(event.target.value.slice(0, 2000))}
             onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                close();
-              } else if (
+              if (
                 event.key === 'Enter' &&
                 !event.shiftKey &&
                 !event.nativeEvent.isComposing

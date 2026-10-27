@@ -154,9 +154,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sidebarTools: 'all',
   shellMenuTools: [],
   ringTools: [],
-  dropBig: DROP_ITEMS.filter((item) => item.startsWith('tile:')),
+  // To phone sits with the big tiles: sending to the phone is one of the panel's main jobs.
+  dropBig: [...DROP_ITEMS.filter((item) => item.startsWith('tile:')), 'more:phone'],
   dropSmall: DROP_ITEMS.filter((item) => item.startsWith('format:')),
-  dropPills: DROP_ITEMS.filter((item) => item.startsWith('more:')),
+  dropPills: DROP_ITEMS.filter((item) => item.startsWith('more:') && item !== 'more:phone'),
   dropAuto: true,
   ringShortcut: 'Mod+Alt+Z',
   ringSize: 'medium',
@@ -221,6 +222,13 @@ function dropRows(s: Record<string, unknown> | AppSettings): Pick<AppSettings, '
   const d = DEFAULT_SETTINGS;
   if (!Array.isArray(s.dropBig) && !Array.isArray(s.dropSmall) && !Array.isArray(s.dropPills)) return { dropBig: [...d.dropBig], dropSmall: [...d.dropSmall], dropPills: [...d.dropPills] };
   const taken = new Set<DropItem>();
+  // The panel as it first came (To phone a pill) moves To phone up to the big tiles, as it now comes.
+  const firstBig = ['tile:web', 'tile:send', 'tile:print'];
+  const big: unknown = s.dropBig;
+  const pills: unknown = s.dropPills;
+  if (Array.isArray(big) && Array.isArray(pills) && big.length === firstBig.length && firstBig.every((one, at) => big[at] === one) && pills.includes('more:phone')) {
+    s = { ...s, dropBig: [...firstBig, 'more:phone'], dropPills: pills.filter((one) => one !== 'more:phone') };
+  }
   const row = (value: unknown, max: number) => {
     const out = subset(value, DROP_ITEMS).filter((one) => !taken.has(one)).slice(0, max);
     for (const one of out) taken.add(one);

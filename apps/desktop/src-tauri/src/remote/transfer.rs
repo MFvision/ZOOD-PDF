@@ -107,7 +107,7 @@ pub fn save(
 /// for a download: Windows' SmartScreen and macOS's Gatekeeper then ask
 /// before a program in it runs.
 #[cfg(target_os = "windows")]
-fn mark_downloaded(path: &Path) {
+pub(crate) fn mark_downloaded(path: &Path) {
     let mut stream = path.as_os_str().to_owned();
     stream.push(":Zone.Identifier");
     // Zone 3: the internet, the zone Windows treats with most care.
@@ -115,7 +115,7 @@ fn mark_downloaded(path: &Path) {
 }
 
 #[cfg(target_os = "macos")]
-fn mark_downloaded(path: &Path) {
+pub(crate) fn mark_downloaded(path: &Path) {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
     let seconds = std::time::SystemTime::now()
@@ -145,7 +145,7 @@ fn mark_downloaded(path: &Path) {
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-fn mark_downloaded(_path: &Path) {}
+pub(crate) fn mark_downloaded(_path: &Path) {}
 
 /// Where flicked files land: the Desktop, or the home folder without one.
 pub fn landing_folder(desktop: Option<PathBuf>, home: Option<PathBuf>) -> Option<PathBuf> {

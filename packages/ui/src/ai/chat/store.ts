@@ -63,7 +63,15 @@ export interface EventTurn {
   note: Note;
 }
 
-export type Turn = UserTurn | AssistantTurn | EventTurn;
+/** A how-to question answered from Help & Support's guide (`help.ts`), with no model asked. */
+export interface HelpTurn {
+  id: number;
+  role: 'help';
+  /** The article's id in `support/articles.ts`. */
+  article: string;
+}
+
+export type Turn = UserTurn | AssistantTurn | EventTurn | HelpTurn;
 
 /** What is about to leave the device, for the person to see before it does. */
 export interface Review {
@@ -629,6 +637,15 @@ export function noteDone(conversationId: number, text: string, note: Note): void
     ...current,
     notice: null,
     turns: [...current.turns, { id: (ids += 1), role: 'user', text: text.trim() }, { id: (ids += 1), role: 'event', note }],
+  }));
+}
+
+/** A how-to question and the guide that answers it. */
+export function noteHelp(conversationId: number, text: string, article: string): void {
+  update(conversationId, (current) => ({
+    ...current,
+    notice: null,
+    turns: [...current.turns, { id: (ids += 1), role: 'user', text: text.trim() }, { id: (ids += 1), role: 'help', article }],
   }));
 }
 
