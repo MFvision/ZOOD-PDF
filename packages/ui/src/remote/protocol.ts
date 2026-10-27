@@ -70,14 +70,26 @@ export type PcMessage =
 /** What only the host sends: the hello's answer, PC control switched on or off. */
 export type HostMessage =
   | { t: 'welcome'; device: string; key: string }
-  | { t: 'ready'; pc: string; pcControl: boolean }
+  /** `os` is the PC's system (`windows`, `macos`), for what its keys are called. */
+  | { t: 'ready'; pc: string; pcControl: boolean; os?: string }
   | { t: 'pcControl'; on: boolean }
   /** Copied on the PC (`remote/clip.rs`): text, or a picture as PNG base64. */
   | { t: 'clip'; text?: string; png?: string }
   /** A flicked file was saved on the PC's Desktop under `name`, or not. */
   | { t: 'landed'; id: string | null; name: string; ok: boolean }
   /** A file the person sent from the PC to the phone (`remote_give`). */
-  | { t: 'give'; name: string; mime: string; data: string };
+  | { t: 'give'; name: string; mime: string; data: string }
+  /** The answer to the phone's `beat`: the link is alive. */
+  | { t: 'beat' }
+  /** A file for the phone in parts (`remote/stream.rs`): each part answered with `giveGot`. */
+  | { t: 'giveStart'; id: string; name: string; mime: string; size: number }
+  | { t: 'givePart'; id: string; n: number; data: string }
+  | { t: 'giveEnd'; id: string }
+  | { t: 'giveStop'; id: string }
+  /** Answers to a file the phone sends in parts. */
+  | { t: 'putOk'; id: string }
+  | { t: 'putNo'; id: string; why?: string }
+  | { t: 'putGot'; id: string; n: number };
 
 /**
  * What the host itself handles from the phone (`remote/server.rs`): a file
@@ -86,7 +98,16 @@ export type HostMessage =
 export type PhoneToHost =
   | { t: 'drop'; id: string; name: string; mime: string; data: string }
   | { t: 'clip'; text: string }
-  | { t: 'clip'; png: string };
+  | { t: 'clip'; png: string }
+  /** Still here: the host answers with its own `beat` (`remote/server.rs`). */
+  | { t: 'beat' }
+  /** A file for the PC's Desktop in parts of `STREAM_PART` bytes (`remote/stream.rs`). */
+  | { t: 'putStart'; id: string; name: string; mime: string; size: number }
+  | { t: 'putPart'; id: string; n: number; data: string }
+  | { t: 'putEnd'; id: string }
+  | { t: 'putStop'; id: string }
+  /** Part `n` of a file from the PC came. */
+  | { t: 'giveGot'; id: string; n: number };
 
 /** PC control: carried out by the host itself (`remote/input.rs`). */
 export type PcControl =
@@ -96,6 +117,8 @@ export type PcControl =
   | { t: 'pc'; k: 'release' }
   | { t: 'pc'; k: 'scroll'; dx?: number; dy?: number }
   | { t: 'pc'; k: 'text'; s: string }
+  /** One of a few everyday shortcuts, in the PC's own keys (`remote/input.rs`). */
+  | { t: 'pc'; k: 'shortcut'; key: 'copy' | 'paste' | 'cut' | 'undo' | 'redo' | 'selectAll' | 'switchApp' | 'zoomIn' | 'zoomOut' }
   | {
       t: 'pc';
       k: 'key';
@@ -122,8 +145,15 @@ export type PcControl =
         | 'prev';
     };
 
-/** The largest file either side sends, before base64. */
+/** The largest file sent in one message (a scan, a signature, the PDF), before base64. */
 export const MAX_FILE_BYTES = 40 * 1024 * 1024;
+
+/** Files between the phone and the PC's Desktop go in parts (`remote/stream.rs`). */
+export const STREAM_PART = 512 * 1024;
+/** Parts on their way before the first is answered. */
+export const STREAM_WINDOW = 4;
+/** The largest file sent in parts. */
+export const MAX_STREAM_BYTES = 1024 * 1024 * 1024;
 
 const clamp01 = (n: unknown): number | null => (typeof n === 'number' && Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : null);
 

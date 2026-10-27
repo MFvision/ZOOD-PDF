@@ -590,11 +590,7 @@ pub fn ring_pick<R: Runtime>(app: AppHandle<R>, tool: String, only: Option<Vec<S
     }
     if tool == PHONE {
         let from = crate::ask::eye::pointer();
-        let app = app.clone();
-        std::thread::spawn(move || {
-            let sent = crate::remote::give_paths(&app, &files, Some(from));
-            log(&format!("{sent} of {} files to the phone", files.len()));
-        });
+        crate::remote::give_or_wait(&app, files, Some(from));
         return;
     }
     let tool = match tool.as_str() {

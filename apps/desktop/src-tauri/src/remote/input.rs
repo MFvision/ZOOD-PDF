@@ -17,6 +17,8 @@ const MAX_MOVE: i32 = 400;
 const MAX_SCROLL: i32 = 40;
 /// The most characters one message types.
 const MAX_TEXT: usize = 500;
+/// The furthest place on a screen a computer's pointer is sent to.
+const MAX_PLACE: i32 = 20_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Click {
@@ -66,11 +68,74 @@ pub enum Act {
     },
     Text(String),
     Key(Named),
+    /// One of a few everyday shortcuts, in this system's own keys (Ctrl on
+    /// Windows, Command on a Mac). None of them opens anything by itself.
+    Shortcut(Shortcut),
+    // From a paired computer's mouse and keyboard (`twin.rs`):
+    /// The pointer to a place on this screen.
+    At {
+        x: i32,
+        y: i32,
+    },
+    /// A mouse button held down or let go.
+    Button {
+        click: Click,
+        down: bool,
+    },
+    /// A key, by its place on the keyboard (`keys.rs`), held down or let go.
+    Code {
+        name: &'static str,
+        down: bool,
+    },
+    /// The wheel, in lines.
+    Wheel {
+        dx: i32,
+        dy: i32,
+    },
+    /// Everything held down is let go: the other computer took its mouse back.
+    ReleaseAll,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Shortcut {
+    Copy,
+    Paste,
+    Cut,
+    Undo,
+    Redo,
+    SelectAll,
+    /// The next open app (Alt+Tab, Command+Tab).
+    SwitchApp,
+    ZoomIn,
+    ZoomOut,
+}
+
+fn shortcut(name: &str) -> Option<Shortcut> {
+    Some(match name {
+        "copy" => Shortcut::Copy,
+        "paste" => Shortcut::Paste,
+        "cut" => Shortcut::Cut,
+        "undo" => Shortcut::Undo,
+        "redo" => Shortcut::Redo,
+        "selectAll" => Shortcut::SelectAll,
+        "switchApp" => Shortcut::SwitchApp,
+        "zoomIn" => Shortcut::ZoomIn,
+        "zoomOut" => Shortcut::ZoomOut,
+        _ => return None,
+    })
 }
 
 #[derive(Deserialize)]
 struct Wire {
     k: String,
+    #[serde(default)]
+    x: f64,
+    #[serde(default)]
+    y: f64,
+    #[serde(default)]
+    down: bool,
+    #[serde(default)]
+    code: Option<String>,
     #[serde(default)]
     dx: f64,
     #[serde(default)]
@@ -150,6 +215,35 @@ pub fn parse(message: &serde_json::Value) -> Option<Act> {
             Act::Text(text)
         }
         "key" => Act::Key(named(wire.key.as_deref()?)?),
+        "shortcut" => Act::Shortcut(shortcut(wire.key.as_deref()?)?),
+        "at" => Act::At {
+            x: whole(wire.x, MAX_PLACE).max(0),
+            y: whole(wire.y, MAX_PLACE).max(0),
+        },
+        "button" => Act::Button {
+            click: match wire.b.as_deref() {
+                None | Some("left") => Click::Left,
+                Some("right") => Click::Right,
+                Some("middle") => Click::Middle,
+                Some(_) => return None,
+            },
+            down: wire.down,
+        },
+        "code" => {
+            let code = wire.code?;
+            if !super::keys::known(&code) {
+                return None;
+            }
+            Act::Code {
+                name: super::keys::canonical(&code)?,
+                down: wire.down,
+            }
+        }
+        "wheel" => Act::Wheel {
+            dx: whole(wire.dx, MAX_SCROLL),
+            dy: whole(wire.dy, MAX_SCROLL),
+        },
+        "leave" => Act::ReleaseAll,
         _ => return None,
     })
 }
@@ -164,7 +258,52 @@ mod system {
 
     use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
 
-    use super::{Act, Click, Named};
+    use super::{Act, Click, Named, Shortcut};
+
+    /// The key held for shortcuts here, and the letter (or key) pressed with it.
+    fn chord(shortcut: Shortcut) -> (Vec<Key>, Key) {
+        let command = if cfg!(target_os = "macos") {
+            Key::Meta
+        } else {
+            Key::Control
+        };
+        match shortcut {
+            Shortcut::Copy => (vec![command], Key::Unicode('c')),
+            Shortcut::Paste => (vec![command], Key::Unicode('v')),
+            Shortcut::Cut => (vec![command], Key::Unicode('x')),
+            Shortcut::Undo => (vec![command], Key::Unicode('z')),
+            Shortcut::Redo if cfg!(target_os = "macos") => {
+                (vec![command, Key::Shift], Key::Unicode('z'))
+            }
+            Shortcut::Redo => (vec![command], Key::Unicode('y')),
+            Shortcut::SelectAll => (vec![command], Key::Unicode('a')),
+            Shortcut::SwitchApp if cfg!(target_os = "macos") => (vec![Key::Meta], Key::Tab),
+            Shortcut::SwitchApp => (vec![Key::Alt], Key::Tab),
+            Shortcut::ZoomIn => (vec![command], Key::Unicode('=')),
+            Shortcut::ZoomOut => (vec![command], Key::Unicode('-')),
+        }
+    }
+
+    fn press_chord(enigo: &mut Enigo, shortcut: Shortcut) -> enigo::InputResult<()> {
+        let (held, key) = chord(shortcut);
+        let mut pressed = Vec::new();
+        let mut result = Ok(());
+        for k in &held {
+            result = enigo.key(*k, Direction::Press);
+            if result.is_err() {
+                break;
+            }
+            pressed.push(*k);
+        }
+        if result.is_ok() {
+            result = enigo.key(key, Direction::Click);
+        }
+        // Whatever happened, nothing is left held down.
+        for k in pressed.iter().rev() {
+            let _ = enigo.key(*k, Direction::Release);
+        }
+        result
+    }
 
     fn key(named: Named) -> Key {
         match named {
@@ -199,8 +338,107 @@ mod system {
         }
     }
 
+    /// What a paired computer holds down here, let go when it leaves or
+    /// goes, so no key or button is ever left stuck.
+    #[derive(Default)]
+    struct Held {
+        keys: Vec<&'static str>,
+        buttons: Vec<Click>,
+    }
+
+    /// A key by its place on the keyboard, in this system's own codes; a key
+    /// this system has not got is skipped.
+    fn code_key(enigo: &mut Enigo, name: &str, direction: Direction) -> enigo::InputResult<()> {
+        #[cfg(target_os = "windows")]
+        {
+            match super::super::keys::to_windows(name) {
+                Some(vk) => enigo.key(Key::Other(u32::from(vk)), direction),
+                None => Ok(()),
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            // The sound keys are no key codes on a Mac.
+            let special = match name {
+                "AudioVolumeUp" => Some(Key::VolumeUp),
+                "AudioVolumeDown" => Some(Key::VolumeDown),
+                "AudioVolumeMute" => Some(Key::VolumeMute),
+                "MediaPlayPause" => Some(Key::MediaPlayPause),
+                "MediaTrackNext" => Some(Key::MediaNextTrack),
+                "MediaTrackPrevious" => Some(Key::MediaPrevTrack),
+                _ => None,
+            };
+            if let Some(key) = special {
+                return if direction == Direction::Press {
+                    enigo.key(key, Direction::Click)
+                } else {
+                    Ok(())
+                };
+            }
+            match super::super::keys::to_mac(name) {
+                Some(code) => enigo.raw(code, direction),
+                None => Ok(()),
+            }
+        }
+    }
+
+    fn direction(down: bool) -> Direction {
+        if down {
+            Direction::Press
+        } else {
+            Direction::Release
+        }
+    }
+
+    fn run_held(enigo: &mut Enigo, held: &mut Held, act: Act) -> enigo::InputResult<()> {
+        match act {
+            Act::Button { click, down } => {
+                held.buttons.retain(|b| *b != click);
+                if down {
+                    held.buttons.push(click);
+                }
+                enigo.button(button(click), direction(down))
+            }
+            Act::Code { name, down } => {
+                let was = held.keys.contains(&name);
+                held.keys.retain(|k| *k != name);
+                if down {
+                    held.keys.push(name);
+                } else if !was {
+                    // Never held here: nothing to let go.
+                    return Ok(());
+                }
+                code_key(enigo, name, direction(down))
+            }
+            Act::ReleaseAll => {
+                for name in std::mem::take(&mut held.keys).into_iter().rev() {
+                    let _ = code_key(enigo, name, Direction::Release);
+                }
+                for click in std::mem::take(&mut held.buttons) {
+                    let _ = enigo.button(button(click), Direction::Release);
+                }
+                Ok(())
+            }
+            other => run(enigo, other),
+        }
+    }
+
     fn run(enigo: &mut Enigo, act: Act) -> enigo::InputResult<()> {
         match act {
+            Act::At { x, y } => {
+                let (w, h) = super::screen_size().unwrap_or((x + 1, y + 1));
+                enigo.move_mouse(x.min(w - 1), y.min(h - 1), Coordinate::Abs)
+            }
+            Act::Wheel { dx, dy } => {
+                if dy != 0 {
+                    enigo.scroll(dy, Axis::Vertical)?;
+                }
+                if dx != 0 {
+                    enigo.scroll(dx, Axis::Horizontal)?;
+                }
+                Ok(())
+            }
+            Act::Button { .. } | Act::Code { .. } | Act::ReleaseAll => Ok(()),
             Act::Move { dx, dy } => enigo.move_mouse(dx, dy, Coordinate::Rel),
             Act::Click(click) => enigo.button(button(click), Direction::Click),
             Act::Press => enigo.button(Button::Left, Direction::Press),
@@ -216,6 +454,7 @@ mod system {
             }
             Act::Text(text) => enigo.text(&text),
             Act::Key(named) => enigo.key(key(named), Direction::Click),
+            Act::Shortcut(shortcut) => press_chord(enigo, shortcut),
         }
     }
 
@@ -228,12 +467,13 @@ mod system {
                 .name("remote-input".into())
                 .spawn(move || {
                     let mut enigo = None::<Enigo>;
+                    let mut held = Held::default();
                     for act in rx {
                         if enigo.is_none() {
                             enigo = Enigo::new(&Settings::default()).ok();
                         }
                         let Some(e) = enigo.as_mut() else { continue };
-                        if let Err(error) = run(e, act) {
+                        if let Err(error) = run_held(e, &mut held, act) {
                             crate::core_bridge::debug_log(format!("remote input: {error}"));
                         }
                     }
@@ -247,6 +487,42 @@ mod system {
         if let Ok(tx) = worker().lock() {
             let _ = tx.send(act);
         }
+    }
+}
+
+/// This screen's size, in the units the pointer is placed in (the main
+/// display: physical pixels on Windows, points on a Mac).
+pub fn screen_size() -> Option<(i32, i32)> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
+        };
+        // SAFETY: plain system metric queries.
+        let (w, h) = unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) };
+        (w > 0 && h > 0).then_some((w, h))
+    }
+    #[cfg(target_os = "macos")]
+    {
+        #[link(name = "CoreGraphics", kind = "framework")]
+        unsafe extern "C" {
+            fn CGMainDisplayID() -> u32;
+            fn CGDisplayPixelsWide(display: u32) -> usize;
+            fn CGDisplayPixelsHigh(display: u32) -> usize;
+        }
+        // SAFETY: plain display queries.
+        let (w, h) = unsafe {
+            let main = CGMainDisplayID();
+            (
+                CGDisplayPixelsWide(main) as i32,
+                CGDisplayPixelsHigh(main) as i32,
+            )
+        };
+        (w > 0 && h > 0).then_some((w, h))
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        None
     }
 }
 
@@ -287,6 +563,17 @@ mod tests {
             parse(&json!({"k":"key","key":"volup"})),
             Some(Act::Key(Named::VolumeUp))
         );
+        assert_eq!(
+            parse(&json!({"k":"shortcut","key":"paste"})),
+            Some(Act::Shortcut(Shortcut::Paste))
+        );
+        assert_eq!(
+            parse(&json!({"k":"shortcut","key":"switchApp"})),
+            Some(Act::Shortcut(Shortcut::SwitchApp))
+        );
+        // Only the named few: nothing that opens a program or a window.
+        assert_eq!(parse(&json!({"k":"shortcut","key":"run"})), None);
+        assert_eq!(parse(&json!({"k":"shortcut"})), None);
     }
 
     #[test]
@@ -308,6 +595,42 @@ mod tests {
             parse(&json!({"k":"text","s":"\u{1b}[2J"})),
             Some(Act::Text("[2J".into()))
         );
+    }
+
+    #[test]
+    fn reads_a_computers_mouse_and_keys() {
+        assert_eq!(
+            parse(&json!({"k":"at","x":120.4,"y":-5})),
+            Some(Act::At { x: 120, y: 0 })
+        );
+        assert_eq!(
+            parse(&json!({"k":"at","x":1e12,"y":3})),
+            Some(Act::At { x: 20_000, y: 3 })
+        );
+        assert_eq!(
+            parse(&json!({"k":"button","b":"right","down":true})),
+            Some(Act::Button {
+                click: Click::Right,
+                down: true
+            })
+        );
+        assert_eq!(
+            parse(&json!({"k":"code","code":"KeyC","down":true})),
+            Some(Act::Code {
+                name: "KeyC",
+                down: true
+            })
+        );
+        assert_eq!(
+            parse(&json!({"k":"code","code":"PowerOff","down":true})),
+            None
+        );
+        assert_eq!(parse(&json!({"k":"code"})), None);
+        assert_eq!(
+            parse(&json!({"k":"wheel","dy":-3})),
+            Some(Act::Wheel { dx: 0, dy: -3 })
+        );
+        assert_eq!(parse(&json!({"k":"leave"})), Some(Act::ReleaseAll));
     }
 
     #[test]

@@ -16,6 +16,15 @@
        heard by the on-device model and never kept or sent. -->
   <key>NSMicrophoneUsageDescription</key>
   <string>ليسمع ZOOD طلبك وأنت تضغط على اختصار «اسأل ZOOD». يُفهم كلامك على جهازك ولا يُرسل إلى أي مكان. To hear you while you hold the Ask ZOOD shortcut. Your words are understood on this computer and never sent anywhere.</string>
+  <!-- The phone remote (src/remote/): the phone on the same Wi-Fi talks to
+       the PC directly, and the PC says where it is (Bonjour) so the ZOOD
+       iPhone app finds it again. Only while the phone remote is on. -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>ليتصل جوالك بـ ZOOD على هذا الجهاز عبر شبكة Wi-Fi نفسها، عند تشغيل «التحكم من الجوال». So your phone can reach ZOOD on this computer over the same Wi-Fi, while the phone remote is on.</string>
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_zoodremote._tcp</string>
+  </array>
   <key>NSServices</key>
   <array>
     <dict>

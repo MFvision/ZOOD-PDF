@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './remote.css';
 import { Presentation, Smartphone } from 'lucide-react';
 import { Icon } from '../components/Icon';
@@ -22,6 +22,13 @@ export function RemoteLayer() {
   const { t } = useI18n();
   const view = useRemoteView();
   const { reading, page, turnTo, present } = useRemoteController();
+  // Files let go on "To phone" with no phone there: the panel opens with its code.
+  const waiting = view.status?.waiting ?? 0;
+  const waitedBefore = useRef(0);
+  useEffect(() => {
+    if (waiting > waitedBefore.current && !view.panelOpen) openRemoteSheet();
+    waitedBefore.current = waiting;
+  }, [waiting, view.panelOpen]);
   if (view.presenting) return <PresentMode reading={reading} page={page} onTurn={turnTo} onClose={() => present(false)} />;
   if (!remoteAvailable()) return null;
   // The panel as a window, for the home screen and the menu (the toolbar's button opens it beside itself).

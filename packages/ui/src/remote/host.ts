@@ -14,13 +14,20 @@ export interface RemoteStatus {
   qr: string | null;
   codeUntil: number | null;
   address: string | null;
-  phones: { peer: number; device: string; name: string }[];
-  remembered: { id: string; name: string }[];
+  phones: { peer: number; device: string; name: string; pc?: boolean }[];
+  /** Paired phones, and computers that use their mouse here (`pc`). */
+  remembered: { id: string; name: string; pc?: boolean }[];
   pcControl: boolean;
   pcControlAvailable: boolean;
   /** The clipboard is shared with the phones (`remote/clip.rs`). */
   clipboard: boolean;
   clipboardAvailable: boolean;
+  /** The remote comes on by itself at launch for phones paired before. */
+  keepReady: boolean;
+  /** Files let go on "To phone" with no phone there, waiting for one to join. */
+  waiting: number;
+  /** Another computer may pair now ("Let a computer pair", `remote/twin.ts`). */
+  pcPairing: boolean;
 }
 
 export const STATUS_EVENT = 'warraq://remote-status';
@@ -35,6 +42,7 @@ export const stopRemote = () => invokeHost('remote_stop') as Promise<RemoteStatu
 export const remoteStatus = () => invokeHost('remote_status') as Promise<RemoteStatus>;
 export const setPcControl = (on: boolean) => invokeHost('remote_pc_control', { on }) as Promise<RemoteStatus>;
 export const setClipboardSharing = (on: boolean) => invokeHost('remote_clipboard', { on }) as Promise<RemoteStatus>;
+export const setKeepReady = (on: boolean) => invokeHost('remote_keep_ready', { on }) as Promise<RemoteStatus>;
 /** A file for every connected phone: it shows under "From the computer". */
 export const giveToPhone = (name: string, mime: string, data: string) => invokeHost('remote_give', { name, mime, data }) as Promise<boolean>;
 export const forgetPhone = (device: string) => invokeHost('remote_forget', { device }) as Promise<RemoteStatus>;
@@ -68,12 +76,17 @@ export const PAIR_DONE_EVENT = 'warraq://remote-pair-done';
 export interface PairAsk {
   id: string;
   name: string;
+  /** A computer asking (`remote/twin.rs`): the six digits its screen shows too. */
+  digits?: string;
 }
 
 export function onPairAsk(handle: (ask: PairAsk) => void): () => void {
   if (!isTauriHost()) return () => {};
   return onHostEvent<PairAsk>(PAIR_ASK_EVENT, (ask) => {
-    if (ask && typeof ask.id === 'string') handle({ id: ask.id, name: typeof ask.name === 'string' ? ask.name : '' });
+    if (ask && typeof ask.id === 'string') {
+      const digits = typeof ask.digits === 'string' && /^\d{6}$/.test(ask.digits) ? ask.digits : undefined;
+      handle({ id: ask.id, name: typeof ask.name === 'string' ? ask.name : '', ...(digits ? { digits } : {}) });
+    }
   });
 }
 

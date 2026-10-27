@@ -1173,3 +1173,9 @@ html[data-reduce-motion="on"] .phone-card * {
     transform: translateY(-110px) scale(0.6);
   }
 }
+
+.phone-card-text .phone-card-twin {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
