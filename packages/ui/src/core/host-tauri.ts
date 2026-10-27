@@ -462,8 +462,13 @@ export interface DropZoneState {
 
 /** The shelf's files changed (`shelf.rs`); the payload is how many wait. */
 export const SHELF_CHANGED_EVENT = 'shelf://changed';
-/** How many of a drop's paths the shelf could not take. */
+/** What of a drop the shelf could not take: how many, and the files shortcuts among them were made for that are gone. */
 export const SHELF_MISSED_EVENT = 'shelf://missed';
+
+export interface ShelfMissed {
+  count: number;
+  gone: string[];
+}
 
 /** A file on ZOOD's shelf at the top of the screen (`src-tauri/src/shelf.rs`). */
 export interface ShelfItem {
@@ -510,6 +515,8 @@ export const PUT_AWAY_EVENT = 'drop://putaway';
 export interface ZoneHand {
   names: string[];
   pictures: string[];
+  /** The files shortcuts in hand were made for that are no longer there. */
+  gone?: string[];
 }
 
 export interface ZoneDropped {
