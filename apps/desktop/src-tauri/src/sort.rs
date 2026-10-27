@@ -417,6 +417,47 @@ struct Hand {
     names: Vec<String>,
     /// The pictures among them small enough to preview (allowed to be read).
     pictures: Vec<String>,
+    /// The files shortcuts in hand were made for that are no longer there.
+    gone: Vec<String>,
+}
+
+/// What a drop could not take, for the note under the shelf.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Missed {
+    count: usize,
+    gone: Vec<String>,
+}
+
+/// The names of the files dropped shortcuts were made for and that are not
+/// found (a few, for a note), logged with where they were looked for.
+fn gone_of(paths: &[PathBuf]) -> Vec<String> {
+    let mut gone = Vec::new();
+    for path in paths
+        .iter()
+        .take(MAX_FILES)
+        .filter(|p| crate::lnk::is_shortcut(p))
+    {
+        let found = crate::lnk::target_of(path);
+        if found.file.is_some() {
+            continue;
+        }
+        let was = found.pointed.as_deref();
+        log(&format!(
+            "a shortcut leads nowhere: {} (made for {})",
+            path.display(),
+            was.map_or_else(|| "nothing readable".into(), |w| w.display().to_string())
+        ));
+        if let Some(name) = was
+            .and_then(|w| w.file_name())
+            .map(|n| n.to_string_lossy().into_owned())
+        {
+            if !gone.contains(&name) && gone.len() < 3 {
+                gone.push(name);
+            }
+        }
+    }
+    gone
 }
 
 /// Files let go on the open zone: the page decides where (a tile, or the
@@ -505,6 +546,11 @@ pub fn on_drag<R: Runtime>(
                 let hand = Hand {
                     names: names_of(&files),
                     pictures,
+                    gone: if files.len() < paths.len().min(MAX_FILES) {
+                        gone_of(paths)
+                    } else {
+                        Vec::new()
+                    },
                 };
                 if let Ok(mut kept) = IN_HAND.lock() {
                     *kept = files;
@@ -554,7 +600,15 @@ pub fn on_drag<R: Runtime>(
                 crate::shelf::add(app, &files, false);
                 show_look(app, "shelf");
                 if missed > 0 {
-                    let _ = window.emit_to(ZONE_LABEL, crate::shelf::MISSED_EVENT, missed);
+                    let gone = gone_of(paths);
+                    let _ = window.emit_to(
+                        ZONE_LABEL,
+                        crate::shelf::MISSED_EVENT,
+                        Missed {
+                            count: missed,
+                            gone,
+                        },
+                    );
                 }
                 return;
             }

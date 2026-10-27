@@ -141,44 +141,164 @@ pub fn is_shortcut(path: &Path) -> bool {
 /// The file a dropped path stands for: itself, or a shortcut's target.
 /// None for folders, and for shortcuts that lead to no file.
 pub fn file_of(path: &Path) -> Option<PathBuf> {
+    target_of(path).file
+}
+
+/// What a dropped path stands for, and, for a shortcut, the place it was
+/// made for (even when nothing is there now), to tell the person which
+/// file went missing.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Found {
+    pub file: Option<PathBuf>,
+    pub pointed: Option<PathBuf>,
+}
+
+/// Shortcuts already read, by path and when they were last written: one
+/// drag asks again and again (the zone, the ring, the shelf), and a
+/// shortcut whose file moved is searched for once.
+static READ: std::sync::Mutex<Vec<(PathBuf, Option<std::time::SystemTime>, Found)>> =
+    std::sync::Mutex::new(Vec::new());
+const MOST_KEPT: usize = 256;
+
+pub fn target_of(path: &Path) -> Found {
     if !path.is_file() {
-        return None;
+        return Found::default();
     }
     if !is_shortcut(path) {
-        return Some(path.to_path_buf());
+        return Found {
+            file: Some(path.to_path_buf()),
+            pointed: None,
+        };
     }
+    let written = std::fs::metadata(path).and_then(|m| m.modified()).ok();
+    if let Ok(kept) = READ.lock() {
+        if let Some((_, _, found)) = kept.iter().find(|(p, w, found)| {
+            p == path && *w == written && found.file.as_ref().is_none_or(|f| f.is_file())
+        }) {
+            return found.clone();
+        }
+    }
+    let found = read_shortcut(path);
+    if let Ok(mut kept) = READ.lock() {
+        kept.retain(|(p, _, _)| p != path);
+        if kept.len() >= MOST_KEPT {
+            kept.remove(0);
+        }
+        kept.push((path.to_path_buf(), written, found.clone()));
+    }
+    found
+}
+
+fn read_shortcut(path: &Path) -> Found {
+    let usable = |p: &PathBuf| p.is_file() && !is_shortcut(p);
     #[cfg(target_os = "windows")]
-    if let Some(found) = shell_target(path).filter(|p| p.is_file() && !is_shortcut(p)) {
-        return Some(found);
-    }
-    let file = std::fs::File::open(path).ok()?;
-    let mut bytes = Vec::new();
-    use std::io::Read;
-    file.take(MOST_BYTES).read_to_end(&mut bytes).ok()?;
-    let target = read(&bytes)?;
-    let full = target.full.map(PathBuf::from);
-    let relative = target.relative.and_then(|r| {
-        let folder = path.parent()?;
-        // Shortcuts write Windows separators; a Mac or Linux test reads them too.
-        Some(folder.join(r.replace('\\', std::path::MAIN_SEPARATOR_STR)))
+    let said = {
+        let (found, said) = shell_target(path);
+        if let Some(found) = found.filter(usable) {
+            return Found {
+                file: Some(found),
+                pointed: said,
+            };
+        }
+        said
+    };
+    #[cfg(not(target_os = "windows"))]
+    let said: Option<PathBuf> = None;
+    let mut pointed = said;
+    let target = std::fs::File::open(path).ok().and_then(|file| {
+        let mut bytes = Vec::new();
+        use std::io::Read;
+        file.take(MOST_BYTES).read_to_end(&mut bytes).ok()?;
+        read(&bytes)
     });
-    [full, relative]
-        .into_iter()
-        .flatten()
-        .find(|p| p.is_file() && !is_shortcut(p))
+    if let Some(target) = target {
+        let full = target.full.map(PathBuf::from);
+        let relative = target.relative.and_then(|r| {
+            let folder = path.parent()?;
+            // Shortcuts write Windows separators; a Mac or Linux test reads them too.
+            Some(folder.join(r.replace('\\', std::path::MAIN_SEPARATOR_STR)))
+        });
+        if let Some(found) = [full.clone(), relative.clone()]
+            .into_iter()
+            .flatten()
+            .find(usable)
+        {
+            return Found {
+                file: Some(found),
+                pointed: pointed.or(full).or(relative),
+            };
+        }
+        pointed = pointed.or(full).or(relative);
+    }
+    // The file was moved into a folder near where it was (tidied away, say):
+    // the same name, a folder or two down from there or from the shortcut.
+    let file = pointed.as_deref().and_then(|was| {
+        // Its name, by Windows separators too (a test on a Mac reads a Windows path).
+        let name = was
+            .to_string_lossy()
+            .rsplit(['\\', '/'])
+            .next()
+            .map(std::ffi::OsString::from)?;
+        let places = [was.parent(), path.parent()];
+        places
+            .into_iter()
+            .flatten()
+            .find_map(|place| near(place, &name))
+    });
+    Found { file, pointed }
+}
+
+/// How far down, and how many entries at most, a moved file is looked for.
+const NEAR_DEPTH: usize = 2;
+const NEAR_ENTRIES: usize = 4000;
+
+/// A file called `name` in `folder` or a folder or two below it.
+fn near(folder: &Path, name: &std::ffi::OsStr) -> Option<PathBuf> {
+    if !folder.is_dir() || Path::new(name).extension().is_none() || is_shortcut(Path::new(name)) {
+        return None;
+    }
+    let mut seen = 0usize;
+    let mut level = vec![folder.to_path_buf()];
+    for _ in 0..=NEAR_DEPTH {
+        let mut next = Vec::new();
+        for dir in level {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                seen += 1;
+                if seen > NEAR_ENTRIES {
+                    return None;
+                }
+                let Ok(kind) = entry.file_type() else {
+                    continue;
+                };
+                if kind.is_dir() {
+                    next.push(entry.path());
+                } else if kind.is_file() && entry.file_name() == name {
+                    return Some(entry.path());
+                }
+            }
+        }
+        level = next;
+    }
+    None
 }
 
 /// The shortcut's target as the Windows Shell reads it, without resolving
 /// it (no search for a moved target, no window).
 #[cfg(target_os = "windows")]
-fn shell_target(path: &Path) -> Option<PathBuf> {
+fn shell_target(path: &Path) -> (Option<PathBuf>, Option<PathBuf>) {
     use std::os::windows::ffi::OsStringExt;
     use windows::core::{Interface, HSTRING};
+    use windows::Win32::Foundation::HWND;
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER,
         COINIT_APARTMENTTHREADED, STGM_READ,
     };
-    use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+    use windows::Win32::UI::Shell::{
+        IShellLinkW, ShellLink, SLR_NOSEARCH, SLR_NOUPDATE, SLR_NO_UI,
+    };
 
     // SAFETY: plain COM calls on this thread, every result checked; the
     // buffer outlives the call that fills it, and its length bounds it.
@@ -191,15 +311,31 @@ fn shell_target(path: &Path) -> Option<PathBuf> {
             let file: IPersistFile = link.cast().ok()?;
             file.Load(&HSTRING::from(path.as_os_str()), STGM_READ)
                 .ok()?;
-            let mut buffer = vec![0u16; 32_768];
-            link.GetPath(&mut buffer, std::ptr::null_mut(), 0).ok()?;
-            let end = buffer.iter().position(|u| *u == 0)?;
-            (end > 0).then(|| PathBuf::from(std::ffi::OsString::from_wide(&buffer[..end])))
+            let path_of = |link: &IShellLinkW| {
+                let mut buffer = vec![0u16; 32_768];
+                link.GetPath(&mut buffer, std::ptr::null_mut(), 0).ok()?;
+                let end = buffer.iter().position(|u| *u == 0)?;
+                (end > 0).then(|| PathBuf::from(std::ffi::OsString::from_wide(&buffer[..end])))
+            };
+            let said = path_of(&link);
+            if said.as_ref().is_some_and(|p| p.is_file()) {
+                return Some((said.clone(), said));
+            }
+            // Gone from there: ask Windows where it went, as Explorer does on a
+            // double-click (its link tracking follows a file moved on this PC),
+            // with no window, no change to the shortcut, no slow search, and
+            // half a second at most.
+            let flags = (SLR_NO_UI.0 | SLR_NOUPDATE.0 | SLR_NOSEARCH.0) as u32 | (500 << 16);
+            let moved = link
+                .Resolve(HWND::default(), flags)
+                .ok()
+                .and_then(|()| path_of(&link));
+            Some((moved, said))
         })();
         if joined {
             CoUninitialize();
         }
-        found
+        found.unwrap_or((None, None))
     }
 }
 
@@ -325,6 +461,18 @@ mod tests {
         let broken = folder.join("gone.lnk");
         std::fs::write(&broken, shortcut(r"C:\gone.pdf", r".\gone.pdf", true)).unwrap();
         assert_eq!(file_of(&broken), None);
+        // Its file tidied into a folder beside it: found there, by name.
+        std::fs::create_dir_all(folder.join("PDFs").join("2026")).unwrap();
+        let moved = folder.join("PDFs").join("2026").join("آفا.pdf");
+        std::fs::write(&moved, b"%PDF-1.7").unwrap();
+        let tidied = folder.join("tidied.lnk");
+        std::fs::write(&tidied, shortcut(r"C:\nowhere\آفا.pdf", r".\آفا.pdf", true)).unwrap();
+        let found = target_of(&tidied);
+        assert_eq!(found.file.as_deref(), Some(moved.as_path()));
+        // A shortcut to nothing still says what it was made for.
+        assert!(target_of(&broken)
+            .pointed
+            .is_some_and(|p| p.to_string_lossy().ends_with("gone.pdf")));
         std::fs::write(folder.join("junk.lnk"), b"not a shortcut").unwrap();
         assert_eq!(file_of(&folder.join("junk.lnk")), None);
         let _ = std::fs::remove_dir_all(&folder);
