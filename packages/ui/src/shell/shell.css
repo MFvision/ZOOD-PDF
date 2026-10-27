@@ -10,16 +10,16 @@
   background: var(--window-background);
 }
 
-/* The macOS app: the system draws the menu bar, the toolbar is the title bar. */
-/* The bars and notes above the page keep their own height: in a short window
-   they shrank and drew over each other (read aloud over the recovery note,
-   0.4.21 at 200%); the page area is what gives way. */
+/* The bars and notes above the page keep their own height in a short window
+   (read aloud was seen over the recovery note, 0.4.21 at 200%); the page area
+   is what gives way. */
 .shell > .banner,
 .shell > .readaloud,
 .shell > .findbar {
   flex-shrink: 0;
 }
 
+/* The macOS app: the system draws the menu bar, the toolbar is the title bar. */
 .shell[data-native-menu] {
   --sheet-top: var(--toolbar-h);
 }
