@@ -7325,6 +7325,7 @@ dependencies = [
  "ort",
  "png 0.18.1",
  "qrcode",
+ "ring",
  "serde",
  "serde_json",
  "sha2 0.10.9",

@@ -26,7 +26,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::Message;
 
 use super::seal::{self, SealKey};
-use super::{input, Host, Peer, Shared, MESSAGE_EVENT};
+use super::{input, pairpc, Host, Peer, Shared, MESSAGE_EVENT};
 
 /// The largest message a phone may send: a photographed page or a PDF.
 pub const MAX_MESSAGE: usize = 64 * 1024 * 1024;
@@ -412,15 +412,49 @@ async fn connect<H: Host>(
     }
 
     let first = tokio::time::timeout(HELLO_WAIT, source.next()).await;
-    let Ok(Some(Ok(Message::Text(text)))) = first else {
+    let Ok(Some(Ok(Message::Text(mut text)))) = first else {
         return;
     };
-    let admitted = admit(
-        text.as_str(),
-        &challenge,
-        |device| shared.phones.lock().ok()?.find(device)?.key(),
-        shared.code(),
-    );
+    // Another computer pairing (`pairpc.rs`) has no code to scan: the two
+    // agree on a key first, and its hello comes sealed with that key.
+    let mut pairing: Option<pairpc::Agreed> = None;
+    if let Some(theirs) = pairpc::asked(text.as_str()) {
+        if !shared.pc_pairing_open() {
+            let closed = json!({ "t": "refused", "why": "closed" }).to_string();
+            let _ = sink.send(Message::Text(closed.into())).await;
+            return;
+        }
+        let Some(ours) = pairpc::half() else {
+            return;
+        };
+        let our_public = ours.public;
+        let Some(agreed) = pairpc::agree(ours, &theirs, &theirs, &our_public) else {
+            return;
+        };
+        let answer = json!({ "t": "pcPairPub", "pub": pairpc::to_text(&our_public) });
+        if sink
+            .send(Message::Text(answer.to_string().into()))
+            .await
+            .is_err()
+        {
+            return;
+        }
+        let next = tokio::time::timeout(HELLO_WAIT, source.next()).await;
+        let Ok(Some(Ok(Message::Text(next)))) = next else {
+            return;
+        };
+        text = next;
+        pairing = Some(agreed);
+    }
+    let admitted = match &pairing {
+        Some(agreed) => admit(text.as_str(), &challenge, |_| None, Some(agreed.key)),
+        None => admit(
+            text.as_str(),
+            &challenge,
+            |device| shared.phones.lock().ok()?.find(device)?.key(),
+            shared.code(),
+        ),
+    };
     let Some(admitted) = admitted else {
         let _ = sink
             .send(Message::Text(json!({ "t": "refused" }).to_string().into()))
@@ -431,13 +465,19 @@ async fn connect<H: Host>(
     // photographs the code still cannot pair without them.
     if let Admitted::New { name, .. } = &admitted {
         // One phone per code: the next one needs a new code.
-        shared.used_code();
+        if pairing.is_none() {
+            shared.used_code();
+        }
         let waiting = json!({ "t": "waiting" }).to_string();
         if sink.send(Message::Text(waiting.into())).await.is_err() {
             return;
         }
+        let asked = match &pairing {
+            Some(agreed) => shared.host.allow_new_pc(name, &agreed.digits),
+            None => shared.host.allow_new_phone(name),
+        };
         let allowed = tokio::select! {
-            allowed = shared.host.allow_new_phone(name) => allowed,
+            allowed = asked => allowed,
             _ = stop.changed() => false,
         };
         if !allowed {
@@ -451,18 +491,29 @@ async fn connect<H: Host>(
 
     // This connection is locked with the key its hello came in. A new
     // phone's own key only reaches it inside the welcome, for next time.
-    let (device, key, name, welcome) = match admitted {
+    let is_pc = pairing.is_some();
+    let (device, key, name, welcome, is_pc) = match admitted {
         Admitted::Known { device, key, name } => {
+            let mut is_pc = false;
             if let Ok(mut phones) = shared.phones.lock() {
                 phones.touch(&device, &name);
+                is_pc = phones.find(&device).is_some_and(|phone| phone.pc);
             }
-            (device, key, name, None)
+            (device, key, name, None, is_pc)
         }
         Admitted::New { key: code, name } => {
             let device = seal::random_id();
             let key = seal::random_key();
             if let Ok(mut phones) = shared.phones.lock() {
-                phones.add(device.clone(), &name, &key);
+                if is_pc {
+                    phones.add_pc(device.clone(), &name, &key);
+                    // One computer per "Let a computer pair".
+                    if let Ok(mut until) = shared.pc_pairing.lock() {
+                        *until = None;
+                    }
+                } else {
+                    phones.add(device.clone(), &name, &key);
+                }
             }
             // Its tag joins the announcement, so the iPhone app trusts it
             // (off this task: the network may take a moment).
@@ -470,7 +521,7 @@ async fn connect<H: Host>(
             std::thread::spawn(move || again.announce());
             let welcome =
                 json!({ "t": "welcome", "device": device, "key": seal::key_to_text(&key) });
-            (device, code, name, Some(welcome))
+            (device, code, name, Some(welcome), is_pc)
         }
     };
     let session = seal::session_key(&key, &challenge);
@@ -486,6 +537,7 @@ async fn connect<H: Host>(
                 device: device.clone(),
                 name: super::devices::tidy_name(&name),
                 tx,
+                pc: is_pc,
             },
         );
     }
@@ -494,7 +546,13 @@ async fn connect<H: Host>(
             let _ = sink.send(m).await;
         }
     }
-    let ready = json!({ "t": "ready", "pc": super::pc_name(), "pcControl": shared.pc_control_on(), "os": std::env::consts::OS });
+    let mut ready = json!({ "t": "ready", "pc": super::pc_name(), "pcControl": shared.pc_control_on(), "os": std::env::consts::OS });
+    // Another computer moves this one's pointer by place: it needs the size.
+    if is_pc {
+        if let Some((width, height)) = input::screen_size() {
+            ready["screen"] = json!([width, height]);
+        }
+    }
     if let Some(m) = sealed_out(&session, &mut out_seq, ready) {
         let _ = sink.send(m).await;
     }
@@ -503,7 +561,10 @@ async fn connect<H: Host>(
         MESSAGE_EVENT,
         json!({ "peer": peer, "message": { "t": "joined" } }),
     );
-    super::give_waiting(&shared);
+    // Files let go on "To phone" wait for a phone, not another computer.
+    if !is_pc {
+        super::give_waiting(&shared);
+    }
 
     let mut window = Instant::now();
     let mut count = 0u32;
@@ -561,8 +622,11 @@ async fn connect<H: Host>(
     if let Ok(mut streams) = shared.streams.lock() {
         streams.forget_peer(peer);
     }
-    // A drag the phone was holding when it left is let go.
-    if shared.pc_control_on() {
+    // A drag the phone was holding when it left is let go; keys and buttons
+    // another computer was holding down come up.
+    if is_pc {
+        input::perform(input::Act::ReleaseAll);
+    } else if shared.pc_control_on() {
         input::perform(input::Act::Release);
     }
     let _ = sink.close().await;
@@ -578,7 +642,13 @@ async fn connect<H: Host>(
 fn handle<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
     match message.get("t").and_then(Value::as_str) {
         Some("pc") => {
-            if !shared.pc_control_on() {
+            // A paired computer was allowed to control this one when it
+            // paired; a phone only while the switch is on.
+            let from_pc = shared
+                .peers
+                .lock()
+                .is_ok_and(|peers| peers.get(&peer).is_some_and(|p| p.pc));
+            if !from_pc && !shared.pc_control_on() {
                 return;
             }
             if let Some(act) = input::parse(&message) {

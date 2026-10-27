@@ -368,6 +368,7 @@ pub fn run() {
         .manage(updates::UpdateState::default())
         .manage(updates::UnsavedState::default())
         .manage(remote::RemoteState::default())
+        .manage(remote::twin::TwinState::default())
         .manage(ask::AskState::default())
         .on_menu_event(|app, event| match event.id().as_ref() {
             ring::TRAY_OPEN => {
@@ -390,6 +391,9 @@ pub fn run() {
             // "Keep the remote ready": paired phones find the PC from launch
             // (off unless the person turned it on; src/remote/mod.rs).
             remote::start_if_ready(app.handle());
+            // One mouse and keyboard for two computers, if it was left on
+            // (off unless the person paired one; src/remote/twin.rs).
+            remote::twin::start_if_on(app.handle());
 
             app.manage(quick::QuickState::default());
             app.manage(sort::SortState::default());
@@ -617,6 +621,12 @@ pub fn run() {
             remote::remote_send,
             remote::remote_fullscreen,
             remote::remote_pair_answer,
+            remote::twin::twin_status,
+            remote::twin::twin_find,
+            remote::twin::twin_pair,
+            remote::twin::twin_set,
+            remote::twin::twin_forget,
+            remote::twin::twin_offer,
             share::share_prepare,
             share::share_email,
             speech::speech_engine,

@@ -113,6 +113,9 @@ base64 = "0.22"
 # phone and the PC as PNG (png, MIT OR Apache-2.0, already in the graph).
 png = "0.18"
 mdns-sd = { version = "0.21.6", default-features = false }
+# Two computers pair with an X25519 exchange and six digits to compare
+# (src/remote/pairpc.rs; ring, already in the app through rustls).
+ring = "0.17"
 
 # Print (src/print.rs): PDFKit prints the PDF itself in the system's print
 # sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
@@ -157,7 +160,7 @@ xcap = "0.9"
 # person's own registry classes; Share › Email hands the file to the default
 # mail program through Simple MAPI (src/share.rs); the Store copy asks
 # whether it runs as a package (src/packaged.rs).
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authentication_Identity", "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_System_DataExchange", "Win32_System_LibraryLoader", "Win32_System_Mapi", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authentication_Identity", "Win32_Storage_FileSystem", "Win32_Storage_Packaging_Appx", "Win32_System_DataExchange", "Win32_System_LibraryLoader", "Win32_System_Mapi", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 # Ask ZOOD reads the buttons of the window in front through UI Automation
 # (src/ask/reach.rs), as screen readers do. Already in the tree through
 # tauri and xcap; MIT OR Apache-2.0. The Store copy turns its start at

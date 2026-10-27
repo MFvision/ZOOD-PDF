@@ -10,13 +10,17 @@
 //! is (`packages/ui/src/remote/`). The interface answers with `remote_send`.
 
 pub mod announce;
+pub mod capture;
 pub mod clip;
 pub mod devices;
 pub mod input;
+pub mod keys;
+pub mod pairpc;
 pub mod seal;
 pub mod server;
 pub mod stream;
 pub mod transfer;
+pub mod twin;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -71,6 +75,8 @@ pub struct Peer {
     pub device: String,
     pub name: String,
     pub tx: mpsc::UnboundedSender<Value>,
+    /// Another computer (`twin.rs`): its mouse and keyboard work here.
+    pub pc: bool,
 }
 
 /// The QR code on screen.
@@ -95,6 +101,9 @@ pub trait Host: Send + Sync + 'static {
     /// A phone that scanned the code on screen wants to pair: true only once
     /// the person allows it on the PC. A photo of the code is not enough.
     fn allow_new_phone(&self, name: &str) -> Pin<Box<dyn Future<Output = bool> + Send>>;
+    /// Another computer wants to use its mouse and keyboard here: true only
+    /// once the person allows it, having seen `digits` match on both screens.
+    fn allow_new_pc(&self, name: &str, digits: &str) -> Pin<Box<dyn Future<Output = bool> + Send>>;
 }
 
 impl<R: Runtime> Host for AppHandle<R> {
@@ -117,31 +126,44 @@ impl<R: Runtime> Host for AppHandle<R> {
     }
 
     fn allow_new_phone(&self, name: &str) -> Pin<Box<dyn Future<Output = bool> + Send>> {
-        let id = seal::random_id();
-        let (answer, answered) = oneshot::channel();
-        if let Ok(mut asks) = pair_asks().lock() {
-            asks.insert(id.clone(), answer);
-        }
-        let _ = self.emit(
-            PAIR_ASK_EVENT,
-            serde_json::json!({ "id": id, "name": devices::tidy_name(name) }),
-        );
-        if let Some(main) = self.get_webview_window("main") {
-            let _ = main.request_user_attention(Some(tauri::UserAttentionType::Critical));
-        }
-        let app = self.clone();
-        Box::pin(async move {
-            let allowed = matches!(
-                tokio::time::timeout(PAIR_ASK_WAIT, answered).await,
-                Ok(Ok(true))
-            );
-            if let Ok(mut asks) = pair_asks().lock() {
-                asks.remove(&id);
-            }
-            let _ = app.emit(PAIR_DONE_EVENT, serde_json::json!({ "id": id }));
-            allowed
-        })
+        ask_pairing(self, name, None)
     }
+
+    fn allow_new_pc(&self, name: &str, digits: &str) -> Pin<Box<dyn Future<Output = bool> + Send>> {
+        ask_pairing(self, name, Some(digits))
+    }
+}
+
+/// "Allow this phone?" (or this computer, with its six digits) on the PC.
+fn ask_pairing<R: Runtime>(
+    app: &AppHandle<R>,
+    name: &str,
+    digits: Option<&str>,
+) -> Pin<Box<dyn Future<Output = bool> + Send>> {
+    let id = seal::random_id();
+    let (answer, answered) = oneshot::channel();
+    if let Ok(mut asks) = pair_asks().lock() {
+        asks.insert(id.clone(), answer);
+    }
+    let _ = app.emit(
+        PAIR_ASK_EVENT,
+        serde_json::json!({ "id": id, "name": devices::tidy_name(name), "digits": digits }),
+    );
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.request_user_attention(Some(tauri::UserAttentionType::Critical));
+    }
+    let app = app.clone();
+    Box::pin(async move {
+        let allowed = matches!(
+            tokio::time::timeout(PAIR_ASK_WAIT, answered).await,
+            Ok(Ok(true))
+        );
+        if let Ok(mut asks) = pair_asks().lock() {
+            asks.remove(&id);
+        }
+        let _ = app.emit(PAIR_DONE_EVENT, serde_json::json!({ "id": id }));
+        allowed
+    })
 }
 
 /// The person's answer to "Allow this phone?"; false when the question is gone.
@@ -179,6 +201,9 @@ pub struct Shared<H: Host> {
     /// Files let go on "To phone" before any phone was there: the first
     /// phone that joins gets them (`give_waiting`).
     waiting: Mutex<Vec<std::path::PathBuf>>,
+    /// Until when another computer may ask to pair (`twin.rs`): only for a
+    /// few minutes after the person here says so, like Bluetooth pairing.
+    pc_pairing: Mutex<Option<Instant>>,
 }
 
 impl<H: Host> Shared<H> {
@@ -188,6 +213,14 @@ impl<H: Host> Shared<H> {
         code.as_ref()
             .filter(|c| c.until > Instant::now())
             .map(|c| c.key)
+    }
+
+    fn pc_pairing_open(&self) -> bool {
+        self.pc_pairing
+            .lock()
+            .ok()
+            .and_then(|until| *until)
+            .is_some_and(|until| until > Instant::now())
     }
 
     fn used_code(&self) {
@@ -284,6 +317,8 @@ pub struct ConnectedPhone {
     pub peer: u64,
     pub device: String,
     pub name: String,
+    /// Another computer using its mouse and keyboard here (`twin.rs`).
+    pub pc: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -291,6 +326,7 @@ pub struct ConnectedPhone {
 pub struct RememberedPhone {
     pub id: String,
     pub name: String,
+    pub pc: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -317,6 +353,8 @@ pub struct Status {
     /// Files waiting for a phone to join (let go on "To phone" with none
     /// there): the panel opens with its QR code while there are some.
     pub waiting: usize,
+    /// Another computer may pair now ("Let a computer pair", `twin.rs`).
+    pub pc_pairing: bool,
 }
 
 fn phones_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
@@ -387,6 +425,7 @@ fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<
             .map(|p| RememberedPhone {
                 id: p.id.clone(),
                 name: p.name.clone(),
+                pc: p.pc,
             })
             .collect();
         return Status {
@@ -403,6 +442,7 @@ fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<
             clipboard_available: CLIPBOARD_AVAILABLE,
             keep_ready: ready_wanted(app),
             waiting: 0,
+            pc_pairing: false,
         };
     };
     shared.status()
@@ -434,6 +474,7 @@ impl<H: Host> Shared<H> {
                         peer: *peer,
                         device: p.device.clone(),
                         name: p.name.clone(),
+                        pc: p.pc,
                     })
                     .collect()
             })
@@ -448,6 +489,7 @@ impl<H: Host> Shared<H> {
                     .map(|p| RememberedPhone {
                         id: p.id.clone(),
                         name: p.name.clone(),
+                        pc: p.pc,
                     })
                     .collect()
             })
@@ -466,6 +508,7 @@ impl<H: Host> Shared<H> {
             clipboard_available: CLIPBOARD_AVAILABLE,
             keep_ready: shared.keep_ready.load(Ordering::Relaxed),
             waiting: shared.waiting.lock().map(|w| w.len()).unwrap_or(0),
+            pc_pairing: shared.pc_pairing_open(),
         }
     }
 }
@@ -518,6 +561,7 @@ async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
         streams: Mutex::new(Default::default()),
         announced: Mutex::new(None),
         waiting: Mutex::new(Vec::new()),
+        pc_pairing: Mutex::new(None),
     });
     if code {
         shared.new_code();
@@ -584,15 +628,24 @@ pub fn start_if_ready(app: &AppHandle<Wry>) {
     });
 }
 
-/// "Keep the remote ready" on or off; remembered for the next launch.
-#[tauri::command]
-pub fn remote_keep_ready(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: bool) -> Status {
-    if let Some(file) = ready_file(&app) {
+/// Remembers "Keep the remote ready" for the next launch.
+fn keep_ready_now<R: Runtime>(app: &AppHandle<R>, on: bool) {
+    if let Some(file) = ready_file(app) {
         if let Some(folder) = file.parent() {
             let _ = std::fs::create_dir_all(folder);
         }
         let _ = std::fs::write(file, if on { "on" } else { "off" });
     }
+    let state = app.try_state::<RemoteState>();
+    if let Some(shared) = state.and_then(|s| s.0.lock().ok()?.as_ref().map(|r| r.shared.clone())) {
+        shared.keep_ready.store(on, Ordering::Relaxed);
+    }
+}
+
+/// "Keep the remote ready" on or off; remembered for the next launch.
+#[tauri::command]
+pub fn remote_keep_ready(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: bool) -> Status {
+    keep_ready_now(&app, on);
     let shared = running(&state);
     if let Some(shared) = &shared {
         shared.keep_ready.store(on, Ordering::Relaxed);
@@ -821,10 +874,11 @@ fn give_to_all<H: Host>(
     name: &str,
     mime: &str,
 ) -> bool {
+    // Phones only: a computer sharing its mouse and keyboard takes no files.
     let peers: Vec<u64> = shared
         .peers
         .lock()
-        .map(|p| p.keys().copied().collect())
+        .map(|p| p.iter().filter(|(_, p)| !p.pc).map(|(id, _)| *id).collect())
         .unwrap_or_default();
     if peers.is_empty() || source.size().is_none_or(|s| s > stream::MAX_STREAM) {
         return false;
@@ -884,7 +938,13 @@ pub fn mime_of(name: &str) -> &'static str {
 pub fn has_phone<R: Runtime>(app: &AppHandle<R>) -> bool {
     app.try_state::<RemoteState>()
         .and_then(|state| state.0.lock().ok()?.as_ref().map(|r| r.shared.clone()))
-        .and_then(|shared| shared.peers.lock().ok().map(|peers| !peers.is_empty()))
+        .and_then(|shared| {
+            shared
+                .peers
+                .lock()
+                .ok()
+                .map(|peers| peers.values().any(|p| !p.pc))
+        })
         .unwrap_or(false)
 }
 
@@ -1128,6 +1188,21 @@ mod tests {
             let allowed = name != "Stranger";
             Box::pin(async move { allowed })
         }
+
+        /// The same for computers; the digits are kept for the test to see.
+        fn allow_new_pc(
+            &self,
+            name: &str,
+            digits: &str,
+        ) -> Pin<Box<dyn Future<Output = bool> + Send>> {
+            let _ = self
+                .told
+                .lock()
+                .unwrap()
+                .send(serde_json::json!({ "digits": digits }));
+            let allowed = name != "Stranger";
+            Box::pin(async move { allowed })
+        }
     }
 
     /// The remote on, on this machine only, for a test: what the server
@@ -1161,6 +1236,7 @@ mod tests {
             streams: Mutex::new(Default::default()),
             announced: Mutex::new(None),
             waiting: Mutex::new(Vec::new()),
+            pc_pairing: Mutex::new(None),
         });
         shared.new_code();
         let url = shared.status().url.unwrap();
@@ -1458,6 +1534,70 @@ mod tests {
 
     /// A file let go on "To phone" before any phone was there goes to the
     /// first phone that joins, and the panel stops saying it waits.
+    /// Two computers (`twin.rs`): paired with the digits both screens show,
+    /// remembered as a computer, and let in again by the key it was given.
+    #[test]
+    fn another_computer_pairs_with_digits_and_comes_back_by_its_key() {
+        let (shared, url, told, _stop) = serve(false);
+        let addr = url
+            .trim_start_matches("http://")
+            .split('/')
+            .next()
+            .unwrap()
+            .to_string();
+        let file = std::env::temp_dir().join(format!("zood-twin-{}.txt", std::process::id()));
+        std::fs::write(&file, b"for a phone").unwrap();
+        shared.waiting.lock().unwrap().push(file.clone());
+
+        // Not until the person here opens pairing for a few minutes.
+        let closed = tauri::async_runtime::block_on(twin::join(&addr, "Office PC", None, |_| {}));
+        assert_eq!(closed.err().as_deref(), Some("E_TWIN_NOT_OPEN"));
+        *shared.pc_pairing.lock().unwrap() = Some(Instant::now() + Duration::from_secs(60));
+
+        let (device, key, shown) = tauri::async_runtime::block_on(async {
+            let mut shown = None;
+            let linked = twin::join(&addr, "Office PC", None, |d| shown = Some(d))
+                .await
+                .unwrap();
+            assert_eq!(linked.ready["t"], "ready");
+            let (device, key) = linked.welcome.clone().expect("welcomed");
+            (device, key, shown.expect("digits shown"))
+        });
+        assert_eq!(shown.len(), 6);
+        let asked: Vec<Value> = told
+            .try_iter()
+            .filter(|m| m.get("digits").is_some())
+            .collect();
+        assert_eq!(asked, [serde_json::json!({ "digits": shown })]);
+        // Remembered as a computer; the phone's QR code is still unused, and
+        // a file waiting for a phone keeps waiting.
+        let status = shared.status();
+        assert_eq!(status.remembered.len(), 1);
+        assert!(status.remembered[0].pc);
+        assert!(shared.code().is_some());
+        assert_eq!(shared.status().waiting, 1);
+
+        tauri::async_runtime::block_on(async {
+            let again = twin::join(&addr, "Office PC", Some((device.clone(), key)), |_| {
+                panic!("no digits for a computer paired before")
+            })
+            .await
+            .unwrap();
+            assert_eq!(again.ready["t"], "ready");
+            assert!(again.welcome.is_none());
+            let wrong = twin::join(&addr, "Office PC", Some((device, [7u8; 32])), |_| {}).await;
+            assert_eq!(wrong.err().as_deref(), Some("E_TWIN_REFUSED"));
+            // One computer per opening: a second must wait for the next.
+            let shut = twin::join(&addr, "Stranger", None, |_| {}).await;
+            assert_eq!(shut.err().as_deref(), Some("E_TWIN_NOT_OPEN"));
+            *shared.pc_pairing.lock().unwrap() = Some(Instant::now() + Duration::from_secs(60));
+            let denied = twin::join(&addr, "Stranger", None, |_| {}).await;
+            assert_eq!(denied.err().as_deref(), Some("E_TWIN_DENIED"));
+        });
+        assert_eq!(shared.phones.lock().unwrap().list().len(), 1);
+        let _ = std::fs::remove_file(&file);
+    }
+
     #[test]
     fn a_file_waiting_for_a_phone_goes_to_the_first_that_joins() {
         let (shared, url, _told, _stop) = serve(false);
@@ -1517,6 +1657,7 @@ mod tests {
                         device: p.device.clone(),
                         name: p.name.clone(),
                         tx: p.tx.clone(),
+                        pc: p.pc,
                     });
                     if let Some(peer) = peer {
                         let _ = peer
