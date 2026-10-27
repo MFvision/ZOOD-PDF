@@ -23,7 +23,7 @@
 //!
 //! Every file named here is put in the file scope: picking it in the file
 //! manager is as explicit a choice as picking it in the open panel.
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
@@ -93,6 +93,8 @@ pub struct QuickState {
     gathering: Mutex<HashMap<String, Vec<PathBuf>>>,
     /// Each open quick window's job, by window label.
     jobs: Mutex<HashMap<String, QuickJob>>,
+    /// Quick windows whose work is done, closed when the next one opens.
+    settled: Mutex<HashSet<String>>,
     next: AtomicU32,
 }
 
@@ -215,12 +217,27 @@ fn open_window<R: Runtime>(
         "{WINDOW_PREFIX}{}",
         state.next.fetch_add(1, Ordering::Relaxed)
     );
+    // Finished windows go as the next one comes: on the owner's PC each
+    // right-click tool left one open, and 18 piled up.
+    let done: Vec<String> = state
+        .settled
+        .lock()
+        .map(|mut settled| settled.drain().collect())
+        .unwrap_or_default();
+    for old in done {
+        if let Ok(mut jobs) = state.jobs.lock() {
+            jobs.remove(&old);
+        }
+        if let Some(window) = app.get_webview_window(&old) {
+            let _ = window.close();
+        }
+    }
     if let Ok(mut jobs) = state.jobs.lock() {
         jobs.insert(label.clone(), job_of(tool, files));
     }
     let window =
         WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html?quick=1".into()))
-            .title("أدوات PDF السريعة — محرر زود PDF")
+            .title(title(&crate::presence::load(app).lang))
             .inner_size(680.0, 620.0)
             .min_inner_size(400.0, 460.0)
             .center()
@@ -229,6 +246,31 @@ fn open_window<R: Runtime>(
             .build()?;
     let _ = window.set_focus();
     Ok(window)
+}
+
+/// The window's title, in the app's language (Arabic unless it is English).
+fn title(lang: &str) -> &'static str {
+    if lang == "en" {
+        "Quick PDF tools — ZOOD PDF"
+    } else {
+        "أدوات PDF السريعة — محرر زود PDF"
+    }
+}
+
+/// The quick window asking has finished its work (or started again).
+#[tauri::command]
+pub fn quick_settled<R: Runtime>(
+    window: WebviewWindow<R>,
+    state: State<'_, QuickState>,
+    done: bool,
+) {
+    if let Ok(mut settled) = state.settled.lock() {
+        if done {
+            settled.insert(window.label().to_owned());
+        } else {
+            settled.remove(window.label());
+        }
+    }
 }
 
 /// The job of the quick window asking, kept for a reload of that window.
@@ -274,6 +316,9 @@ pub fn show_editor<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
 pub fn quick_close<R: Runtime>(window: WebviewWindow<R>, state: State<'_, QuickState>) {
     if let Ok(mut jobs) = state.jobs.lock() {
         jobs.remove(window.label());
+    }
+    if let Ok(mut settled) = state.settled.lock() {
+        settled.remove(window.label());
     }
     let _ = window.close();
 }

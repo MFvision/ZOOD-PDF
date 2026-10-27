@@ -313,6 +313,16 @@ pub fn start<R: Runtime>(app: &AppHandle<R>, start_hidden: bool) {
     );
     BACKGROUND.store(settings.background || start_hidden, Ordering::Relaxed);
     show_tray(app, background());
+    // Written again at every start: an update's uninstall step takes the
+    // sign-in entry away (windows/hooks.nsh), and on the owner's PC the
+    // setting still showed on after 0.4.20 with nothing starting at sign-in.
+    if settings.background {
+        std::thread::spawn(|| {
+            if let Err(e) = autostart(true) {
+                log(&format!("start at sign-in not written again: {e}"));
+            }
+        });
+    }
     let (sender, receiver) = channel::<Gesture>();
     if GESTURES.set(Mutex::new(sender)).is_err() {
         return;
