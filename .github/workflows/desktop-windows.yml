@@ -12,6 +12,11 @@ name: desktop (Windows)
 
 on:
   workflow_dispatch:
+    inputs:
+      weight_only:
+        description: 'Only build and measure the app (skip the ring, tests and phone remote)'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
     # Pushing to this branch builds the installer and nothing else: the
@@ -81,6 +86,7 @@ jobs:
       # One page to download from. The file gets a plain name: the bundle's
       # own is the app's Arabic name, which some download tools mangle.
       - name: publish the installer as a release
+        if: ${{ !inputs.weight_only }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -99,6 +105,7 @@ jobs:
       # screenshots go to ci-logs.
       - name: try the ring
         id: ring
+        if: ${{ !inputs.weight_only }}
         continue-on-error: true
         shell: pwsh
         run: ./scripts/ci/ring-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Sample tests/fixtures/layers/layers.pdf -Out ring-check
@@ -107,20 +114,32 @@ jobs:
       # time and again after it closes. Its log and screenshots go to ci-logs.
       - name: try Ask ZOOD
         id: ask
+        if: ${{ !inputs.weight_only }}
         continue-on-error: true
         shell: pwsh
         run: ./scripts/ci/ask-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Out ask-check
+
+      # How heavy the app sits on the machine: CPU and memory of the app and
+      # its WebView2 helpers for a minute after launch, then with Settings
+      # open, then after it closes. Numbers and screenshots go to ci-logs.
+      - name: measure the app's weight
+        id: perf
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/ci/perf-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Out perf-check
 
       # After the installer is out, so a failing test never withholds it: the
       # core's own tests on Windows — among them the installed-font lookup
       # against this machine's real fonts — and the desktop host's.
       - name: test the core on Windows
+        if: ${{ !inputs.weight_only }}
         shell: bash
         run: |
           set -o pipefail
           cargo test --release --manifest-path packages/core/Cargo.toml -p warraq-text -p warraq-pdf -p warraq-core 2>&1 | tee test-core.log
 
       - name: test the desktop host on Windows
+        if: ${{ !inputs.weight_only }}
         shell: bash
         run: |
           set -o pipefail
@@ -132,6 +151,7 @@ jobs:
       # phone's trackpad moves this machine's real pointer.
       - name: try the phone remote
         id: remote
+        if: ${{ !inputs.weight_only }}
         continue-on-error: true
         shell: bash
         env:
@@ -154,10 +174,12 @@ jobs:
             echo "ring check: ${{ steps.ring.outcome }}"
             echo "remote check: ${{ steps.remote.outcome }}"
             echo "ask check: ${{ steps.ask.outcome }}"
+            echo "perf check: ${{ steps.perf.outcome }}"
             echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
           } > status.txt
           [ -d ../ring-check ] && cp -r ../ring-check ring-check
           [ -d ../ask-check ] && cp -r ../ask-check ask-check
+          [ -d ../perf-check ] && cp -r ../perf-check perf-check
           for f in build test-core test-desktop test-remote; do
             [ -f "../$f.log" ] && tail -n 250 "../$f.log" > "$f.log"
           done

@@ -136,7 +136,9 @@ pub struct NeuralVoice {
 
 /// The natural voices this build can use, and whether each is downloaded.
 /// None where the app reads with the system's engine instead.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn speech_neural_voices<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, NeuralState>,
@@ -330,7 +332,9 @@ pub fn speech_neural_cancel_download(state: State<'_, NeuralState>, id: String) 
 }
 
 /// Deletes a downloaded voice, and lets go of it if it is loaded.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn speech_neural_delete<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, NeuralState>,

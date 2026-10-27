@@ -1,0 +1,106 @@
+import { describe, expect, it } from 'vitest';
+import { autoRows, dropTargetAt, extensionFor, fitWithin, formatsFor, handKind, moreFor, panelRows, runsFor, tilesFor } from './stow';
+import type { PanelLayout } from './stow';
+import type { DropItem } from '../state/settings';
+
+describe('the drop zone tiles', () => {
+  it('knows pictures, PDFs and documents', () => {
+    expect(handKind('IMG_2041.JPG')).toBe('picture');
+    expect(handKind('report.pdf')).toBe('pdf');
+    expect(handKind('letter.docx')).toBe('document');
+    expect(handKind('song.mp3')).toBeNull();
+  });
+
+  it('offers Web, Send and Print for a picture, and no Print for a PDF', () => {
+    expect(tilesFor(['photo.png']).map((t) => t.id)).toEqual(['web', 'send', 'print']);
+    expect(tilesFor(['report.pdf']).map((t) => t.id)).toEqual(['web', 'send']);
+    expect(tilesFor(['letter.docx']).map((t) => t.id)).toEqual(['print']);
+    expect(tilesFor(['song.mp3'])).toEqual([]);
+  });
+
+  it('makes Web a 2000 px JPEG and Send a lighter 2048 px one', () => {
+    const [web, send] = tilesFor(['photo.png']);
+    expect(web!.makes.picture).toMatchObject({ kind: 'picture', format: 'jpeg', maxSide: 2000 });
+    expect(send!.makes.picture).toMatchObject({ kind: 'picture', format: 'jpeg', maxSide: 2048 });
+    expect((send!.makes.picture as { quality: number }).quality).toBeLessThan((web!.makes.picture as { quality: number }).quality);
+  });
+
+  it('prints many pictures as one PDF', () => {
+    const print = tilesFor(['a.jpg', 'b.jpg', 'c.png']).find((t) => t.id === 'print')!;
+    expect(print.makes.picture).toEqual({ kind: 'tool', tool: 'topdf', onePdf: true });
+    const runs = runsFor(['a.jpg', 'b.jpg', 'c.png'], print.makes);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.at).toEqual([0, 1, 2]);
+  });
+
+  it('lists the formats that fit, and Merge for two or more', () => {
+    expect(formatsFor(['a.png']).map((c) => c.id)).toEqual(['jpg', 'png', 'webp', 'pdf']);
+    expect(formatsFor(['a.png'], false).map((c) => c.id)).toEqual(['jpg', 'png', 'pdf']);
+    expect(formatsFor(['a.pdf', 'b.pdf']).map((c) => c.id)).toEqual(['jpg', 'png', 'webp', 'docx', 'xlsx', 'pptx', 'txt', 'merge']);
+    expect(formatsFor(['a.pdf']).map((c) => c.id)).not.toContain('merge');
+  });
+
+  it('runs a tile on the files of a mix it takes, each kind its own way', () => {
+    const names = ['a.pdf', 'photo.jpg', 'song.mp3', 'b.pdf'];
+    const web = tilesFor(names).find((t) => t.id === 'web')!;
+    const runs = runsFor(names, web.makes);
+    expect(runs.map((r) => r.at)).toEqual([[0, 3], [1]]);
+  });
+
+  it('brings a big picture down to its longest side, never up', () => {
+    expect(fitWithin(4000, 3000, 2000)).toEqual({ width: 2000, height: 1500 });
+    expect(fitWithin(1200, 3600, 2048)).toEqual({ width: 683, height: 2048 });
+    expect(fitWithin(800, 600, 2000)).toEqual({ width: 800, height: 600 });
+    expect(fitWithin(800, 600)).toEqual({ width: 800, height: 600 });
+    expect(extensionFor('jpeg')).toBe('jpg');
+  });
+
+  it('finds the tile under the pointer', () => {
+    const tile = { dataset: { drop: 'tile:web' } };
+    const inner = { closest: () => tile };
+    const doc = { elementFromPoint: (x: number) => (x === 10 ? (inner as unknown as Element) : null) };
+    expect(dropTargetAt(10, 10, doc)).toBe('tile:web');
+    expect(dropTargetAt(20, 10, doc)).toBeNull();
+    expect(dropTargetAt(-1, -1, doc)).toBeNull();
+  });
+});
+
+describe('the row to the rest of ZOOD', () => {
+  it('stays short: Ask ZOOD for PDFs, Organize, the phone when paired, All tools', () => {
+    expect(moreFor(['a.pdf'])).toEqual(['ask', 'organize', 'tools']);
+    expect(moreFor(['a.pdf', 'b.jpg'], true)).toEqual(['ask', 'organize', 'phone', 'tools']);
+    expect(moreFor(['photo.jpg'])).toEqual(['organize', 'tools']);
+    expect(moreFor(['setup.exe'])).toEqual([]);
+  });
+});
+
+describe('the panel as the person laid it out', () => {
+  const layout: PanelLayout = {
+    big: ['tile:print', 'tile:web', 'tile:send'],
+    small: ['format:jpg', 'format:pdf', 'more:ask'],
+    pills: ['more:organize', 'more:tools'],
+    auto: false,
+  };
+  const all = new Set<DropItem>([...layout.big, ...layout.small, ...layout.pills]);
+  it('keeps each row as laid out, only what does something with the files', () => {
+    expect(panelRows(layout, all)).toEqual({ big: layout.big, small: layout.small, pills: layout.pills });
+    expect(panelRows(layout, new Set<DropItem>(['tile:web', 'format:pdf', 'more:tools']))).toEqual({ big: ['tile:web'], small: ['format:pdf'], pills: ['more:tools'] });
+  });
+  it('with Auto, swaps the most used up into the big row and the rest stays put', () => {
+    const use = { 'more:ask': 9, 'tile:web': 3 };
+    expect(panelRows({ ...layout, auto: true }, all, use)).toEqual({
+      big: ['more:ask', 'tile:web', 'tile:print'],
+      small: ['format:jpg', 'format:pdf', 'tile:send'],
+      pills: layout.pills,
+    });
+    // Never used: as laid out.
+    expect(panelRows({ ...layout, auto: true }, all, {})).toEqual({ big: layout.big, small: layout.small, pills: layout.pills });
+  });
+  it('with Auto, fills big places the files leave empty with the most used', () => {
+    const fits = new Set<DropItem>(['tile:web', 'format:pdf', 'more:ask', 'more:tools']);
+    expect(panelRows({ ...layout, auto: true }, fits, { 'more:tools': 2 })).toEqual({ big: ['more:tools', 'tile:web'], small: ['format:pdf', 'more:ask'], pills: [] });
+  });
+  it('moves nothing when the big row is empty', () => {
+    expect(autoRows({ big: [], small: ['format:pdf'], pills: [] }, { 'format:pdf': 4 })).toEqual({ big: [], small: ['format:pdf'], pills: [] });
+  });
+});

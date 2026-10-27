@@ -104,6 +104,10 @@ New-Item -ItemType Directory -Force -Path $data | Out-Null
 '{"enabled":false,"shortcut":"","sees":false,"taps":true,"tap_key":"right-main","tap_to_type":true,"tap_speaks":true,"glow":true}' |
   Set-Content -Encoding ascii (Join-Path $data 'ask.json')
 
+# A copy left running by an earlier step would take this launch over
+# (one ZOOD at a time), with the settings it read before these.
+Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
 $env:WARRAQ_DEBUG = '1'
 $app = Start-Process -FilePath $App -PassThru `
   -RedirectStandardOutput (Join-Path $Out 'app.log') -RedirectStandardError (Join-Path $Out 'app-err.log')

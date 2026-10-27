@@ -336,7 +336,9 @@ pub fn presence_settings<R: Runtime>(app: AppHandle<R>) -> Presence {
 }
 
 /// Settings and the tour: the bubble on or off; the app's language for the tray.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn presence_configure<R: Runtime>(
     app: AppHandle<R>,
     bubble: Option<bool>,

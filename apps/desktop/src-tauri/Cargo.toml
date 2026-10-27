@@ -161,7 +161,8 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Securit
 # (src/ask/reach.rs), as screen readers do. Already in the tree through
 # tauri and xcap; MIT OR Apache-2.0. The Store copy turns its start at
 # sign-in on and off through the package's startup task (src/packaged.rs).
-windows = { version = "0.61", features = ["ApplicationModel", "Foundation", "Win32_Foundation", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Variant", "Win32_UI_Accessibility"] }
+# Dropped shortcuts are read by the Shell's own IShellLinkW (src/lnk.rs).
+windows = { version = "0.61", features = ["ApplicationModel", "Foundation", "Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Variant", "Win32_UI_Accessibility", "Win32_UI_Shell"] }
 # Read aloud's natural voices (src/neural/): Piper voices and libtashkeel's
 # diacritizer, both ONNX, run by ONNX Runtime through ort (MIT OR
 # Apache-2.0; ONNX Runtime itself MIT), linked statically from the build

@@ -38,14 +38,23 @@ pub const ZONE_LABEL: &str = "drop-zone";
 const WINDOW_PREFIX: &str = "sort-";
 /// The drop zone's look, for its window (`packages/ui/src/sort/DropZone.tsx`).
 pub const ZONE_EVENT: &str = "drop://state";
+/// What is in hand over the open zone, where the pointer is, and what was let go there.
+pub const HAND_EVENT: &str = "drop://hand";
+pub const POINTER_EVENT: &str = "drop://pointer";
+pub const DROPPED_EVENT: &str = "drop://dropped";
+/// Put away moved files (`putaway.rs`).
+pub const PUT_AWAY_EVENT: &str = "drop://putaway";
 /// Words for a Sort window, from Ask ZOOD (`sort_voice`).
 pub const SAY_EVENT: &str = "sort://say";
 /// The pill first seen at the top, and the zone it opens into, in points.
 const PEEK: (f64, f64) = (196.0, 58.0);
-const OPEN: (f64, f64) = (400.0, 168.0);
+/// Open, it is the panel of tiles (`StowPanel.tsx`).
+const OPEN: (f64, f64) = (660.0, 290.0);
+/// A short note at the top: what a tile or Put away did, with Undo and Show.
+const NOTE: (f64, f64) = (440.0, 48.0);
 /// The shelf at rest (a tab that says how many files wait) and open (`shelf.rs`).
 const TAB: (f64, f64) = (210.0, 34.0);
-const SHELF: (f64, f64) = (680.0, 272.0);
+const SHELF: (f64, f64) = (720.0, 330.0);
 /// How near the top, and how far either side of the middle, opens the zone, in points.
 const NEAR_TOP: f64 = 240.0;
 /// How near the top the pointer comes before the zone peeks at all: a drag
@@ -126,6 +135,7 @@ pub fn size_of(look: &str) -> (f64, f64) {
         "open" | "over" => OPEN,
         "tab" => TAB,
         "shelf" => SHELF,
+        "note" => NOTE,
         _ => PEEK,
     }
 }
@@ -199,6 +209,11 @@ fn zone_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     Some(window)
 }
 
+/// The zone's window made, for Put away's note, though the drop zone is off.
+pub fn prepare_window<R: Runtime>(app: &AppHandle<R>) {
+    let _ = zone_window(app);
+}
+
 /// Made a few seconds after start, as the ring is, so the first drag finds
 /// it ready; files left on the shelf before show their tab again.
 pub fn prepare<R: Runtime>(app: &AppHandle<R>) {
@@ -210,7 +225,7 @@ pub fn prepare<R: Runtime>(app: &AppHandle<R>) {
 
 #[derive(Clone, Serialize)]
 struct ZoneState {
-    /// "hidden", "peek", "open", "over", "tab" or "shelf".
+    /// "hidden", "peek", "open", "over", "tab", "shelf" or "note".
     look: &'static str,
     /// Files waiting on the shelf.
     count: usize,
@@ -395,10 +410,77 @@ fn emit_over<R: Runtime>(window: &tauri::Window<R>, look: &'static str, over: bo
     let _ = window.emit_to(ZONE_LABEL, ZONE_EVENT, ZoneState { look, count, over });
 }
 
-/// The zone's own drag and drop (`lib.rs` passes it here). Files let go on
-/// it go onto the shelf, which opens and stays (`shelf.rs`); nothing else
-/// opens, and the zone does not come down again for this drag.
-pub fn on_drag<R: Runtime>(window: &tauri::Window<R>, event: &tauri::DragDropEvent) {
+/// The files in hand over the open zone, for its preview and its tiles.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Hand {
+    names: Vec<String>,
+    /// The pictures among them small enough to preview (allowed to be read).
+    pictures: Vec<String>,
+}
+
+/// Files let go on the open zone: the page decides where (a tile, or the
+/// shelf) and answers with `zone_took` or `zone_keep`.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Dropped {
+    id: u64,
+    paths: Vec<String>,
+    names: Vec<String>,
+    sizes: Vec<u64>,
+    missed: usize,
+    /// Where it was let go, in the page's points.
+    x: f64,
+    y: f64,
+}
+
+/// The files of the last drop on the open zone, until the page answers.
+static PENDING: Mutex<Option<(u64, Vec<PathBuf>)>> = Mutex::new(None);
+static NEXT_DROP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+/// The files in hand while a drag is over the zone, resolved once.
+static IN_HAND: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+/// How long the page has to say where a drop goes before it goes on the shelf.
+const ANSWER_WAIT: Duration = Duration::from_millis(1500);
+/// A picture previewed in hand is read only up to this size.
+const PREVIEW_BYTES: u64 = 8 << 20;
+
+fn is_picture(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|e| e.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp")
+    )
+}
+
+fn names_of(files: &[PathBuf]) -> Vec<String> {
+    files
+        .iter()
+        .filter_map(|f| f.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .collect()
+}
+
+/// How many of a drop's paths lead to no file (folders, broken shortcuts;
+/// several shortcuts to one file are that file once, and not missed).
+fn missed_of(paths: &[PathBuf]) -> usize {
+    paths
+        .iter()
+        .take(MAX_FILES)
+        .filter(|p| crate::lnk::file_of(p).is_none())
+        .count()
+}
+
+/// The zone's own drag and drop (`lib.rs` passes it here, with where the
+/// pointer is in the page's points). Over the open zone the page sees what
+/// is in hand and where the pointer is, to light the tile under it; let go
+/// there, the page runs that tile (a conversion beside the originals) or
+/// puts the files on the shelf. Over the open shelf, files go onto it.
+pub fn on_drag<R: Runtime>(
+    window: &tauri::Window<R>,
+    event: &tauri::DragDropEvent,
+    at: Option<(f64, f64)>,
+) {
     let app = window.app_handle();
     let look = LOOK.lock().map(|l| l.0).unwrap_or("hidden");
     match event {
@@ -407,13 +489,40 @@ pub fn on_drag<R: Runtime>(window: &tauri::Window<R>, event: &tauri::DragDropEve
             if look == "shelf" {
                 return emit_over(window, "shelf", true);
             }
-            if !NEAR.swap(true, Ordering::Relaxed) || look != "over" {
+            if let tauri::DragDropEvent::Enter { paths, .. } = event {
+                let files = files_of(paths);
+                let scope = app.fs_scope();
+                let pictures: Vec<String> = files
+                    .iter()
+                    .filter(|f| is_picture(f))
+                    .filter(|f| std::fs::metadata(f).is_ok_and(|m| m.len() <= PREVIEW_BYTES))
+                    .take(3)
+                    .map(|f| {
+                        let _ = scope.allow_file(f);
+                        f.to_string_lossy().into_owned()
+                    })
+                    .collect();
+                let hand = Hand {
+                    names: names_of(&files),
+                    pictures,
+                };
+                if let Ok(mut kept) = IN_HAND.lock() {
+                    *kept = files;
+                }
+                let _ = window.emit_to(ZONE_LABEL, HAND_EVENT, hand);
+            }
+            if !NEAR.swap(true, Ordering::Relaxed) || (look != "over" && look != "open") {
                 show_look(app, "open");
             }
-            if let Ok(mut now) = LOOK.lock() {
-                now.0 = "over";
+            if look != "over" {
+                if let Ok(mut now) = LOOK.lock() {
+                    now.0 = "over";
+                }
+                emit_over(window, "over", true);
             }
-            emit_over(window, "over", true);
+            if let Some((x, y)) = at {
+                let _ = window.emit_to(ZONE_LABEL, POINTER_EVENT, (x, y));
+            }
         }
         tauri::DragDropEvent::Leave => {
             if look == "shelf" {
@@ -431,13 +540,220 @@ pub fn on_drag<R: Runtime>(window: &tauri::Window<R>, event: &tauri::DragDropEve
             }
             let files = files_of(paths);
             log(&format!("{} files dropped on the drop zone", files.len()));
+            let missed = missed_of(paths);
+            if missed > 0 {
+                let links = paths.iter().filter(|p| crate::lnk::is_shortcut(p)).count();
+                log(&format!(
+                    "{missed} of {} dropped not taken ({links} shortcuts among them)",
+                    paths.len()
+                ));
+            }
             UP.store(false, Ordering::Relaxed);
             NEAR.store(false, Ordering::Relaxed);
-            crate::shelf::add(app, &files, false);
-            show_look(app, "shelf");
+            if look == "shelf" || files.is_empty() {
+                crate::shelf::add(app, &files, false);
+                show_look(app, "shelf");
+                if missed > 0 {
+                    let _ = window.emit_to(ZONE_LABEL, crate::shelf::MISSED_EVENT, missed);
+                }
+                return;
+            }
+            // Let go on the open zone: the page says where they go.
+            let id = NEXT_DROP.fetch_add(1, Ordering::Relaxed);
+            let scope = app.fs_scope();
+            for file in &files {
+                let _ = scope.allow_file(file);
+            }
+            let (x, y) = at.unwrap_or((-1.0, -1.0));
+            let dropped = Dropped {
+                id,
+                paths: files
+                    .iter()
+                    .map(|f| f.to_string_lossy().into_owned())
+                    .collect(),
+                names: names_of(&files),
+                sizes: files
+                    .iter()
+                    .map(|f| std::fs::metadata(f).map(|m| m.len()).unwrap_or(0))
+                    .collect(),
+                missed,
+                x,
+                y,
+            };
+            if let Ok(mut pending) = PENDING.lock() {
+                *pending = Some((id, files));
+            }
+            let _ = window.emit_to(ZONE_LABEL, DROPPED_EVENT, dropped);
+            // No answer (the page is not ready): onto the shelf, so nothing is lost.
+            let app = app.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(ANSWER_WAIT);
+                keep_pending(&app, id);
+            });
         }
         _ => {}
     }
+}
+
+/// The drop `id`, if still waiting, goes onto the shelf.
+fn keep_pending<R: Runtime>(app: &AppHandle<R>, id: u64) -> bool {
+    let files = match PENDING.lock() {
+        Ok(mut pending) if pending.as_ref().is_some_and(|(at, _)| *at == id) => {
+            pending.take().map(|(_, files)| files).unwrap_or_default()
+        }
+        _ => return false,
+    };
+    crate::shelf::add(app, &files, false);
+    show_look(app, "shelf");
+    true
+}
+
+/// The page put the drop `id` on the shelf ("Keep", or no tile under it).
+#[tauri::command]
+pub fn zone_keep<R: Runtime>(app: AppHandle<R>, id: u64) {
+    keep_pending(&app, id);
+}
+
+/// The page runs the drop `id` on a tile: the zone stays as it is, busy.
+#[tauri::command]
+pub fn zone_took(id: u64, tile: String) {
+    if let Ok(mut pending) = PENDING.lock() {
+        if pending.as_ref().is_some_and(|(at, _)| *at == id) {
+            *pending = None;
+        }
+    }
+    log(&format!("dropped on the {tile} tile"));
+}
+
+/// The page sends the drop `id` on to one of ZOOD's other places: talk
+/// about it with ZOOD's own AI (`ask`, the editor's AI panel), Organize
+/// (the Sort window), open it in ZOOD, send it to the phone, All tools
+/// (`tools`, the quick window's chooser) or one quick tool (`quick:<tool>`). Only
+/// the files of that drop, never a path from the page.
+#[tauri::command]
+pub fn zone_act<R: Runtime>(app: AppHandle<R>, id: u64, act: String) -> bool {
+    let files = match PENDING.lock() {
+        Ok(mut pending) if pending.as_ref().is_some_and(|(at, _)| *at == id) => {
+            pending.take().map(|(_, files)| files).unwrap_or_default()
+        }
+        _ => return false,
+    };
+    if files.is_empty() {
+        return false;
+    }
+    log(&format!("dropped on {act}"));
+    let pdf = || {
+        files
+            .iter()
+            .find(|f| f.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+            .cloned()
+    };
+    match act.as_str() {
+        "ask" => {
+            crate::open_in_editor_at(&app, pdf().or_else(|| files.first().cloned()), Some("ai"))
+        }
+        "open" => crate::open_in_editor_at(&app, files.first().cloned(), None),
+        "organize" => open(&app, files),
+        "tools" => crate::quick::request(&app, crate::quick::QuickRequest { tool: None, files }),
+        "phone" => {
+            let app = app.clone();
+            std::thread::spawn(move || {
+                let sent = crate::remote::give_paths(&app, &files, None);
+                log(&format!(
+                    "{sent} of {} dropped files to the phone",
+                    files.len()
+                ));
+            });
+        }
+        other => {
+            let Some(tool) = other
+                .strip_prefix("quick:")
+                .and_then(|t| crate::quick::TOOLS.iter().find(|known| **known == t))
+            else {
+                crate::shelf::add(&app, &files, false);
+                show_look(&app, "shelf");
+                return false;
+            };
+            crate::quick::request(
+                &app,
+                crate::quick::QuickRequest {
+                    tool: Some(tool.to_string()),
+                    files,
+                },
+            );
+        }
+    }
+    rest(&app);
+    true
+}
+
+/// The page shows a short note at the top ("1 done · next to the
+/// original", "4 put away"), or is done with it.
+#[tauri::command]
+pub fn zone_note<R: Runtime>(app: AppHandle<R>, show: bool) {
+    if show {
+        show_look(&app, "note");
+    } else if LOOK.lock().map(|l| l.0 == "note").unwrap_or(false) {
+        rest(&app);
+    }
+}
+
+/// What the last tile made, for its note's Undo and Show.
+static TILE_MADE: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+/// A tile made these files (beside the originals): kept for Undo and Show.
+#[tauri::command(async)]
+pub fn zone_made<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) {
+    let scope = app.fs_scope();
+    let made: Vec<PathBuf> = paths
+        .iter()
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute() && p.is_file() && scope.is_allowed(p))
+        .take(MAX_FILES)
+        .collect();
+    log(&format!("a tile made {} files", made.len()));
+    crate::putaway::made(&made);
+    if let Ok(mut last) = TILE_MADE.lock() {
+        *last = made;
+    }
+}
+
+/// Undo on the note: the files the last tile made go (the originals were
+/// never touched). Returns how many went.
+#[tauri::command(async)]
+pub fn zone_undo_made() -> usize {
+    let made = TILE_MADE
+        .lock()
+        .map(|mut last| std::mem::take(&mut *last))
+        .unwrap_or_default();
+    made.iter()
+        .filter(|p| std::fs::remove_file(p).is_ok())
+        .count()
+}
+
+/// Show on the note: the first file the last tile made, in its folder.
+#[tauri::command(async)]
+pub fn zone_show_made() -> Result<(), String> {
+    let first = TILE_MADE
+        .lock()
+        .ok()
+        .and_then(|last| last.first().cloned())
+        .ok_or_else(|| "E_SCOPE: nothing made".to_string())?;
+    crate::shelf::reveal(&first)
+}
+
+/// Put away moved files: the zone says so, with Undo and Show.
+pub fn tell_put_away<R: Runtime>(app: &AppHandle<R>, batch: &crate::putaway::Batch) {
+    // Not over a drag or the open shelf.
+    let look = LOOK.lock().map(|l| l.0).unwrap_or("hidden");
+    if matches!(look, "peek" | "open" | "over" | "shelf") {
+        return;
+    }
+    let Some(window) = zone_window(app) else {
+        return;
+    };
+    show_look(app, "note");
+    let _ = window.emit_to(ZONE_LABEL, PUT_AWAY_EVENT, batch.clone());
 }
 
 /// One Sort window's files.
@@ -606,7 +922,9 @@ fn session_of<R: Runtime>(window: &WebviewWindow<R>, state: &SortState) -> Resul
 }
 
 /// This Sort window's files, where they are now.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn sort_job<R: Runtime>(
     window: WebviewWindow<R>,
     state: State<'_, SortState>,
@@ -695,7 +1013,9 @@ pub async fn sort_look<R: Runtime>(
 /// Files the window wrote for this session (a merge, a split): they join it,
 /// so they can go into a folder too, and Undo removes them. Only new files
 /// in the session's folder are taken.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn sort_made<R: Runtime>(
     app: AppHandle<R>,
     window: WebviewWindow<R>,

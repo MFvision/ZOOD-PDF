@@ -1,0 +1,102 @@
+/* Settings › Quick tools › Put away (PutAwaySettings.tsx): the rules as folder cards, after "Stow". */
+
+.putaway-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-block-start: 8px;
+}
+
+.putaway-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-inline-size: 0;
+  padding: 14px 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--tertiary-fill);
+  color: var(--secondary-label);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.putaway-card svg {
+  color: var(--accent);
+}
+
+.putaway-card strong {
+  color: var(--label);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.putaway-card span {
+  overflow: hidden;
+  max-inline-size: 100%;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.putaway-card:hover,
+.putaway-card.is-open {
+  background: var(--accent-soft);
+}
+
+.putaway-card.is-add {
+  justify-content: center;
+  border: 1.5px dashed var(--separator);
+  background: transparent;
+}
+
+.putaway-editor {
+  display: grid;
+  gap: 10px;
+  margin-block-start: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--tertiary-fill);
+}
+
+.putaway-editor label {
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+}
+
+.putaway-editor input:not([type="radio"]) {
+  padding: 7px 10px;
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  background: var(--control-background);
+  color: inherit;
+  font: inherit;
+}
+
+.putaway-editor-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.putaway-editor .putaway-check {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.putaway-editor .putaway-days {
+  inline-size: 64px;
+}
+
+.putaway-editor-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}

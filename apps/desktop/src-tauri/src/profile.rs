@@ -148,17 +148,23 @@ pub fn checked(json: &str) -> Result<&str, String> {
     Ok(json)
 }
 
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn profile_get(state: State<'_, ProfileState>) -> Result<Option<String>, String> {
     state.0.get()
 }
 
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn profile_set(state: State<'_, ProfileState>, json: String) -> Result<(), String> {
     state.0.set(checked(&json)?)
 }
 
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn profile_delete(state: State<'_, ProfileState>) -> Result<(), String> {
     state.0.delete()
 }

@@ -29,6 +29,9 @@ use crate::sort::{self, ZONE_LABEL};
 
 /// The shelf's files changed: the zone reads them again.
 pub const CHANGED_EVENT: &str = "shelf://changed";
+/// How many of the paths let go on the zone it could not take (folders,
+/// shortcuts that lead to no file).
+pub const MISSED_EVENT: &str = "shelf://missed";
 const FILE: &str = "shelf.json";
 /// More than a shelf can show; the oldest go first.
 const MAX_ITEMS: usize = 60;
@@ -255,7 +258,9 @@ fn item_of(held: &Held) -> ShelfItem {
 }
 
 /// The files on the shelf, oldest first; files gone from the disk are taken off.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_items<R: Runtime>(app: AppHandle<R>) -> Vec<ShelfItem> {
     load(&app);
     let Ok(mut all) = HELD.lock() else {
@@ -271,7 +276,9 @@ pub fn shelf_items<R: Runtime>(app: AppHandle<R>) -> Vec<ShelfItem> {
 }
 
 /// Takes files off the shelf (they stay where they are on the disk).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_remove<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) {
     let gone = on_shelf(&paths);
     if change(&app, |all| all.retain(|h| !gone.contains(&h.path))) == 0 {
@@ -280,7 +287,9 @@ pub fn shelf_remove<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) {
 }
 
 /// Takes every file off the shelf; the zone goes.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_clear<R: Runtime>(app: AppHandle<R>) {
     change(&app, Vec::clear);
     HOLD.store(false, Ordering::Relaxed);
@@ -290,7 +299,9 @@ pub fn shelf_clear<R: Runtime>(app: AppHandle<R>) {
 /// Files a tool on the shelf made: onto the shelf, marked new. Only files
 /// this run may already read (the batch's writer put them beside files of
 /// the shelf, or in the folder Settings chose).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_made<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) -> usize {
     let scope = app.fs_scope();
     let made: Vec<PathBuf> = paths
@@ -361,7 +372,9 @@ fn start_drag<R: Runtime>(window: &WebviewWindow<R>, files: Vec<PathBuf>) {
 fn start_drag<R: Runtime>(_window: &WebviewWindow<R>, _files: Vec<PathBuf>) {}
 
 /// Opens a file of the shelf in ZOOD's editor.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_open<R: Runtime>(app: AppHandle<R>, path: String) {
     if let Some(file) = on_shelf(&[path]).into_iter().next() {
         crate::open_in_editor_at(&app, Some(file), None);
@@ -369,7 +382,9 @@ pub fn shelf_open<R: Runtime>(app: AppHandle<R>, path: String) {
 }
 
 /// Shows a file of the shelf in File Explorer or Finder, picked.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_reveal(path: String) -> Result<(), String> {
     let file = on_shelf(&[path])
         .into_iter()
@@ -379,7 +394,7 @@ pub fn shelf_reveal(path: String) -> Result<(), String> {
 }
 
 #[cfg(target_os = "windows")]
-fn reveal(file: &Path) -> Result<(), String> {
+pub fn reveal(file: &Path) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     // Explorer reads its own command line: the path is quoted whole.
     std::process::Command::new("explorer.exe")
@@ -390,7 +405,7 @@ fn reveal(file: &Path) -> Result<(), String> {
 }
 
 #[cfg(target_os = "macos")]
-fn reveal(file: &Path) -> Result<(), String> {
+pub fn reveal(file: &Path) -> Result<(), String> {
     std::process::Command::new("open")
         .arg("-R")
         .arg(file)
@@ -400,7 +415,7 @@ fn reveal(file: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-fn reveal(file: &Path) -> Result<(), String> {
+pub fn reveal(file: &Path) -> Result<(), String> {
     let folder = file.parent().ok_or("E_IO: no folder")?;
     std::process::Command::new("xdg-open")
         .arg(folder)
@@ -411,7 +426,9 @@ fn reveal(file: &Path) -> Result<(), String> {
 
 /// Organize with ZOOD: the files go to a Sort window, which suggests merging,
 /// splitting, folders and names (`sort.rs`).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_sort<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) {
     let files = on_shelf(&paths);
     if !files.is_empty() {
@@ -421,7 +438,9 @@ pub fn shelf_sort<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) {
 
 /// A tool that needs the person (a password, which pages, the mark's text):
 /// its quick window opens, with the pages to see (`quick.rs`).
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn shelf_quick<R: Runtime>(app: AppHandle<R>, tool: String, paths: Vec<String>) {
     let files = on_shelf(&paths);
     let Some(tool) = crate::quick::TOOLS.iter().find(|t| **t == tool) else {

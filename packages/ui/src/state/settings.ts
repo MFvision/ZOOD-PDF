@@ -66,6 +66,16 @@ export interface AppSettings {
   /** Quick tools outside the app (the switches themselves live with the host). */
   shellMenuTools: string[];
   ringTools: string[];
+  /**
+   * The drop zone's panel (`sort/StowPanel.tsx`) as the person laid it out
+   * in Settings: what sits in the big row, the small row and the bottom row,
+   * in order (anything in none is not shown), and Auto, where ZOOD moves the
+   * most used up into the big row.
+   */
+  dropBig: DropItem[];
+  dropSmall: DropItem[];
+  dropPills: DropItem[];
+  dropAuto: boolean;
   ringShortcut: string;
   ringSize: RingSize;
   output: OutputPlace;
@@ -92,6 +102,30 @@ export interface AppSettings {
 export const HOME_SECTIONS: readonly HomeSection[] = ['actions', 'recent', 'starred', 'tools', 'assistant', 'clouds'];
 export const AI_PROMPTS: readonly AiPrompt[] = ['summarize', 'keyPoints', 'explain', 'translate', 'email', 'quiz'];
 export const ACCENTS: readonly Accent[] = ['look', 'blue', 'purple', 'pink', 'red', 'orange', 'green', 'graphite'];
+
+/** Every target the drop zone's panel can show; each can sit in any of its rows. */
+export const DROP_ITEMS = [
+  'tile:web',
+  'tile:send',
+  'tile:print',
+  'format:jpg',
+  'format:png',
+  'format:webp',
+  'format:pdf',
+  'format:docx',
+  'format:xlsx',
+  'format:pptx',
+  'format:txt',
+  'format:merge',
+  'more:ask',
+  'more:organize',
+  'more:phone',
+  'more:tools',
+] as const;
+export type DropItem = (typeof DROP_ITEMS)[number];
+
+/** How many fit in the panel's big row and bottom row (the small row wraps). */
+export const DROP_ROW_MAX = { big: 4, small: DROP_ITEMS.length, pills: 5 } as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   startWith: 'home',
@@ -120,6 +154,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sidebarTools: 'all',
   shellMenuTools: [],
   ringTools: [],
+  dropBig: DROP_ITEMS.filter((item) => item.startsWith('tile:')),
+  dropSmall: DROP_ITEMS.filter((item) => item.startsWith('format:')),
+  dropPills: DROP_ITEMS.filter((item) => item.startsWith('more:')),
+  dropAuto: true,
   ringShortcut: 'Mod+Alt+Z',
   ringSize: 'medium',
   output: 'beside',
@@ -178,9 +216,22 @@ function shortcuts(value: unknown): Record<string, string> {
   return out;
 }
 
+/** The panel's three rows: each target in one row at most, none over its row's room. */
+function dropRows(s: Record<string, unknown> | AppSettings): Pick<AppSettings, 'dropBig' | 'dropSmall' | 'dropPills'> {
+  const d = DEFAULT_SETTINGS;
+  if (!Array.isArray(s.dropBig) && !Array.isArray(s.dropSmall) && !Array.isArray(s.dropPills)) return { dropBig: [...d.dropBig], dropSmall: [...d.dropSmall], dropPills: [...d.dropPills] };
+  const taken = new Set<DropItem>();
+  const row = (value: unknown, max: number) => {
+    const out = subset(value, DROP_ITEMS).filter((one) => !taken.has(one)).slice(0, max);
+    for (const one of out) taken.add(one);
+    return out;
+  };
+  return { dropBig: row(s.dropBig, DROP_ROW_MAX.big), dropSmall: row(s.dropSmall, DROP_ROW_MAX.small), dropPills: row(s.dropPills, DROP_ROW_MAX.pills) };
+}
+
 export function sanitizeSettings(raw: unknown): AppSettings {
   const d = DEFAULT_SETTINGS;
-  if (!raw || typeof raw !== 'object') return { ...d, homeSections: [...d.homeSections], aiPrompts: [...d.aiPrompts] };
+  if (!raw || typeof raw !== 'object') return { ...d, homeSections: [...d.homeSections], aiPrompts: [...d.aiPrompts], ...dropRows(d) };
   const s = raw as Record<string, unknown>;
   return {
     startWith: oneOf(s.startWith, ['home', 'reopen'] as const, d.startWith),
@@ -207,7 +258,9 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     recentLimit: oneOf(s.recentLimit, [10, 20, 50] as const, d.recentLimit),
     sidebarTools: oneOf(s.sidebarTools, ['all', 'grouped'] as const, d.sidebarTools),
     shellMenuTools: names(s.shellMenuTools),
-    ringTools: names(s.ringTools, 8),
+    ringTools: names(s.ringTools, 9),
+    ...dropRows(s),
+    dropAuto: bool(s.dropAuto, d.dropAuto),
     ringShortcut: text(s.ringShortcut, d.ringShortcut, 40),
     ringSize: oneOf(s.ringSize, ['small', 'medium', 'large'] as const, d.ringSize),
     output: oneOf(s.output, ['beside', 'folder', 'ask'] as const, d.output),

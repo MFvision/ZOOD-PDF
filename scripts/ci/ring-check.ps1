@@ -11,7 +11,11 @@
 #      and a click on Compress runs it;
 #   4. (a control) drags the file plainly onto the app's main window;
 #   6. drags a shortcut to the file plainly to the top of the screen and lets
-#      go on the drop zone there: it takes the shortcut as the PDF.
+#      go on the drop zone there: it takes the shortcut as the PDF;
+#   7. drags two copied shortcuts to Arabic-named PDFs there at once: the
+#      shelf takes both PDFs;
+#   8. drags the PDF itself up and lets go on a tile: what it makes lands
+#      beside the original.
 # Each step is checked in the app's ring.log and in the folder, and by where
 # the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
@@ -314,6 +318,95 @@ Start-Sleep -Seconds 3
 Shot 'zone-6-after.png'
 Check ((Log) -match 'the drop zone peeks') 'a plain drag to the top brings the drop zone'
 Check ((Log) -match '1 files dropped on the drop zone') 'a shortcut let go on the drop zone is taken as its PDF'
+
+# 7. As on a real desktop: two shortcuts to PDFs with Arabic names, made in
+# another folder and copied here (so the path each keeps relative to itself
+# leads nowhere), picked together and dragged up onto the shelf at once.
+try {
+  $arabic = Join-Path $folder 'arabic'
+  New-Item -ItemType Directory -Force -Path $arabic | Out-Null
+  # Each shortcut made the way Explorer makes one (right-click > Create
+  # shortcut, the Shell's "link" verb), beside its PDF, then copied here: the
+  # path it keeps relative to itself now leads nowhere, as on a real desktop.
+  $shellApp = New-Object -ComObject Shell.Application
+  foreach ($n in 'a', 'b') {
+    $name = (-join [char[]](0x622, 0x641, 0x627, 0x20, 0x622, 0x64A)) + " $n.pdf"
+    Copy-Item $Sample (Join-Path $arabic $name)
+    $before = @(Get-ChildItem $arabic -Filter '*.lnk').Count
+    try { $shellApp.Namespace($arabic).ParseName($name).InvokeVerb('link') } catch { Write-Host "link verb: $_" }
+    foreach ($try in 1..20) {
+      if (@(Get-ChildItem $arabic -Filter '*.lnk').Count -gt $before) { break }
+      Start-Sleep -Milliseconds 500
+    }
+    $lnk = Get-ChildItem $arabic -Filter '*.lnk' | Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($lnk) { Copy-Item $lnk.FullName (Join-Path $folder "arabic-$n - Copy.lnk") }
+    else { Write-Host "no shortcut was made for $n" }
+  }
+  # Taller, so both new shortcuts are in sight below what earlier steps made
+  # (Explorer only lists the rows it shows).
+  $explorer = [Input]::FindWindow('CabinetWClass', [NullString]::Value)
+  [Input]::MoveWindow($explorer, 200, 150, 760, 560, $true) | Out-Null
+  Start-Sleep -Seconds 3
+  $a = FileItem 'arabic-a - Copy'
+  $b = FileItem 'arabic-b - Copy'
+  [Input]::Mouse($a[0], $a[1], 0); [Input]::Mouse($a[0], $a[1], 0x0002); [Input]::Mouse($a[0], $a[1], 0x0004)
+  Start-Sleep -Milliseconds 300
+  [Input]::Key(0x11, $false)
+  [Input]::Mouse($b[0], $b[1], 0); [Input]::Mouse($b[0], $b[1], 0x0002); [Input]::Mouse($b[0], $b[1], 0x0004)
+  [Input]::Key(0x11, $true)
+  Start-Sleep -Milliseconds 500
+  [Input]::Mouse($b[0], $b[1], 0x0002); Start-Sleep -Milliseconds 200
+  foreach ($step in 1..30) {
+    [Input]::Mouse($b[0] + $step * ($zx - $b[0]) / 30, $b[1] + $step * ($zy - $b[1]) / 30, 0)
+    Start-Sleep -Milliseconds 50
+  }
+  foreach ($step in 1..10) { [Input]::Mouse($zx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+  Start-Sleep -Milliseconds 600
+  Shot 'zone-7-over.png'
+  [Input]::Mouse($zx, $zy, 0x0004)
+  Start-Sleep -Seconds 3
+  Shot 'zone-7-after.png'
+  Check ((Log) -match '2 files dropped on the drop zone') 'two copied shortcuts to Arabic-named PDFs are both taken'
+  Check ((Log) -notmatch 'dropped not taken') 'no dropped shortcut is left out'
+} catch {
+  Check $false "the Arabic shortcut step ran ($_)"
+}
+
+# 8. Let go on a tile (after "Stow"): the PDF itself dragged up and let go
+# off centre, on the tile there (Send with the panel left to right, Web
+# right to left). What the tile makes lands beside the original.
+try {
+  # First the shelf folds away, so the next drag opens the tiles again.
+  [Input]::Mouse(400, 600, 0)
+  Start-Sleep -Seconds 5
+  $arabic = Join-Path $folder 'arabic'
+  $t0 = Get-Date
+  $at = FileItem 'sample'
+  $tx = $zx + 80
+  [Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
+  [Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 200
+  foreach ($step in 1..30) {
+    [Input]::Mouse($at[0] + $step * ($tx - $at[0]) / 30, $at[1] + $step * ($zy - $at[1]) / 30, 0)
+    Start-Sleep -Milliseconds 50
+  }
+  foreach ($step in 1..10) { [Input]::Mouse($tx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+  Start-Sleep -Milliseconds 600
+  Shot 'zone-8-tile.png'
+  [Input]::Mouse($tx, $zy, 0x0004)
+  $made = @()
+  foreach ($try in 1..30) {
+    Start-Sleep -Seconds 1
+    $made = @(Get-ChildItem $folder -Recurse -File | Where-Object { $_.LastWriteTime -gt $t0 -and $_.Extension -ne '.lnk' -and $_.FullName -notlike "$arabic*" })
+    if ($made.Count -gt 0) { break }
+  }
+  Shot 'zone-8-note.png'
+  Write-Host "made by the tile: $($made.FullName -join ', ')"
+  Check ((Log) -match 'dropped on the \w+ tile') 'letting go on a tile runs it'
+  Check ($made.Count -gt 0) 'what the tile makes lands beside the original'
+  Check ((Log) -match 'a tile made [1-9]') 'what the tile made is kept for Undo and Show'
+} catch {
+  Check $false "the tile step ran ($_)"
+}
 
 Set-Content (Join-Path $Out 'ring.log') (Log)
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue

@@ -881,10 +881,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       void takeStartupFile()
         .then(async (picked) => {
           if (!picked || cancelled) return;
-          // A quick "Sign" opens the file at Fill & sign.
+          // A quick "Sign" opens the file at Fill & sign; "Ask ZOOD" from the drop zone, at the AI.
           const tool = await takeStartupTool();
           await openFile(toFile(picked));
-          if (tool === 'fillSign' && !cancelled) dispatch({ type: 'SET_ACTIVE_TOOL', tool: 'fillSign' });
+          if ((tool === 'fillSign' || tool === 'ai') && !cancelled) dispatch({ type: 'SET_ACTIVE_TOOL', tool });
         })
         .catch(() => {});
     take();

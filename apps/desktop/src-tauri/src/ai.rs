@@ -202,7 +202,9 @@ pub fn ready_paths<R: Runtime>(
     ))
 }
 
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ai_model_status<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AiState>,
@@ -239,7 +241,9 @@ pub fn ai_model_status<R: Runtime>(
     })
 }
 
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ai_model_delete<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AiState>,
@@ -284,7 +288,9 @@ pub fn ai_runtime() -> &'static str {
 
 /// This machine's memory in bytes, so the interface offers the smaller
 /// model where the larger would not fit; 0 where it cannot be read.
-#[tauri::command]
+// Off the main thread on Windows, where it draws every window (`stall.rs`).
+#[cfg_attr(windows, tauri::command(async))]
+#[cfg_attr(not(windows), tauri::command)]
 pub fn ai_memory_bytes() -> u64 {
     total_memory().unwrap_or(0)
 }
