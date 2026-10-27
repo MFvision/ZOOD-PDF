@@ -2,8 +2,8 @@
 # with no ZOOD, then with ZOOD running as people run it (ring, drop zone with
 # a file on the shelf, Ask ZOOD's taps and glow, the bubble), each way:
 #   - the Print Screen key: a picture lands on the clipboard;
-#   - Win+Shift+S (or the screen clip page) and a rectangle dragged with the
-#     mouse, when this Windows has the Snipping Tool;
+#   - Print Screen and Win+Shift+S with a rectangle dragged with the mouse
+#     on the Snipping Tool's screen clip;
 #   - whether anything holds the clipboard open, and who;
 #   - whether the Print Screen key is taken by a program's hotkey;
 #   - ZOOD's windows on the screen, and what is in front after each try.
@@ -119,8 +119,6 @@ function Say($text) { Write-Host $text; $lines.Add($text) }
 
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 Say "screen: $($screen.Width)x$($screen.Height); Windows $([Environment]::OSVersion.Version)"
-$sketch = Get-AppxPackage -Name '*ScreenSketch*' -ErrorAction SilentlyContinue
-Say ("Snipping Tool: " + $(if ($sketch) { "$($sketch.Name) $($sketch.Version)" } else { 'not on this Windows (Print Screen copies the screen itself)' }))
 
 function Shot($name) {
   $bitmap = New-Object System.Drawing.Bitmap $screen.Width, $screen.Height
@@ -175,17 +173,23 @@ function Round($phase, $pids) {
   $result = [ordered]@{}
   $result.printScreen = Try-Shot 'Print Screen' { [Shots]::Tap(0x2C) }
   $result.altPrintScreen = Try-Shot 'Alt+Print Screen' { [Shots]::Down(0x12); [Shots]::Tap(0x2C); [Shots]::Up(0x12) }
-  if ($sketch) {
-    $result.winShiftS = Try-Shot 'Win+Shift+S, then a rectangle dragged' {
-      [Shots]::Down(0x5B); [Shots]::Down(0x10); [Shots]::Tap(0x53); [Shots]::Up(0x10); [Shots]::Up(0x5B)
-      Start-Sleep -Milliseconds 2500
-      Drag-Rectangle
-    }
-    $result.screenClip = Try-Shot 'screen clip page, then a rectangle dragged' {
-      Start-Process 'ms-screenclip:'
-      Start-Sleep -Milliseconds 2500
-      Drag-Rectangle
-    }
+  # Print Screen opens the Snipping Tool's screen clip where Windows has it:
+  # a rectangle is then dragged, as people do.
+  $result.printScreenDrag = Try-Shot 'Print Screen, then a rectangle dragged' {
+    [Shots]::Tap(0x2C)
+    Start-Sleep -Milliseconds 2500
+    Drag-Rectangle
+  }
+  $result.winShiftS = Try-Shot 'Win+Shift+S, then a rectangle dragged' {
+    [Shots]::Down(0x5B); [Shots]::Down(0x10); [Shots]::Tap(0x53); [Shots]::Up(0x10); [Shots]::Up(0x5B)
+    Start-Sleep -Milliseconds 2500
+    Drag-Rectangle
+  }
+  $result.winShiftSShiftHeld = Try-Shot 'Win+Shift+S, then a rectangle dragged with Shift still down' {
+    [Shots]::Down(0x5B); [Shots]::Down(0x10); [Shots]::Tap(0x53); [Shots]::Up(0x5B)
+    Start-Sleep -Milliseconds 2500
+    Drag-Rectangle
+    [Shots]::Up(0x10)
   }
   Shot ("shot-$phase.png")
   return $result
