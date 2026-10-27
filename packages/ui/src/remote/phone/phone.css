@@ -1589,3 +1589,22 @@ button svg {
   color: var(--ph-muted);
   font-size: 12px;
 }
+
+/* An iPad: the trackpad keeps the whole width; lists and keys stay a comfortable column. */
+@media (width >= 820px) {
+  .phone-send,
+  .phone-pc-keys,
+  .phone-pc-media {
+    inline-size: 100%;
+    max-inline-size: 760px;
+    margin-inline: auto;
+  }
+
+  /* Room for every shortcut at once: they wrap instead of scrolling. */
+  .phone-chips {
+    flex-wrap: wrap;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow-x: visible;
+  }
+}
