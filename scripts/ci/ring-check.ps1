@@ -437,7 +437,9 @@ try {
   Move-Item (Join-Path $moving ((-join [char[]](0x645, 0x644, 0x641)) + ' moved.pdf')) $tidied
   Remove-Item (Join-Path $moving ((-join [char[]](0x645, 0x644, 0x641)) + ' deleted.pdf'))
   Start-Sleep -Seconds 3
-  foreach ($n in 'moved', 'deleted') {
+  # The deleted one first: the moved one lands on the Web tile, whose browser
+  # window would then cover File Explorer.
+  foreach ($n in 'deleted', 'moved') {
     $seen = (Log).Length
     $at = FileItem "$n - Copy"
     [Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
