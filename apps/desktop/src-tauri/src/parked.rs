@@ -26,8 +26,17 @@ pub fn hidden<'a, R: Runtime, M: Manager<R>>(
     }
 }
 
-/// Just made: on Windows, kept out of Alt+Tab while it waits off screen.
+/// Just made: on Windows, sent off screen again and kept out of Alt+Tab.
+///
+/// The builder's place is in logical units: on a screen at 200% that is
+/// -40000 real pixels, past the ±32767 Windows keeps window places in, and
+/// Windows put the window at its default place instead, on top of the main
+/// window. Invisible but not click-through, it took every click there
+/// (File, Settings, the sidebar). Moved in real pixels it stays in range.
 pub fn made<R: Runtime>(window: &WebviewWindow<R>) {
+    if cfg!(target_os = "windows") {
+        away(window);
+    }
     #[cfg(target_os = "windows")]
     if let Ok(hwnd) = window.hwnd() {
         use windows_sys::Win32::UI::WindowsAndMessaging::{
