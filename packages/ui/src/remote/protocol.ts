@@ -70,7 +70,8 @@ export type PcMessage =
 /** What only the host sends: the hello's answer, PC control switched on or off. */
 export type HostMessage =
   | { t: 'welcome'; device: string; key: string }
-  | { t: 'ready'; pc: string; pcControl: boolean }
+  /** `os` is the PC's system (`windows`, `macos`), for what its keys are called. */
+  | { t: 'ready'; pc: string; pcControl: boolean; os?: string }
   | { t: 'pcControl'; on: boolean }
   /** Copied on the PC (`remote/clip.rs`): text, or a picture as PNG base64. */
   | { t: 'clip'; text?: string; png?: string }
@@ -116,6 +117,8 @@ export type PcControl =
   | { t: 'pc'; k: 'release' }
   | { t: 'pc'; k: 'scroll'; dx?: number; dy?: number }
   | { t: 'pc'; k: 'text'; s: string }
+  /** One of a few everyday shortcuts, in the PC's own keys (`remote/input.rs`). */
+  | { t: 'pc'; k: 'shortcut'; key: 'copy' | 'paste' | 'cut' | 'undo' | 'redo' | 'selectAll' | 'switchApp' | 'zoomIn' | 'zoomOut' }
   | {
       t: 'pc';
       k: 'key';

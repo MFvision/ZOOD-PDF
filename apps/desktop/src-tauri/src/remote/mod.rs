@@ -494,7 +494,11 @@ async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
     watch_network(Arc::downgrade(&shared));
     core_bridge_log(format!(
         "remote on, port {port}, addresses {:?}",
-        shared.addresses.lock().map(|a| a.clone()).unwrap_or_default()
+        shared
+            .addresses
+            .lock()
+            .map(|a| a.clone())
+            .unwrap_or_default()
     ));
     let status = status_of(Some(&shared), app);
     if let Ok(mut slot) = state.0.lock() {
@@ -745,7 +749,12 @@ pub fn remote_give(
     };
     let name = transfer::safe_name(&name);
     let mime: String = mime.chars().take(100).collect();
-    let sent = give_to_all(&shared, stream::Source::Bytes(Arc::new(bytes)), &name, &mime);
+    let sent = give_to_all(
+        &shared,
+        stream::Source::Bytes(Arc::new(bytes)),
+        &name,
+        &mime,
+    );
     if sent {
         crate::arrival::depart(&app, &name, &mime, small_picture(&mime, &data), None);
     }
@@ -764,7 +773,12 @@ fn small_picture<'a>(mime: &str, data: &'a str) -> Option<&'a str> {
 
 /// Sends one file to every connected phone, each on a thread of its own, in
 /// parts it answers (`stream.rs`). True when at least one phone is there.
-fn give_to_all<H: Host>(shared: &Arc<Shared<H>>, source: stream::Source, name: &str, mime: &str) -> bool {
+fn give_to_all<H: Host>(
+    shared: &Arc<Shared<H>>,
+    source: stream::Source,
+    name: &str,
+    mime: &str,
+) -> bool {
     let peers: Vec<u64> = shared
         .peers
         .lock()
@@ -780,7 +794,12 @@ fn give_to_all<H: Host>(shared: &Arc<Shared<H>>, source: stream::Source, name: &
             Ok(mut streams) => streams.listen(peer, &id),
             Err(_) => continue,
         };
-        let (shared, source, name, mime) = (shared.clone(), source.clone(), name.to_string(), mime.to_string());
+        let (shared, source, name, mime) = (
+            shared.clone(),
+            source.clone(),
+            name.to_string(),
+            mime.to_string(),
+        );
         std::thread::spawn(move || {
             let say = |m: Value| shared.to_peer(peer, m);
             let whole = stream::give(&source, &id, &name, &mime, &answers, &say);
@@ -1250,7 +1269,9 @@ mod tests {
         use base64::Engine;
         let (shared, url, _told, _stop) = serve(false);
         let landing = shared.host.landing.clone();
-        let data: Vec<u8> = (0..(stream::PART * 3 + 1234)).map(|i| (i * 31 % 256) as u8).collect();
+        let data: Vec<u8> = (0..(stream::PART * 3 + 1234))
+            .map(|i| (i * 31 % 256) as u8)
+            .collect();
         let replies = tauri::async_runtime::block_on(async {
             let (mut socket, session, _first) = pair(&url).await;
             let mut replies = Vec::new();
@@ -1259,30 +1280,43 @@ mod tests {
                 seq += 1;
                 (seq, m)
             };
-            let open_next = |sealed: &[u8]| serde_json::from_slice::<Value>(&seal::open(&session, sealed).unwrap()).unwrap();
+            let open_next = |sealed: &[u8]| {
+                serde_json::from_slice::<Value>(&seal::open(&session, sealed).unwrap()).unwrap()
+            };
             let (n, m) = out(serde_json::json!({ "t": "beat" }));
             say(&mut socket, &session, n, m).await;
             let size = data.len();
-            let (n, m) = out(serde_json::json!({ "t": "putStart", "id": "big1", "name": "Site photos.zip", "mime": "application/zip", "size": size }));
+            let (n, m) = out(
+                serde_json::json!({ "t": "putStart", "id": "big1", "name": "Site photos.zip", "mime": "application/zip", "size": size }),
+            );
             say(&mut socket, &session, n, m).await;
             for (i, chunk) in data.chunks(stream::PART).enumerate() {
                 let part = base64::engine::general_purpose::STANDARD.encode(chunk);
-                let (n, m) = out(serde_json::json!({ "t": "putPart", "id": "big1", "n": i, "data": part }));
+                let (n, m) =
+                    out(serde_json::json!({ "t": "putPart", "id": "big1", "n": i, "data": part }));
                 say(&mut socket, &session, n, m).await;
             }
             let (n, m) = out(serde_json::json!({ "t": "putEnd", "id": "big1" }));
             say(&mut socket, &session, n, m).await;
             while replies.len() < 7 {
-                if let tokio_tungstenite::tungstenite::Message::Binary(sealed) = next(&mut socket).await {
+                if let tokio_tungstenite::tungstenite::Message::Binary(sealed) =
+                    next(&mut socket).await
+                {
                     replies.push(open_next(&sealed));
                 }
             }
             replies
         });
         let kinds: Vec<&str> = replies.iter().map(|r| r["t"].as_str().unwrap()).collect();
-        assert_eq!(kinds, ["beat", "putOk", "putGot", "putGot", "putGot", "putGot", "landed"]);
+        assert_eq!(
+            kinds,
+            ["beat", "putOk", "putGot", "putGot", "putGot", "putGot", "landed"]
+        );
         assert_eq!(replies[6]["ok"], true);
-        assert_eq!(std::fs::read(landing.join("Site photos.zip")).unwrap(), data);
+        assert_eq!(
+            std::fs::read(landing.join("Site photos.zip")).unwrap(),
+            data
+        );
         assert!(!landing.join(".zood-big1.part").exists());
         let _ = std::fs::remove_dir_all(&landing);
     }
@@ -1312,11 +1346,31 @@ mod tests {
                 let t = message["t"].as_str().unwrap_or("").to_string();
                 log.lock().unwrap().push(t.clone());
                 if t == "joined" {
-                    // What the host sends on its own: the PC's clipboard, and a file the person gave.
-                    if let Some(peer) = pc.peers.lock().unwrap().get(&peer) {
+                    // What the host sends on its own: the PC's clipboard, and files the person gave.
+                    let peer_id = peer;
+                    let peer = pc.peers.lock().unwrap().get(&peer_id).map(|p| Peer {
+                        device: p.device.clone(),
+                        name: p.name.clone(),
+                        tx: p.tx.clone(),
+                    });
+                    if let Some(peer) = peer {
                         let _ = peer
                             .tx
                             .send(serde_json::json!({ "t": "clip", "text": "Hello from the PC" }));
+                        // A larger one in parts first (the phone answers each part
+                        // as it comes), then a small one the old way, so the
+                        // small one is the newest caught.
+                        let answers = pc.streams.lock().unwrap().listen(peer_id, "test-give");
+                        let say = |m: Value| peer.tx.send(m).is_ok();
+                        let source = stream::Source::Bytes(Arc::new(vec![5u8; 1_200_000]));
+                        assert!(stream::give(
+                            &source,
+                            "test-give",
+                            "Site plan from the PC.bin",
+                            "application/octet-stream",
+                            &answers,
+                            &say
+                        ));
                         let _ = peer.tx.send(serde_json::json!({ "t": "give", "name": "Notes from the PC.txt", "mime": "text/plain", "data": "aGVsbG8=" }));
                     }
                 }

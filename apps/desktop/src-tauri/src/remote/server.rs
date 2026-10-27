@@ -490,8 +490,7 @@ async fn connect<H: Host>(
             let _ = sink.send(m).await;
         }
     }
-    let ready =
-        json!({ "t": "ready", "pc": super::pc_name(), "pcControl": shared.pc_control_on() });
+    let ready = json!({ "t": "ready", "pc": super::pc_name(), "pcControl": shared.pc_control_on(), "os": std::env::consts::OS });
     if let Some(m) = sealed_out(&session, &mut out_seq, ready) {
         let _ = sink.send(m).await;
     }
@@ -592,9 +591,10 @@ fn handle<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
         }
         Some("giveGot") => {
             let id = message.get("id").and_then(Value::as_str).unwrap_or("");
-            if let (Some(n), Ok(mut streams)) =
-                (message.get("n").and_then(Value::as_u64), shared.streams.lock())
-            {
+            if let (Some(n), Ok(mut streams)) = (
+                message.get("n").and_then(Value::as_u64),
+                shared.streams.lock(),
+            ) {
                 streams.answered(peer, id, n);
             }
         }
@@ -681,7 +681,11 @@ fn land<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
 /// comes and answered, and the whole shown landing on the Desktop at the end.
 fn put<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: &Value) {
     use super::stream::{good_id, Incoming};
-    let Some(id) = message.get("id").and_then(Value::as_str).filter(|id| good_id(id)) else {
+    let Some(id) = message
+        .get("id")
+        .and_then(Value::as_str)
+        .filter(|id| good_id(id))
+    else {
         return;
     };
     let say = |reply: Value| {
@@ -740,7 +744,9 @@ fn put<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: &Value) {
                     json!({ "t": "landed", "id": id, "name": shown, "ok": true })
                 }
                 Err(e) => {
-                    crate::core_bridge::debug_log(format!("remote: a sent file was not saved: {e}"));
+                    crate::core_bridge::debug_log(format!(
+                        "remote: a sent file was not saved: {e}"
+                    ));
                     json!({ "t": "landed", "id": id, "name": name, "ok": false })
                 }
             };

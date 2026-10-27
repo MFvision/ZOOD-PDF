@@ -64,7 +64,13 @@ pub struct Incoming {
 
 impl Incoming {
     /// The part file opened beside where the file will land.
-    pub fn begin(folder: &Path, id: &str, name: &str, mime: &str, size: u64) -> Result<Incoming, String> {
+    pub fn begin(
+        folder: &Path,
+        id: &str,
+        name: &str,
+        mime: &str,
+        size: u64,
+    ) -> Result<Incoming, String> {
         if !good_id(id) {
             return Err("E_ARGS: bad id".into());
         }
@@ -214,7 +220,10 @@ pub enum Source {
 impl Source {
     pub fn size(&self) -> Option<u64> {
         match self {
-            Source::Path(path) => std::fs::metadata(path).ok().filter(|m| m.is_file()).map(|m| m.len()),
+            Source::Path(path) => std::fs::metadata(path)
+                .ok()
+                .filter(|m| m.is_file())
+                .map(|m| m.len()),
             Source::Bytes(bytes) => Some(bytes.len() as u64),
         }
     }
@@ -307,14 +316,24 @@ mod tests {
         let dir = folder("whole");
         std::fs::write(dir.join("Scan.pdf"), b"already here").unwrap();
         let data: Vec<u8> = (0..(PART * 2 + 10)).map(|i| (i % 251) as u8).collect();
-        let mut incoming = Incoming::begin(&dir, "abc", "Scan.pdf", "application/pdf", data.len() as u64).unwrap();
+        let mut incoming = Incoming::begin(
+            &dir,
+            "abc",
+            "Scan.pdf",
+            "application/pdf",
+            data.len() as u64,
+        )
+        .unwrap();
         for (n, chunk) in data.chunks(PART).enumerate() {
             incoming.part(n as u64, &b64(chunk)).unwrap();
         }
         let path = incoming.finish().unwrap();
         assert_eq!(path.file_name().unwrap(), "Scan (2).pdf");
         assert_eq!(std::fs::read(&path).unwrap(), data);
-        assert_eq!(std::fs::read(dir.join("Scan.pdf")).unwrap(), b"already here");
+        assert_eq!(
+            std::fs::read(dir.join("Scan.pdf")).unwrap(),
+            b"already here"
+        );
         assert!(!dir.join(".zood-abc.part").exists());
     }
 
@@ -372,7 +391,14 @@ mod tests {
             sent.1.push(m["t"].as_str().unwrap().to_string());
             true
         };
-        assert!(give(&source, "g1", "a.bin", "application/octet-stream", &answers, &say));
+        assert!(give(
+            &source,
+            "g1",
+            "a.bin",
+            "application/octet-stream",
+            &answers,
+            &say
+        ));
         drop(say);
         assert_eq!(phone.join().unwrap(), data);
         let sent = sent.lock().unwrap();
@@ -420,7 +446,10 @@ mod tests {
         drop(_tx);
         assert!(!give(&source, "g2", "a", "", &rx, &say));
         let said = said.lock().unwrap();
-        assert_eq!(said.iter().filter(|t| *t == "givePart").count(), WINDOW as usize);
+        assert_eq!(
+            said.iter().filter(|t| *t == "givePart").count(),
+            WINDOW as usize
+        );
         assert_eq!(said.last().unwrap(), "giveStop");
     }
 }

@@ -1,7 +1,8 @@
 import type { HostMessage, PcMessage } from '../protocol';
 import { MAX_STREAM_BYTES, fromBase64 } from '../protocol';
-import { RemoteLink, takeCodeFromAddress } from './link';
+import { RemoteLink, readPairing, takeCodeFromAddress } from './link';
 import type { LinkState } from './link';
+import { copyToPhone, inApp, tellPaired } from './native';
 import { Download, Upload, transferId } from './streams';
 import type { Progress, SendResult } from './streams';
 
@@ -10,8 +11,8 @@ type FileMessage = Extract<PcMessage, { t: 'file' }>;
 type DoneMessage = Extract<PcMessage, { t: 'done' }>;
 type LandedMessage = Extract<HostMessage, { t: 'landed' }>;
 
-/** What the PC last copied: text, or a picture's address. */
-export type PcClip = { text: string } | { picture: string };
+/** What the PC last copied: text, or a picture's address; `onPhone` once the ZOOD app put it on the phone's clipboard too. */
+export type PcClip = ({ text: string } | { picture: string }) & { onPhone?: boolean };
 
 /** A file the PC sent to this phone. */
 export interface Received {
@@ -40,6 +41,12 @@ export interface PhoneSnapshot {
   catching: { file: Received; count: number } | null;
   /** A file on its way from the PC: its name and how much has come (0–1). */
   coming: { name: string; done: number } | null;
+  /** The PC's system (`windows`, `macos`), for what its keys are called. */
+  pcOs: string;
+  /** Connected at least once: from then on the page stays while the link comes back. */
+  joined: boolean;
+  /** How many times the link's state changed, to tell one wait from the next. */
+  changes: number;
 }
 
 /**
@@ -48,7 +55,7 @@ export interface PhoneSnapshot {
  * The page reads it with `useSyncExternalStore`.
  */
 export class PhoneSession {
-  private snapshot: PhoneSnapshot = { link: 'connecting', pcName: '', pcControl: false, state: null, pictures: new Map(), clip: null, received: [], catching: null, coming: null };
+  private snapshot: PhoneSnapshot = { link: 'connecting', pcName: '', pcControl: false, state: null, pictures: new Map(), clip: null, received: [], catching: null, coming: null, pcOs: '', joined: false, changes: 0 };
   private landedHandler: ((message: LandedMessage) => void) | null = null;
   private nextReceived = 1;
   private readonly listeners = new Set<() => void>();
@@ -63,13 +70,20 @@ export class PhoneSession {
   constructor() {
     this.link = new RemoteLink(
       takeCodeFromAddress(),
-      (link) => this.update({ link }),
+      (link) => {
+        // A retry while already connecting is the same wait, not a new one.
+        if (link === this.snapshot.link) return;
+        this.update({ link, joined: this.snapshot.joined || link === 'open', changes: this.snapshot.changes + 1 });
+      },
       (message) => {
         switch (message.t) {
-          case 'ready':
+          case 'ready': {
             this.asked.clear();
-            this.update({ pcName: message.pc, pcControl: message.pcControl });
+            this.update({ pcName: message.pc, pcControl: message.pcControl, pcOs: message.os ?? '' });
+            const pairing = readPairing();
+            if (pairing) tellPaired(pairing, message.pc);
             return;
+          }
           case 'pcControl':
             this.update({ pcControl: message.on });
             return;
@@ -148,10 +162,19 @@ export class PhoneSession {
   private takeClip(message: Extract<HostMessage, { t: 'clip' }>): void {
     const old = this.snapshot.clip;
     if (old && 'picture' in old) URL.revokeObjectURL(old.picture);
-    if (typeof message.text === 'string') this.update({ clip: { text: message.text } });
+    let clip: PcClip | null = null;
+    if (typeof message.text === 'string') clip = { text: message.text };
     else if (typeof message.png === 'string') {
       const bytes = fromBase64(message.png);
-      this.update({ clip: bytes ? { picture: URL.createObjectURL(new Blob([bytes], { type: 'image/png' })) } : null });
+      clip = bytes ? { picture: URL.createObjectURL(new Blob([bytes], { type: 'image/png' })) } : null;
+    }
+    this.update({ clip });
+    // In the ZOOD app, the copy is on the phone's clipboard too, ready to paste anywhere.
+    if (clip && inApp()) {
+      const payload = typeof message.text === 'string' ? { text: message.text } : { png: message.png ?? '' };
+      void copyToPhone(payload).then((ok) => {
+        if (ok && this.snapshot.clip === clip) this.update({ clip: { ...clip, onPhone: true } });
+      });
     }
   }
 

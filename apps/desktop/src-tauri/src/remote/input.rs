@@ -66,6 +66,38 @@ pub enum Act {
     },
     Text(String),
     Key(Named),
+    /// One of a few everyday shortcuts, in this system's own keys (Ctrl on
+    /// Windows, Command on a Mac). None of them opens anything by itself.
+    Shortcut(Shortcut),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Shortcut {
+    Copy,
+    Paste,
+    Cut,
+    Undo,
+    Redo,
+    SelectAll,
+    /// The next open app (Alt+Tab, Command+Tab).
+    SwitchApp,
+    ZoomIn,
+    ZoomOut,
+}
+
+fn shortcut(name: &str) -> Option<Shortcut> {
+    Some(match name {
+        "copy" => Shortcut::Copy,
+        "paste" => Shortcut::Paste,
+        "cut" => Shortcut::Cut,
+        "undo" => Shortcut::Undo,
+        "redo" => Shortcut::Redo,
+        "selectAll" => Shortcut::SelectAll,
+        "switchApp" => Shortcut::SwitchApp,
+        "zoomIn" => Shortcut::ZoomIn,
+        "zoomOut" => Shortcut::ZoomOut,
+        _ => return None,
+    })
 }
 
 #[derive(Deserialize)]
@@ -150,6 +182,7 @@ pub fn parse(message: &serde_json::Value) -> Option<Act> {
             Act::Text(text)
         }
         "key" => Act::Key(named(wire.key.as_deref()?)?),
+        "shortcut" => Act::Shortcut(shortcut(wire.key.as_deref()?)?),
         _ => return None,
     })
 }
@@ -164,7 +197,52 @@ mod system {
 
     use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
 
-    use super::{Act, Click, Named};
+    use super::{Act, Click, Named, Shortcut};
+
+    /// The key held for shortcuts here, and the letter (or key) pressed with it.
+    fn chord(shortcut: Shortcut) -> (Vec<Key>, Key) {
+        let command = if cfg!(target_os = "macos") {
+            Key::Meta
+        } else {
+            Key::Control
+        };
+        match shortcut {
+            Shortcut::Copy => (vec![command], Key::Unicode('c')),
+            Shortcut::Paste => (vec![command], Key::Unicode('v')),
+            Shortcut::Cut => (vec![command], Key::Unicode('x')),
+            Shortcut::Undo => (vec![command], Key::Unicode('z')),
+            Shortcut::Redo if cfg!(target_os = "macos") => {
+                (vec![command, Key::Shift], Key::Unicode('z'))
+            }
+            Shortcut::Redo => (vec![command], Key::Unicode('y')),
+            Shortcut::SelectAll => (vec![command], Key::Unicode('a')),
+            Shortcut::SwitchApp if cfg!(target_os = "macos") => (vec![Key::Meta], Key::Tab),
+            Shortcut::SwitchApp => (vec![Key::Alt], Key::Tab),
+            Shortcut::ZoomIn => (vec![command], Key::Unicode('=')),
+            Shortcut::ZoomOut => (vec![command], Key::Unicode('-')),
+        }
+    }
+
+    fn press_chord(enigo: &mut Enigo, shortcut: Shortcut) -> enigo::InputResult<()> {
+        let (held, key) = chord(shortcut);
+        let mut pressed = Vec::new();
+        let mut result = Ok(());
+        for k in &held {
+            result = enigo.key(*k, Direction::Press);
+            if result.is_err() {
+                break;
+            }
+            pressed.push(*k);
+        }
+        if result.is_ok() {
+            result = enigo.key(key, Direction::Click);
+        }
+        // Whatever happened, nothing is left held down.
+        for k in pressed.iter().rev() {
+            let _ = enigo.key(*k, Direction::Release);
+        }
+        result
+    }
 
     fn key(named: Named) -> Key {
         match named {
@@ -216,6 +294,7 @@ mod system {
             }
             Act::Text(text) => enigo.text(&text),
             Act::Key(named) => enigo.key(key(named), Direction::Click),
+            Act::Shortcut(shortcut) => press_chord(enigo, shortcut),
         }
     }
 
@@ -287,6 +366,17 @@ mod tests {
             parse(&json!({"k":"key","key":"volup"})),
             Some(Act::Key(Named::VolumeUp))
         );
+        assert_eq!(
+            parse(&json!({"k":"shortcut","key":"paste"})),
+            Some(Act::Shortcut(Shortcut::Paste))
+        );
+        assert_eq!(
+            parse(&json!({"k":"shortcut","key":"switchApp"})),
+            Some(Act::Shortcut(Shortcut::SwitchApp))
+        );
+        // Only the named few: nothing that opens a program or a window.
+        assert_eq!(parse(&json!({"k":"shortcut","key":"run"})), None);
+        assert_eq!(parse(&json!({"k":"shortcut"})), None);
     }
 
     #[test]

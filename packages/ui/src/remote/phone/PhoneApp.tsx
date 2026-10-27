@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Eraser,
-  FileText,
   Highlighter,
   Monitor,
   MousePointer2,
@@ -29,7 +28,10 @@ import { phoneLang, ps } from './strings';
 import { Trackpad } from './Trackpad';
 import './phone.css';
 
-type Tab = 'present' | 'pc' | 'send' | 'files';
+type Tab = 'present' | 'pc' | 'send';
+
+/** Still connecting after this long: the phone says why it may not reach the PC. */
+const UNREACHABLE_AFTER = 10_000;
 type Mode = 'laser' | InkTool;
 
 export interface PhoneContext {
@@ -47,17 +49,29 @@ const THUMB_WIDTH = 180;
 
 /**
  * The phone remote, as the phone's browser shows it (served by the PC itself,
- * `remote.html`). Four tabs: Present (the page, laser, pen, notes, timer,
- * next and previous), Trackpad (the PC's pointer and keyboard, when the PC
- * allows it), Send (files flicked onto the PC's desktop, the shared
- * clipboard, files from the PC) and Files (the PDF to and from the phone, a
- * scan, a signature).
+ * `remote.html`). Three tabs: Present (the page, laser, pen, notes, timer,
+ * next and previous), Control (the PC's trackpad, keyboard, shortcuts and
+ * media keys, when the PC allows it) and Send (files flicked onto the PC's
+ * desktop, the shared clipboard, files from the PC, and this document's own
+ * tools: the PDF to and from the phone, a scan, a signature).
+ *
+ * Once connected, a dropped link does not take the page away: a quiet line
+ * at the top says it is reconnecting, and only after a while that the phone
+ * may not be on the computer's Wi-Fi.
  */
 export function PhoneApp() {
   const [session] = useState(() => new PhoneSession());
-  const { link: linkState, pcName, pcControl, state, clip, received, catching } = useSyncExternalStore(session.subscribe, session.read, session.read);
+  const { link: linkState, pcName, pcControl, pcOs, state, clip, received, catching, coming, joined, changes } = useSyncExternalStore(session.subscribe, session.read, session.read);
   const [tab, setTab] = useState<Tab>('present');
   const { send, picture } = session;
+  // Still connecting a while after this wait began: say why it may be.
+  const [stuckAt, setStuckAt] = useState(-1);
+  useEffect(() => {
+    if (linkState !== 'connecting') return;
+    const timer = window.setTimeout(() => setStuckAt(changes), UNREACHABLE_AFTER);
+    return () => window.clearTimeout(timer);
+  }, [linkState, changes]);
+  const stuck = linkState === 'connecting' && stuckAt === changes;
 
 
   useEffect(() => {
@@ -67,12 +81,18 @@ export function PhoneApp() {
     return () => session.link.stop();
   }, [session]);
 
-  if (linkState !== 'open') {
+  const unreachable = ps('unreachable', { name: pcName || ps('unreachablePc') });
+  if (linkState !== 'open' && !(joined && linkState === 'connecting')) {
     return (
       <main className="phone phone-center">
         <Logo className="phone-brand" />
         {(linkState === 'connecting' || linkState === 'waiting') && <div className="phone-spinner" aria-hidden="true" />}
         <p className="phone-message">{ps(linkState)}</p>
+        {linkState === 'connecting' && stuck && (
+          <p className="phone-message phone-unreachable" role="status">
+            {unreachable}
+          </p>
+        )}
         {(linkState === 'closed' || linkState === 'refused' || linkState === 'denied') && (
           <button type="button" className="phone-btn" onClick={() => location.reload()}>
             {ps('tryAgain')}
@@ -95,22 +115,29 @@ export function PhoneApp() {
     <main className="phone">
       <header className="phone-top">
         <Logo className="phone-top-logo" />
-        <span className="phone-status">
+        <span className={`phone-status${linkState === 'open' ? '' : ' phone-status-away'}`} role="status">
           <span className="phone-live" aria-hidden="true" />
-          {pcName ? ps('pcName', { name: pcName }) : ps('connected')}
+          {linkState !== 'open' ? ps('reconnecting') : pcName ? ps('pcName', { name: pcName }) : ps('connected')}
         </span>
       </header>
+      {linkState !== 'open' && stuck && (
+        <p className="phone-banner" role="status">
+          {unreachable}
+        </p>
+      )}
       <section className="phone-body">
         {tab === 'present' && <PresentTab context={context} state={state} />}
-        {tab === 'pc' && <Trackpad send={send} enabled={pcControl} />}
-        {tab === 'send' && <SendTab send={send} clip={clip} received={received} pcName={pcName} onLanded={session.onLanded} />}
-        {tab === 'files' && <Files context={context} />}
+        {tab === 'pc' && <Trackpad send={send} enabled={pcControl} mac={pcOs === 'macos'} />}
+        {tab === 'send' && (
+          <SendTab send={send} sendFile={session.sendFile} clip={clip} received={received} coming={coming} pcName={pcName}>
+            <Files context={context} />
+          </SendTab>
+        )}
       </section>
       <nav className="phone-tabs" aria-label="ZOOD">
         <TabButton active={tab === 'present'} icon={<Presentation />} label={ps('tabPresent')} onClick={() => setTab('present')} />
         <TabButton active={tab === 'pc'} icon={<MousePointer2 />} label={ps('tabPc')} onClick={() => setTab('pc')} />
         <TabButton active={tab === 'send'} icon={<Send />} label={ps('tabSend')} onClick={() => setTab('send')} />
-        <TabButton active={tab === 'files'} icon={<FileText />} label={ps('tabFiles')} onClick={() => setTab('files')} />
       </nav>
       {catching && <Catch file={catching.file} count={catching.count} pcName={pcName} onDone={session.putAway} />}
     </main>

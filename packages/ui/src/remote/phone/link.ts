@@ -20,7 +20,7 @@ interface Pairing {
   key: string;
 }
 
-function readPairing(): Pairing | null {
+export function readPairing(): Pairing | null {
   try {
     const raw = localStorage.getItem(STORE);
     const parsed = raw ? (JSON.parse(raw) as Partial<Pairing>) : null;
