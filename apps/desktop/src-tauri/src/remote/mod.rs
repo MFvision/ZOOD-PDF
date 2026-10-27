@@ -14,6 +14,7 @@ pub mod devices;
 pub mod input;
 pub mod seal;
 pub mod server;
+pub mod stream;
 pub mod transfer;
 
 use std::collections::HashMap;
@@ -156,7 +157,9 @@ pub fn remote_pair_answer(id: String, allow: bool) -> bool {
 pub struct Shared<H: Host> {
     host: H,
     port: u16,
-    addresses: Vec<Ipv4Addr>,
+    /// Looked at again every few seconds (`watch_network`): a PC that moves
+    /// to another Wi-Fi shows a QR code for where it is now.
+    addresses: Mutex<Vec<Ipv4Addr>>,
     code: Mutex<Option<Code>>,
     phones: Mutex<Phones>,
     peers: Mutex<server::Peers>,
@@ -166,6 +169,10 @@ pub struct Shared<H: Host> {
     clipboard: AtomicBool,
     /// The last clip either side put on the PC's clipboard, so it is not sent back.
     last_clip: AtomicU64,
+    /// "Keep the remote ready" (`remote-ready`), shown in the panel.
+    keep_ready: AtomicBool,
+    /// Files on their way in parts, either way (`stream.rs`).
+    streams: Mutex<stream::Streams>,
 }
 
 impl<H: Host> Shared<H> {
@@ -216,6 +223,15 @@ impl<H: Host> Shared<H> {
             sent |= peer.tx.send(message.clone()).is_ok();
         }
         sent
+    }
+
+    /// Sends `message` to one connected phone.
+    fn to_peer(&self, peer: u64, message: Value) -> bool {
+        self.peers
+            .lock()
+            .ok()
+            .and_then(|peers| peers.get(&peer).map(|p| p.tx.send(message).is_ok()))
+            .unwrap_or(false)
     }
 
     /// Tells the interface what changed.
@@ -269,6 +285,8 @@ pub struct Status {
     /// The clipboard is shared with the phones.
     pub clipboard: bool,
     pub clipboard_available: bool,
+    /// The remote comes on by itself at launch for phones paired before.
+    pub keep_ready: bool,
 }
 
 fn phones_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
@@ -353,6 +371,7 @@ fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<
             pc_control_available: input::AVAILABLE,
             clipboard: clipboard_wanted(app),
             clipboard_available: CLIPBOARD_AVAILABLE,
+            keep_ready: ready_wanted(app),
         };
     };
     shared.status()
@@ -364,7 +383,9 @@ impl<H: Host> Shared<H> {
         let shared = self;
         let address = shared
             .addresses
-            .first()
+            .lock()
+            .ok()
+            .and_then(|a| a.first().copied())
             .map(|ip| format!("http://{ip}:{}/", shared.port));
         let (url, code_until) = match (&address, shared.code.lock().ok().as_deref()) {
             (Some(address), Some(Some(code))) if code.until > Instant::now() => (
@@ -412,6 +433,7 @@ impl<H: Host> Shared<H> {
             pc_control_available: input::AVAILABLE,
             clipboard: shared.clipboard_on(),
             clipboard_available: CLIPBOARD_AVAILABLE,
+            keep_ready: shared.keep_ready.load(Ordering::Relaxed),
         }
     }
 }
@@ -424,51 +446,165 @@ fn running(state: &State<'_, RemoteState>) -> Option<Arc<Shared<AppHandle<Wry>>>
 #[tauri::command]
 pub async fn remote_start(
     app: AppHandle<Wry>,
-    state: State<'_, RemoteState>,
+    _state: State<'_, RemoteState>,
 ) -> Result<Status, String> {
+    start(&app, true).await
+}
+
+/// The remote on: listening, the clipboard and the network watched. With
+/// `code`, a fresh QR code pairs a new phone; without (started by itself at
+/// launch), only phones paired before may come.
+async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
+    let state = app.state::<RemoteState>();
     if let Some(shared) = running(&state) {
-        shared.new_code();
-        shared.changed();
-        return Ok(status_of(Some(&shared), &app));
+        if code {
+            shared.new_code();
+            shared.changed();
+        }
+        return Ok(status_of(Some(&shared), app));
     }
-    let listener = match TcpListener::bind(("0.0.0.0", PORT)).await {
-        Ok(listener) => listener,
-        Err(_) => TcpListener::bind(("0.0.0.0", 0))
-            .await
-            .map_err(|e| format!("E_REMOTE: {e}"))?,
-    };
+    let listener = listen().await?;
     let port = listener
         .local_addr()
         .map_err(|e| format!("E_REMOTE: {e}"))?
         .port();
-    let phones = phones_file(&app)
+    let phones = phones_file(app)
         .map(|f| Phones::load(&f))
         .unwrap_or_default();
     let shared = Arc::new(Shared {
         host: app.clone(),
         port,
-        addresses: local_addresses(),
+        addresses: Mutex::new(local_addresses()),
         code: Mutex::new(None),
         phones: Mutex::new(phones),
         peers: Mutex::new(Default::default()),
         next_peer: AtomicU64::new(1),
         pc_control: AtomicBool::new(false),
-        clipboard: AtomicBool::new(clipboard_wanted(&app) && CLIPBOARD_AVAILABLE),
+        clipboard: AtomicBool::new(clipboard_wanted(app) && CLIPBOARD_AVAILABLE),
         last_clip: AtomicU64::new(0),
+        keep_ready: AtomicBool::new(ready_wanted(app)),
+        streams: Mutex::new(Default::default()),
     });
-    shared.new_code();
+    if code {
+        shared.new_code();
+    }
     let (stop, stopped) = watch::channel(false);
     tauri::async_runtime::spawn(server::run(shared.clone(), listener, stopped));
     watch_clipboard(Arc::downgrade(&shared));
+    watch_network(Arc::downgrade(&shared));
     core_bridge_log(format!(
         "remote on, port {port}, addresses {:?}",
-        shared.addresses
+        shared.addresses.lock().map(|a| a.clone()).unwrap_or_default()
     ));
-    let status = status_of(Some(&shared), &app);
+    let status = status_of(Some(&shared), app);
     if let Ok(mut slot) = state.0.lock() {
+        // Two starts at once: the first one in stays, this one lets go.
+        if slot.is_some() {
+            let _ = stop.send(true);
+            drop(slot);
+            return Ok(status_of(running(&state).as_deref(), app));
+        }
         *slot = Some(Running { shared, stop });
     }
+    let _ = app.emit(STATUS_EVENT, status.clone());
     Ok(status)
+}
+
+fn ready_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
+    Some(app.path().app_data_dir().ok()?.join("remote-ready"))
+}
+
+/// "Keep the remote ready": the person's choice, off unless they turned it on.
+fn ready_wanted<R: Runtime>(app: &AppHandle<R>) -> bool {
+    ready_file(app)
+        .and_then(|f| std::fs::read_to_string(f).ok())
+        .is_some_and(|v| v.trim() == "on")
+}
+
+/// At launch: with "Keep the remote ready" on and a phone paired before, the
+/// remote comes on by itself (no QR code), so that phone finds the PC
+/// without anyone pressing Phone remote first. Off by default.
+pub fn start_if_ready(app: &AppHandle<Wry>) {
+    if !ready_wanted(app) {
+        return;
+    }
+    let paired = phones_file(app)
+        .map(|f| !Phones::load(&f).list().is_empty())
+        .unwrap_or(false);
+    if !paired {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = start(&app, false).await {
+            core_bridge_log(format!("remote: not ready at launch: {e}"));
+        }
+    });
+}
+
+/// "Keep the remote ready" on or off; remembered for the next launch.
+#[tauri::command]
+pub fn remote_keep_ready(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: bool) -> Status {
+    if let Some(file) = ready_file(&app) {
+        if let Some(folder) = file.parent() {
+            let _ = std::fs::create_dir_all(folder);
+        }
+        let _ = std::fs::write(file, if on { "on" } else { "off" });
+    }
+    let shared = running(&state);
+    if let Some(shared) = &shared {
+        shared.keep_ready.store(on, Ordering::Relaxed);
+        shared.changed();
+    }
+    status_of(shared.as_deref(), &app)
+}
+
+/// The remote's port: the usual one, or one of the few after it when
+/// another app holds it (a phone that saved the page then still finds it
+/// after one more scan), and any free port only as a last resort.
+async fn listen() -> Result<TcpListener, String> {
+    for port in PORT..PORT + PORTS_TRIED {
+        if let Ok(listener) = TcpListener::bind(("0.0.0.0", port)).await {
+            return Ok(listener);
+        }
+    }
+    TcpListener::bind(("0.0.0.0", 0))
+        .await
+        .map_err(|e| format!("E_REMOTE: {e}"))
+}
+
+/// How many ports from [`PORT`] on are tried before any free one.
+const PORTS_TRIED: u16 = 10;
+
+/// How often the PC's own address is looked at again while the remote is on.
+const NETWORK_EVERY: Duration = Duration::from_secs(4);
+
+/// While the remote is on: when the PC's address changes (another Wi-Fi, a
+/// new address from the router, a cable put in), the QR code and the
+/// address shown follow. Ends once the remote is off.
+fn watch_network<H: Host>(shared: std::sync::Weak<Shared<H>>) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(NETWORK_EVERY);
+        let Some(shared) = shared.upgrade() else {
+            return;
+        };
+        let now = local_addresses();
+        let moved = shared
+            .addresses
+            .lock()
+            .map(|mut known| {
+                if known.first() == now.first() {
+                    return false;
+                }
+                *known = now.clone();
+                true
+            })
+            .unwrap_or(false);
+        if moved {
+            shared.changed();
+            core_bridge_log(format!("remote: the PC's address is now {:?}", now.first()));
+        }
+    });
 }
 
 /// Whether this system has a clipboard the remote can share.
@@ -585,10 +721,10 @@ pub fn remote_clipboard(app: AppHandle<Wry>, state: State<'_, RemoteState>, on: 
     status_of(shared.as_deref(), &app)
 }
 
-/// Files from the PC for the phones (`{ t: "give", name, mime, data }`), sent
-/// by the interface; the host only checks their size. The file is seen
-/// leaving the screen for the phone. Off the main thread, as a large file
-/// takes a while to send.
+/// A file from the PC for the phones, picked in the remote's panel and sent
+/// by the interface as base64; the host only checks its size, then sends it
+/// in parts (`stream.rs`). The file is seen leaving the screen for the phone.
+/// Off the main thread, as a large file takes a while to read.
 #[tauri::command(async)]
 pub fn remote_give(
     app: AppHandle<Wry>,
@@ -597,34 +733,66 @@ pub fn remote_give(
     mime: String,
     data: String,
 ) -> bool {
+    use base64::Engine;
     let Some(shared) = running(&state) else {
         return false;
     };
     if data.len() > MAX_GIVE_DATA {
         return false;
     }
+    let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(&data) else {
+        return false;
+    };
     let name = transfer::safe_name(&name);
     let mime: String = mime.chars().take(100).collect();
-    let sent = shared.to_all(&give_message(&name, &mime, &data));
+    let sent = give_to_all(&shared, stream::Source::Bytes(Arc::new(bytes)), &name, &mime);
     if sent {
         crate::arrival::depart(&app, &name, &mime, small_picture(&mime, &data), None);
     }
     sent
 }
 
-/// The most one file sent to the phones may be, as the phone's page says
-/// (`MAX_FILE_BYTES`, `protocol.ts`), and as base64 (a message holds it).
+/// The most one file picked in the panel may be (it is read into memory there).
 const MAX_GIVE_BYTES: u64 = 40 * 1024 * 1024;
 const MAX_GIVE_DATA: usize = (MAX_GIVE_BYTES as usize).div_ceil(3) * 4;
 /// A picture this small (as base64) is also shown flying to the phone.
 const MAX_SHOWN_PICTURE: usize = 8 * 1024 * 1024;
 
-fn give_message(name: &str, mime: &str, data: &str) -> Value {
-    serde_json::json!({ "t": "give", "name": name, "mime": mime, "data": data })
-}
-
 fn small_picture<'a>(mime: &str, data: &'a str) -> Option<&'a str> {
     (mime.starts_with("image/") && data.len() <= MAX_SHOWN_PICTURE).then_some(data)
+}
+
+/// Sends one file to every connected phone, each on a thread of its own, in
+/// parts it answers (`stream.rs`). True when at least one phone is there.
+fn give_to_all<H: Host>(shared: &Arc<Shared<H>>, source: stream::Source, name: &str, mime: &str) -> bool {
+    let peers: Vec<u64> = shared
+        .peers
+        .lock()
+        .map(|p| p.keys().copied().collect())
+        .unwrap_or_default();
+    if peers.is_empty() || source.size().is_none_or(|s| s > stream::MAX_STREAM) {
+        return false;
+    }
+    let source = Arc::new(source);
+    for peer in peers {
+        let id = seal::random_id();
+        let answers = match shared.streams.lock() {
+            Ok(mut streams) => streams.listen(peer, &id),
+            Err(_) => continue,
+        };
+        let (shared, source, name, mime) = (shared.clone(), source.clone(), name.to_string(), mime.to_string());
+        std::thread::spawn(move || {
+            let say = |m: Value| shared.to_peer(peer, m);
+            let whole = stream::give(&source, &id, &name, &mime, &answers, &say);
+            if let Ok(mut streams) = shared.streams.lock() {
+                streams.stop_listening(peer, &id);
+            }
+            if !whole {
+                core_bridge_log(format!("remote: {name} did not reach phone {peer}"));
+            }
+        });
+    }
+    true
 }
 
 /// A file's type, from its name, for the phone to show and save it right.
@@ -660,14 +828,14 @@ pub fn has_phone<R: Runtime>(app: &AppHandle<R>) -> bool {
 }
 
 /// Files on this computer for every connected phone, let go on the ring's
-/// "To phone": each is seen flying off the screen from `from` (the
-/// pointer). Files too large for one message are left. How many went.
+/// "To phone" (or a drop panel tile): each is seen flying off the screen
+/// from `from` (the pointer), then goes in parts, however large, up to
+/// `stream::MAX_STREAM`. How many went.
 pub fn give_paths<R: Runtime>(
     app: &AppHandle<R>,
     files: &[std::path::PathBuf],
     from: Option<(f64, f64)>,
 ) -> usize {
-    use base64::Engine;
     let Some(shared) = app
         .try_state::<RemoteState>()
         .and_then(|state| state.0.lock().ok()?.as_ref().map(|r| r.shared.clone()))
@@ -676,10 +844,6 @@ pub fn give_paths<R: Runtime>(
     };
     let mut sent = 0;
     for path in files.iter().take(20) {
-        let fits = std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.len() <= MAX_GIVE_BYTES);
-        let Some(bytes) = fits.then(|| std::fs::read(path).ok()).flatten() else {
-            continue;
-        };
         let name = transfer::safe_name(
             &path
                 .file_name()
@@ -687,10 +851,10 @@ pub fn give_paths<R: Runtime>(
                 .unwrap_or_default(),
         );
         let mime = mime_of(&name);
-        let data = base64::engine::general_purpose::STANDARD.encode(&bytes);
-        if shared.to_all(&give_message(&name, mime, &data)) {
+        if give_to_all(&shared, stream::Source::Path(path.clone()), &name, mime) {
             if sent == 0 {
-                crate::arrival::depart(app, &name, mime, small_picture(mime, &data), from);
+                let picture = server::small_picture_of(path, mime);
+                crate::arrival::depart(app, &name, mime, picture.as_deref(), from);
             }
             sent += 1;
         }
@@ -754,7 +918,7 @@ mod tests {
         assert_eq!(mime_of("Scan.PDF"), "application/pdf");
         assert_eq!(mime_of("photo.jpeg"), "image/jpeg");
         assert_eq!(mime_of("no-extension"), "application/octet-stream");
-        const { assert!(MAX_GIVE_DATA < server::MAX_MESSAGE) };
+        const { assert!(stream::PART * 2 < server::MAX_MESSAGE) };
     }
 
     #[test]
@@ -833,7 +997,7 @@ mod tests {
                 landing: std::env::temp_dir().join(format!("zood-landing-{}", seal::random_id())),
             },
             port: listener.local_addr().unwrap().port(),
-            addresses: vec![Ipv4Addr::LOCALHOST],
+            addresses: Mutex::new(vec![Ipv4Addr::LOCALHOST]),
             code: Mutex::new(None),
             phones: Mutex::new(Phones::default()),
             peers: Mutex::new(Default::default()),
@@ -841,6 +1005,8 @@ mod tests {
             pc_control: AtomicBool::new(pc_control),
             clipboard: AtomicBool::new(false),
             last_clip: AtomicU64::new(0),
+            keep_ready: AtomicBool::new(false),
+            streams: Mutex::new(Default::default()),
         });
         shared.new_code();
         let url = shared.status().url.unwrap();
@@ -1076,6 +1242,48 @@ mod tests {
             !heard.iter().any(|h| h["message"]["t"] == "drop"),
             "{heard:?}"
         );
+        let _ = std::fs::remove_dir_all(&landing);
+    }
+
+    #[test]
+    fn a_large_file_sent_in_parts_lands_whole_and_beats_are_answered() {
+        use base64::Engine;
+        let (shared, url, _told, _stop) = serve(false);
+        let landing = shared.host.landing.clone();
+        let data: Vec<u8> = (0..(stream::PART * 3 + 1234)).map(|i| (i * 31 % 256) as u8).collect();
+        let replies = tauri::async_runtime::block_on(async {
+            let (mut socket, session, _first) = pair(&url).await;
+            let mut replies = Vec::new();
+            let mut seq = 0;
+            let mut out = |m: Value| {
+                seq += 1;
+                (seq, m)
+            };
+            let open_next = |sealed: &[u8]| serde_json::from_slice::<Value>(&seal::open(&session, sealed).unwrap()).unwrap();
+            let (n, m) = out(serde_json::json!({ "t": "beat" }));
+            say(&mut socket, &session, n, m).await;
+            let size = data.len();
+            let (n, m) = out(serde_json::json!({ "t": "putStart", "id": "big1", "name": "Site photos.zip", "mime": "application/zip", "size": size }));
+            say(&mut socket, &session, n, m).await;
+            for (i, chunk) in data.chunks(stream::PART).enumerate() {
+                let part = base64::engine::general_purpose::STANDARD.encode(chunk);
+                let (n, m) = out(serde_json::json!({ "t": "putPart", "id": "big1", "n": i, "data": part }));
+                say(&mut socket, &session, n, m).await;
+            }
+            let (n, m) = out(serde_json::json!({ "t": "putEnd", "id": "big1" }));
+            say(&mut socket, &session, n, m).await;
+            while replies.len() < 7 {
+                if let tokio_tungstenite::tungstenite::Message::Binary(sealed) = next(&mut socket).await {
+                    replies.push(open_next(&sealed));
+                }
+            }
+            replies
+        });
+        let kinds: Vec<&str> = replies.iter().map(|r| r["t"].as_str().unwrap()).collect();
+        assert_eq!(kinds, ["beat", "putOk", "putGot", "putGot", "putGot", "putGot", "landed"]);
+        assert_eq!(replies[6]["ok"], true);
+        assert_eq!(std::fs::read(landing.join("Site photos.zip")).unwrap(), data);
+        assert!(!landing.join(".zood-big1.part").exists());
         let _ = std::fs::remove_dir_all(&landing);
     }
 

@@ -553,6 +553,10 @@ async fn connect<H: Host>(
     if let Ok(mut peers) = shared.peers.lock() {
         peers.remove(&peer);
     }
+    // Half-sent files are thrown away; files going to it stop.
+    if let Ok(mut streams) = shared.streams.lock() {
+        streams.forget_peer(peer);
+    }
     // A drag the phone was holding when it left is let go.
     if shared.pc_control_on() {
         input::perform(input::Act::Release);
@@ -578,6 +582,22 @@ fn handle<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
             }
         }
         Some("drop") => land(shared, peer, message),
+        // The phone checks the link is alive (after waking, and every few
+        // seconds while in view): answered at once, nothing else.
+        Some("beat") => {
+            shared.to_peer(peer, json!({ "t": "beat" }));
+        }
+        Some("putStart") | Some("putPart") | Some("putEnd") | Some("putStop") => {
+            put(shared, peer, &message)
+        }
+        Some("giveGot") => {
+            let id = message.get("id").and_then(Value::as_str).unwrap_or("");
+            if let (Some(n), Ok(mut streams)) =
+                (message.get("n").and_then(Value::as_u64), shared.streams.lock())
+            {
+                streams.answered(peer, id, n);
+            }
+        }
         Some("clip") => {
             if !shared.clipboard_on() {
                 return;
@@ -655,6 +675,95 @@ fn land<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: Value) {
             }
         }
     });
+}
+
+/// A file the phone sends in parts (`stream.rs`): each part written as it
+/// comes and answered, and the whole shown landing on the Desktop at the end.
+fn put<H: Host>(shared: &Arc<Shared<H>>, peer: u64, message: &Value) {
+    use super::stream::{good_id, Incoming};
+    let Some(id) = message.get("id").and_then(Value::as_str).filter(|id| good_id(id)) else {
+        return;
+    };
+    let say = |reply: Value| {
+        shared.to_peer(peer, reply);
+    };
+    let Ok(mut streams) = shared.streams.lock() else {
+        return;
+    };
+    match message.get("t").and_then(Value::as_str) {
+        Some("putStart") => {
+            let name = message.get("name").and_then(Value::as_str).unwrap_or("");
+            let mime = message.get("mime").and_then(Value::as_str).unwrap_or("");
+            let size = message.get("size").and_then(Value::as_u64);
+            let begun = match (size, shared.host.landing_folder()) {
+                _ if !streams.can_open(peer) => Err("E_BUSY".to_string()),
+                (Some(size), Some(folder)) => Incoming::begin(&folder, id, name, mime, size),
+                (None, _) => Err("E_ARGS".to_string()),
+                (_, None) => Err("E_IO: no Desktop".to_string()),
+            };
+            match begun {
+                Ok(incoming) => {
+                    streams.add(peer, id, incoming);
+                    say(json!({ "t": "putOk", "id": id }));
+                }
+                Err(why) => say(json!({ "t": "putNo", "id": id, "why": why })),
+            }
+        }
+        Some("putPart") => {
+            let n = message.get("n").and_then(Value::as_u64).unwrap_or(u64::MAX);
+            let data = message.get("data").and_then(Value::as_str).unwrap_or("");
+            let Some(incoming) = streams.get(peer, id) else {
+                return say(json!({ "t": "putNo", "id": id, "why": "E_GONE" }));
+            };
+            match incoming.part(n, data) {
+                Ok(()) => say(json!({ "t": "putGot", "id": id, "n": n })),
+                Err(why) => {
+                    streams.take(peer, id);
+                    say(json!({ "t": "putNo", "id": id, "why": why }));
+                }
+            }
+        }
+        Some("putEnd") => {
+            let Some(incoming) = streams.take(peer, id) else {
+                return;
+            };
+            drop(streams);
+            let (name, mime) = (incoming.name.clone(), incoming.mime.clone());
+            let reply = match incoming.finish() {
+                Ok(path) => {
+                    let picture = small_picture_of(&path, &mime);
+                    shared.host.landed(&path, &mime, picture.as_deref());
+                    let shown = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_default();
+                    json!({ "t": "landed", "id": id, "name": shown, "ok": true })
+                }
+                Err(e) => {
+                    crate::core_bridge::debug_log(format!("remote: a sent file was not saved: {e}"));
+                    json!({ "t": "landed", "id": id, "name": name, "ok": false })
+                }
+            };
+            shared.to_peer(peer, reply);
+        }
+        Some("putStop") => {
+            streams.take(peer, id);
+        }
+        _ => {}
+    }
+}
+
+/// A picture small enough to show arriving, as base64.
+pub fn small_picture_of(path: &std::path::Path, mime: &str) -> Option<String> {
+    use base64::Engine;
+    if !mime.starts_with("image/") {
+        return None;
+    }
+    let size = std::fs::metadata(path).ok()?.len();
+    if size > 4_500_000 {
+        return None;
+    }
+    Some(base64::engine::general_purpose::STANDARD.encode(std::fs::read(path).ok()?))
 }
 
 /// The phones connected now, by peer number.

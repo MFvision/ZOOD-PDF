@@ -387,6 +387,9 @@ pub fn run() {
             app.manage(bridge);
             // The Library's folders and files, readable again (src/places.rs).
             places::restore(app.handle());
+            // "Keep the remote ready": paired phones find the PC from launch
+            // (off unless the person turned it on; src/remote/mod.rs).
+            remote::start_if_ready(app.handle());
 
             app.manage(quick::QuickState::default());
             app.manage(sort::SortState::default());
@@ -564,6 +567,7 @@ pub fn run() {
             remote::remote_pc_control,
             remote::remote_forget,
             remote::remote_clipboard,
+            remote::remote_keep_ready,
             ask::ask_configure,
             ask::access::ask_access,
             ask::access::ask_allow,

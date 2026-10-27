@@ -59,6 +59,13 @@ export function deviceName(): string {
 
 type Incoming = PcMessage | HostMessage;
 
+/** How often an open link says it is still there, while the page is in view. */
+const BEAT_EVERY = 10_000;
+/** Heard nothing for this long while in view: the link is dead, even if the socket has not said so. */
+const SILENT_FOR = 25_000;
+/** After waking, how long the PC has to answer before the link is made again. */
+const WAKE_ANSWER = 4_000;
+
 export class RemoteLink {
   private socket: WebSocket | null = null;
   private session: Uint8Array | null = null;
@@ -67,6 +74,9 @@ export class RemoteLink {
   private retry = 0;
   private timer: number | undefined;
   private stopped = false;
+  private beat: number | undefined;
+  private heardAt = 0;
+  private watching = false;
   state: LinkState = 'connecting';
 
   constructor(
@@ -77,13 +87,69 @@ export class RemoteLink {
 
   start(): void {
     this.stopped = false;
+    this.watch();
     this.connect();
   }
 
   stop(): void {
     this.stopped = true;
     window.clearTimeout(this.timer);
+    window.clearInterval(this.beat);
     this.socket?.close();
+  }
+
+  /**
+   * A phone that was locked, or a page that was in the background, comes
+   * back to a link the system may have cut without a word: on waking, the
+   * link is checked at once (or made again at once), not after the next
+   * slow retry.
+   */
+  private watch(): void {
+    if (this.watching) return;
+    this.watching = true;
+    const wake = () => {
+      if (document.visibilityState === 'visible') this.wake();
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('pageshow', wake);
+    window.addEventListener('online', () => this.wake());
+    window.addEventListener('focus', wake);
+    this.beat = window.setInterval(() => this.tick(), BEAT_EVERY);
+  }
+
+  /** Back in view, or the network is back. */
+  wake(): void {
+    if (this.stopped) return;
+    if (this.state === 'open' && this.socket?.readyState === WebSocket.OPEN) {
+      const asked = Date.now();
+      this.send({ t: 'beat' });
+      window.setTimeout(() => {
+        if (this.heardAt < asked && this.state === 'open') this.again();
+      }, WAKE_ANSWER);
+      return;
+    }
+    if (this.state === 'connecting') this.again();
+  }
+
+  /** While in view: a word every few seconds, and a dead link noticed. */
+  private tick(): void {
+    if (this.stopped || document.visibilityState !== 'visible' || this.state !== 'open') return;
+    if (Date.now() - this.heardAt > SILENT_FOR) {
+      this.again();
+      return;
+    }
+    this.send({ t: 'beat' });
+  }
+
+  /** Drops this socket and connects again now, the wait for retries reset. */
+  private again(): void {
+    window.clearTimeout(this.timer);
+    this.retry = 0;
+    const old = this.socket;
+    this.socket = null;
+    this.session = null;
+    old?.close();
+    this.connect();
   }
 
   private set(state: LinkState): void {
@@ -106,6 +172,8 @@ export class RemoteLink {
     this.inSeq = 0;
 
     socket.onmessage = (event) => {
+      if (this.socket !== socket) return;
+      this.heardAt = Date.now();
       if (typeof event.data === 'string') {
         const message = JSON.parse(event.data) as { t?: string; c?: string; why?: string };
         if (message.t === 'challenge' && typeof message.c === 'string') this.hello(message.c);
@@ -139,6 +207,7 @@ export class RemoteLink {
         this.retry = 0;
         this.set('open');
       }
+      if (message.t === 'beat') return;
       this.onMessage(message as unknown as Incoming);
     };
     socket.onclose = () => {
@@ -149,8 +218,10 @@ export class RemoteLink {
         return;
       }
       this.set('connecting');
-      // Back again soon after a phone wakes or the Wi-Fi returns; slower the longer it fails.
-      this.retry = Math.min(this.retry + 1, 6);
+      // Back again soon after a phone wakes or the Wi-Fi returns; slower the
+      // longer it fails (and at once when the page comes back into view).
+      window.clearTimeout(this.timer);
+      this.retry = Math.min(this.retry + 1, 5);
       this.timer = window.setTimeout(() => this.connect(), 400 * 2 ** this.retry);
     };
   }
