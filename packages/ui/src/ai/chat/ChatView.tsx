@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowUp, Check, Copy, FolderOpen, ScanText, Sparkles, Square, Volume2, VolumeX } from 'lucide-react';
+import { ArrowUp, BookOpen, Check, Copy, FolderOpen, ScanText, Sparkles, Square, Volume2, VolumeX } from 'lucide-react';
 import { Icon } from '../../components/Icon';
 import { IconButton } from '../../components/IconButton';
 import { useI18n } from '../../i18n/useT';
@@ -14,19 +14,28 @@ import type { Ask, Basis } from './answer';
 import { deviceModel, shortModelName } from '../device/models';
 import { chosenChips } from './chips';
 import { useSettings } from '../../state/settings';
-import { analyzeNow, approve, ask, askAcross, askGeneral, bindChat, conversationOf, discard, noteDone, setDraft, stop, useConversation } from './store';
+import { analyzeNow, approve, ask, askAcross, askGeneral, bindChat, conversationOf, discard, noteDone, noteHelp, setDraft, stop, useConversation } from './store';
 import { GENERAL_CHAT, LIBRARY_CHAT } from './across';
 import { commandOf, NO_FILE_TOOLS } from './commands';
 import type { Command } from './commands';
 import { findTool } from '../../tools/tools';
-import { systemUserName } from '../../core/host-tauri';
+import { isTauriHost, systemUserName } from '../../core/host-tauri';
+import { articleById } from '../../support/articles';
+import { openSupportAt } from '../../support/open';
+import { helpFor, helpText } from './help';
 import { partOfDay } from '../../home/Greeting';
 import type { FileBasis, Scope } from './across';
 import { useAppDispatch, useAppState, useServices } from '../../state/AppContext';
 import { addFact, rememberRequest } from '../profile/wallet';
 import { loadWallet, saveWallet } from '../profile/walletState';
 import { fileKey } from '../../history/versions';
-import type { AssistantTurn, Env, Note, Turn } from './store';
+import type { Env, Note, Turn } from './store';
+
+/** What Copy and Listen take: an answer, or a guide put in the chat. */
+interface Said {
+  id: number;
+  text: string;
+}
 
 const numbers = new Intl.NumberFormat('en-US');
 /** Page buttons under an answer made from passages, at most: the line above them names every page. */
@@ -132,7 +141,7 @@ export function ChatView(props: ChatViewProps) {
   const { hasDocument, currentPage, missing, env, incoming, onIncomingTaken, scope } = props;
   // The Library and the general chat have one conversation each; the open documents share the live document's.
   const documentId = scope === 'library' ? LIBRARY_CHAT : scope === 'chat' ? GENERAL_CHAT : props.documentId;
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
   const settings = useSettings();
   const conversation = useConversation(documentId);
   const state = useAppState();
@@ -236,13 +245,22 @@ export function ChatView(props: ChatViewProps) {
     return true;
   };
 
+  /** A how-to question about ZOOD is answered from its own guide, with no model asked. */
+  const helped = (text: string): boolean => {
+    if (documentId === null) return false;
+    const article = helpFor(text, lang, isTauriHost());
+    if (!article) return false;
+    noteHelp(documentId, text, article.id);
+    return true;
+  };
+
   const generalContext = () => ({ name: personName, now: new Date(), documentName: hasDocument ? (document?.name ?? null) : null });
 
   const send = (request: Ask) => {
     if (!canSend || documentId === null) return false;
     pinned.current = true;
     if (scope === 'chat') {
-      if (!commanded(request.text)) void askGeneral(documentId, request.text, env, generalContext());
+      if (!commanded(request.text) && !helped(request.text)) void askGeneral(documentId, request.text, env, generalContext());
       return true;
     }
     // Across files, a translation is still of the page on screen: this document's.
@@ -326,7 +344,7 @@ export function ChatView(props: ChatViewProps) {
     [],
   );
 
-  const copy = async (turn: AssistantTurn) => {
+  const copy = async (turn: Said) => {
     try {
       await navigator.clipboard.writeText(turn.text);
       setCopied({ id: turn.id, state: 'yes' });
@@ -335,7 +353,7 @@ export function ChatView(props: ChatViewProps) {
     }
   };
 
-  const listen = (turn: AssistantTurn) => {
+  const listen = (turn: Said) => {
     if (listening === turn.id) {
       stopReading();
       startedReading.current = false;
@@ -386,6 +404,53 @@ export function ChatView(props: ChatViewProps) {
       return (
         <li key={turn.id} className="ai-turn ai-turn-event">
           {say(turn.note)}
+        </li>
+      );
+    }
+    if (turn.role === 'help') {
+      const article = articleById(turn.article);
+      if (!article) return null;
+      const said = { id: turn.id, text: helpText(article, lang) };
+      return (
+        <li key={turn.id} className="ai-turn ai-turn-assistant ai-turn-help" data-status="done">
+          <span className="sr-only">{t('ai.chat.assistant')}</span>
+          <p className="ai-help-title" dir="auto">
+            {article.title[lang]}
+          </p>
+          <p dir="auto">{article.summary[lang]}</p>
+          <ol className="ai-help-steps">
+            {article.steps.map((step, k) => (
+              <li key={k} dir="auto">
+                {step[lang]}
+              </li>
+            ))}
+          </ol>
+          <div className="ai-turn-foot">
+            <div className="ai-turn-actions">
+              <button
+                type="button"
+                className="icon-btn icon-btn-labeled icon-btn-primary"
+                onClick={() => openSupportAt('learn', () => dispatch({ type: 'DIALOG', dialog: 'support' }), { article: article.id })}
+              >
+                <Icon of={BookOpen} size={14} />
+                {t(article.guide ? 'ai.help.openShowMe' : 'ai.help.open')}
+              </button>
+              <IconButton
+                className="ai-turn-action"
+                label={t(copied?.id === turn.id && copied.state === 'yes' ? 'ai.copied' : 'ai.copy')}
+                icon={<Icon of={copied?.id === turn.id && copied.state === 'yes' ? Check : Copy} size={14} />}
+                onClick={() => void copy(said)}
+              />
+              <IconButton
+                className="ai-turn-action"
+                label={t(listening === turn.id ? 'ai.chat.stopListening' : 'ai.chat.listen')}
+                icon={<Icon of={listening === turn.id ? VolumeX : Volume2} size={14} />}
+                pressed={listening === turn.id}
+                onClick={() => listen(said)}
+              />
+            </div>
+            <p className="ai-turn-basis">{t('ai.help.from')}</p>
+          </div>
         </li>
       );
     }
