@@ -152,7 +152,8 @@ final class AITests: XCTestCase {
             assistant.task = .ask
             assistant.question = "What is the total?"
             await assistant.run()
-            XCTAssertEqual(assistant.state, .failed(String(localized: "On-device AI is not available.")))
+            // The reason depends on why (no Apple Intelligence, ZOOD's own AI not fetched yet).
+            XCTAssertEqual(assistant.state, .failed(AIEngineError.unavailable(assistant.availability).localizedDescription))
         }
         model.close()
     }
