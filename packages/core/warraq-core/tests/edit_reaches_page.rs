@@ -70,7 +70,10 @@ fn edit_twice(name: &str, pdf: Vec<u8>, first: &str, second: &str, font: &[u8]) 
     let before = pixels(&doc);
     doc.replace_paragraph(0, 0, first, font).unwrap();
     let saved = doc.save().unwrap();
-    assert!(saved.starts_with(&pdf), "{name}: saved as an incremental update");
+    assert!(
+        saved.starts_with(&pdf),
+        "{name}: saved as an incremental update"
+    );
 
     let mut again = Document::open(saved.clone(), None).unwrap();
     let read = again.extract_text(0).unwrap();
@@ -81,7 +84,10 @@ fn edit_twice(name: &str, pdf: Vec<u8>, first: &str, second: &str, font: &[u8]) 
     // The re-saved file, edited again through its own updates.
     again.replace_paragraph(0, 0, second, font).unwrap();
     let resaved = again.save().unwrap();
-    assert!(resaved.starts_with(&saved), "{name}: a second incremental update");
+    assert!(
+        resaved.starts_with(&saved),
+        "{name}: a second incremental update"
+    );
     let third = Document::open(resaved, None).unwrap();
     let read = third.extract_text(0).unwrap();
     assert!(read.contains(second), "{name}: {second:?} not in {read:?}");
