@@ -1391,6 +1391,8 @@ function Island() {
         void hear();
       }),
       onHostEvent<{ x: number; y: number }>('ask://clicked', onClicked),
+      // The keys again while it waits for typing, from another window.
+      onHostEvent('ask://hide', () => closeLater()),
       onHostEvent<{ kind: 'draft' | 'type'; screen: boolean }>('ask://tap', (tap) => {
         restart();
         if (tap.kind === 'type') {
