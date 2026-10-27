@@ -14,12 +14,27 @@ import WebKit
 /// A file the computer sends is saved by the page as a download; a web view
 /// does nothing with one by itself, so it is taken here: a PDF goes to
 /// `onPDF` (the Library keeps and opens it), anything else to the share sheet.
+///
+/// Inside the app the page can also reach the iPhone's clipboard and keep its
+/// pairing in the Keychain (`RemoteBridge`). When the computer can't be
+/// reached where it was, the app looks for it on the Wi-Fi by its name
+/// (`RemoteFinder`) and opens it at its new address with the same pairing.
 struct RemoteView: View {
     var onPDF: (URL) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
     /// The last computer's address, without its key: paired phones need no code.
     @AppStorage("remote.lastAddress") private var lastAddress = ""
+    /// The computer paired last, by the name it gives (its pairing is in the
+    /// Keychain, `RemotePairings`).
+    @AppStorage("remote.lastPC") private var lastPC = ""
     @State private var address: URL?
+    /// The pairing handed to the page at `address`, when it was found there.
+    @State private var bringing: RemotePairings.Pairing?
+    @State private var finder = RemoteFinder()
+    /// Where the finder last saw the computer.
+    @State private var seenAt: URL?
+    /// The page can't reach the computer where it is.
+    @State private var lost = false
     @State private var scanning = false
     @State private var problem: LocalizedStringKey?
     @State private var received: ReceivedFile?
@@ -28,13 +43,25 @@ struct RemoteView: View {
         NavigationStack {
             Group {
                 if let address {
-                    RemoteWebView(url: address) { file in
-                        if file.pathExtension.lowercased() == "pdf" {
-                            onPDF(file)
-                        } else {
-                            received = ReceivedFile(url: file)
+                    RemoteWebView(
+                        url: address,
+                        bringing: bringing,
+                        onFile: { file in
+                            if file.pathExtension.lowercased() == "pdf" {
+                                onPDF(file)
+                            } else {
+                                received = ReceivedFile(url: file)
+                            }
+                        },
+                        onPaired: { pc in
+                            lastPC = pc
+                            look()
+                        },
+                        onLost: {
+                            lost = true
+                            moveIfFound()
                         }
-                    }
+                    )
                     .ignoresSafeArea(edges: .bottom)
                 } else {
                     start
@@ -70,7 +97,9 @@ struct RemoteView: View {
             if address == nil, let saved = URL(string: lastAddress), RemoteAddress.isLocal(saved) {
                 address = saved
             }
+            look()
         }
+        .onDisappear { finder.stop() }
     }
 
     private var start: some View {
@@ -116,7 +145,32 @@ struct RemoteView: View {
         }
         problem = nil
         lastAddress = RemoteAddress.withoutKey(url).absoluteString
+        bringing = nil
+        lost = false
         address = url
+    }
+
+    /// Looks for the computer paired last, if there is one.
+    private func look() {
+        guard let pairing = RemotePairings().pairing(for: lastPC) else { return }
+        finder.look(for: lastPC, pairing: pairing) { url in
+            seenAt = url
+            moveIfFound()
+        }
+    }
+
+    /// Opens the computer where the finder saw it, when the page can't reach
+    /// it where it is (or there is no page yet). The same address is left
+    /// alone: the computer's remote is only off for now.
+    private func moveIfFound() {
+        guard let seenAt, address == nil || lost,
+              address.map(RemoteAddress.withoutKey) != seenAt,
+              let pairing = RemotePairings().pairing(for: lastPC)
+        else { return }
+        lost = false
+        bringing = pairing
+        lastAddress = seenAt.absoluteString
+        address = seenAt
     }
 }
 
@@ -227,14 +281,25 @@ private struct ReceivedSheet: View {
 
 /// The computer's remote page. Links that would leave it open in Safari;
 /// a file the page saves (one sent from the computer) lands in `onFile`.
+/// A page that can't be loaded at all tells `onLost`.
 struct RemoteWebView: UIViewRepresentable {
     let url: URL
+    /// The pairing the page at `url` is given, when it was found there.
+    var bringing: RemotePairings.Pairing?
     var onFile: (URL) -> Void = { _ in }
+    var onPaired: (String) -> Void = { _ in }
+    var onLost: () -> Void = {}
 
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
+        let bridge = context.coordinator.bridge
+        configuration.userContentController.add(bridge, name: RemoteBridge.name)
+        configuration.userContentController.addUserScript(RemoteBridge.script(bringing: bringing, to: Self.host(url)))
         let view = WKWebView(frame: .zero, configuration: configuration)
+        bridge.webView = view
+        bridge.onPaired = onPaired
+        bridge.onLost = onLost
         view.navigationDelegate = context.coordinator
         view.isOpaque = false
         view.backgroundColor = UIColor(red: 4 / 255, green: 30 / 255, blue: 66 / 255, alpha: 1)
@@ -245,24 +310,50 @@ struct RemoteWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ view: WKWebView, context: Context) {
-        // A new code scanned: open it.
-        if context.coordinator.loaded != url {
-            context.coordinator.loaded = url
+        let coordinator = context.coordinator
+        coordinator.onFile = onFile
+        coordinator.onLost = onLost
+        coordinator.bridge.onPaired = onPaired
+        coordinator.bridge.onLost = onLost
+        // A new code scanned, or the computer found somewhere new: open it.
+        if coordinator.loaded != url {
+            coordinator.loaded = url
+            let scripts = view.configuration.userContentController
+            scripts.removeAllUserScripts()
+            scripts.addUserScript(RemoteBridge.script(bringing: bringing, to: Self.host(url)))
             view.load(URLRequest(url: url))
         }
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(onFile: onFile) }
+    static func dismantleUIView(_ view: WKWebView, coordinator: Coordinator) {
+        view.configuration.userContentController.removeScriptMessageHandler(forName: RemoteBridge.name)
+    }
+
+    /// `address:port`, as the page's `location.host` says it.
+    private static func host(_ url: URL) -> String? {
+        guard let host = url.host(), let port = url.port else { return nil }
+        return "\(host):\(port)"
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onFile: onFile, onLost: onLost) }
 
     @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate, WKDownloadDelegate {
         var loaded: URL?
-        let onFile: (URL) -> Void
+        var onFile: (URL) -> Void
+        var onLost: () -> Void
+        let bridge = RemoteBridge()
         /// Where each download is being written, until it finishes.
         private var destinations: [ObjectIdentifier: URL] = [:]
 
-        init(onFile: @escaping (URL) -> Void) {
+        init(onFile: @escaping (URL) -> Void, onLost: @escaping () -> Void) {
             self.onFile = onFile
+            self.onLost = onLost
+        }
+
+        /// Nothing answered at the address: the computer may be somewhere new.
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) {
+            if (error as NSError).code != NSURLErrorCancelled { onLost() }
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {

@@ -22,6 +22,10 @@ pub struct Phone {
     /// Seconds since 1970 it last connected: who goes when the list is full.
     #[serde(default)]
     pub seen: u64,
+    /// Another computer sharing its mouse and keyboard (`twin.rs`), not a
+    /// phone: the person allowed it to move the pointer and type here.
+    #[serde(default)]
+    pub pc: bool,
 }
 
 impl Phone {
@@ -91,6 +95,15 @@ impl Phones {
 
     /// Remembers a newly paired phone under `id` with `key`.
     pub fn add(&mut self, id: String, name: &str, key: &SealKey) {
+        self.add_kind(id, name, key, false);
+    }
+
+    /// Remembers a newly paired computer (`twin.rs`).
+    pub fn add_pc(&mut self, id: String, name: &str, key: &SealKey) {
+        self.add_kind(id, name, key, true);
+    }
+
+    fn add_kind(&mut self, id: String, name: &str, key: &SealKey, pc: bool) {
         if self.list.len() >= MAX_PHONES {
             if let Some(oldest) = self
                 .list
@@ -107,6 +120,7 @@ impl Phones {
             name: tidy_name(name),
             key: key_to_text(key),
             seen: now(),
+            pc,
         });
         self.save();
     }

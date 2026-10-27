@@ -57,6 +57,24 @@ pub fn session_key(key: &SealKey, challenge: &str) -> SealKey {
     hash.finalize().into()
 }
 
+/// What the PC's Bonjour announcement carries for one paired phone
+/// (`announce.rs`): eight bytes that only a holder of that phone's key can
+/// make for this address. The iPhone app checks it before it hands its
+/// pairing to a page at a new address, so a device that only claims the
+/// PC's name gets nothing. It says nothing about the key itself.
+pub fn here_tag(key: &SealKey, address: &str) -> [u8; 8] {
+    let mut hash = Sha256::new();
+    hash.update(HERE_LABEL);
+    hash.update(key);
+    hash.update(address.as_bytes());
+    let full: [u8; 32] = hash.finalize().into();
+    let mut tag = [0u8; 8];
+    tag.copy_from_slice(&full[..8]);
+    tag
+}
+
+const HERE_LABEL: &[u8] = b"zood-remote/1 here";
+
 /// `plain` sealed: a random nonce, then the ciphertext and its tag.
 pub fn seal(key: &SealKey, plain: &[u8]) -> Vec<u8> {
     let mut nonce = [0u8; 12];

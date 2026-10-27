@@ -38,14 +38,17 @@ describe('welcome tour', () => {
     // Never seen, or seen before Ask ZOOD: the whole tour.
     expect(newChapters(0, true, true)).toBeNull();
     expect(newChapters(1, false, false)).toBeNull();
-    expect(newChapters(12, true, true)).toEqual(['sort']);
+    expect(newChapters(12, true, true)).toEqual(['sort', 'remote']);
     // Version 14: the shelf the dropped files now stay on.
-    expect(newChapters(13, true, true)).toEqual(['sort']);
+    expect(newChapters(13, true, true)).toEqual(['sort', 'remote']);
     // Version 15: the tiles and Put away.
-    expect(newChapters(14, true, true)).toEqual(['sort']);
+    expect(newChapters(14, true, true)).toEqual(['sort', 'remote']);
+    // Version 16: the clipboard, To phone and two computers.
+    expect(newChapters(15, true, true)).toEqual(['remote']);
+    expect(newChapters(15, false, false)).toEqual([]);
     expect(newChapters(12, false, false)).toEqual([]);
-    expect(newChapters(11, true, true)).toEqual(['reach', 'sort']);
-    expect(newChapters(10, true, true)).toEqual(['folders', 'reach', 'sort']);
+    expect(newChapters(11, true, true)).toEqual(['reach', 'sort', 'remote']);
+    expect(newChapters(10, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
     expect(newChapters(9, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
     expect(newChapters(8, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
     expect(newChapters(6, true, true)).toEqual(['folders', 'reach', 'sort', 'remote', 'ai', 'support']);

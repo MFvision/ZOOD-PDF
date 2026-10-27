@@ -29,6 +29,21 @@ export function PairAsk() {
     setAsks((now) => now.filter((one) => one.id !== ask.id));
     void answerPairing(ask.id, allow);
   };
+  if (ask.digits) {
+    return (
+      <Dialog open title={t('remote.pairAskPcTitle')} onClose={() => answer(false)} closeOnBackdrop={false}>
+        <p dir="auto">{t('remote.pairAskPcBody', { name: ask.name || t('remote.pairAskPcUnnamed') })}</p>
+        <p className="twin-digits-big" dir="ltr" aria-label={ask.digits.split('').join(' ')}>
+          {ask.digits.replace(/(\d{3})(\d{3})/, '$1 $2')}
+        </p>
+        <p className="tool-panel-note">{t('remote.pairAskPcNote')}</p>
+        <div className="dialog-actions">
+          <IconButton label={t('remote.pairAskDeny')} icon={<Icon of={X} />} showLabel onClick={() => answer(false)} />
+          <IconButton label={t('remote.pairAskPcAllow')} icon={<Icon of={Check} />} showLabel variant="primary" onClick={() => answer(true)} />
+        </div>
+      </Dialog>
+    );
+  }
   return (
     <Dialog open title={t('remote.pairAskTitle')} onClose={() => answer(false)} closeOnBackdrop={false}>
       <p dir="auto">{t('remote.pairAskBody', { name: ask.name || t('remote.pairAskUnnamed') })}</p>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUp, Check, ChevronLeft, ChevronRight, FileText, Library, MousePointer2, Presentation, QrCode, Send, Smartphone, SquareMousePointer } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUp, Check, ChevronLeft, ChevronRight, ClipboardCopy, FileText, Library, MonitorSmartphone, MousePointer2, Presentation, QrCode, Send, Smartphone, SquareMousePointer } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { ZoodMark } from '../components/ZoodMark';
@@ -273,6 +273,7 @@ export function PhoneScene() {
                       [Presentation, 'remote.feature.present', 'slide'],
                       [SquareMousePointer, 'remote.feature.pc', 'pad'],
                       [Send, 'remote.feature.flick', 'file'],
+                      [ClipboardCopy, 'tour.remote.clip', 'file'],
                     ] as [LucideIcon, TKey, Pill][]
                   ).map(([icon, key, part], index) => (
                     <li key={key} className={beat.pill === part ? 'is-now' : undefined} style={{ '--i': index } as CSSProperties}>
@@ -281,6 +282,10 @@ export function PhoneScene() {
                     </li>
                   ))}
                 </ul>
+                <p className="phone-card-small phone-card-twin">
+                  <Icon of={MonitorSmartphone} size={14} />
+                  {t('tour.remote.twin')}
+                </p>
               </>
             )}
             {!film.playing && !live && <Replay onClick={film.replay} />}

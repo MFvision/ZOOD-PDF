@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Presentation, Send, Signature, Smartphone } from 'lucide-react';
+import { Keyboard, Monitor, Presentation, Send, Signature, Smartphone } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
-import { forgetPhone, giveToPhone, setClipboardSharing, setPcControl, startRemote, stopRemote } from './host';
+import { forgetPhone, giveToPhone, setClipboardSharing, setKeepReady, setPcControl, startRemote, stopRemote } from './host';
 import { MAX_FILE_BYTES, toBase64 } from './protocol';
 import type { RemoteStatus } from './host';
 import { updateRemote, useRemoteView } from './store';
+import { TwinCard } from './TwinCard';
 
 const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform || navigator.userAgent);
 
@@ -90,6 +91,7 @@ export function RemotePanel() {
         <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary remote-wide" disabled={busy} onClick={() => void run(startRemote)}>
           {t('remote.turnOn')}
         </button>
+        <TwinCard pairing={false} />
       </div>
     );
   }
@@ -132,6 +134,12 @@ export function RemotePanel() {
           </button>
         </div>
       )}
+      {status.waiting > 0 && (
+        <p className="remote-waiting" role="status">
+          <Icon of={Send} size={16} />
+          {t('remote.filesWaiting', { count: status.waiting })}
+        </p>
+      )}
       {status.address && status.remembered.length > 0 && (
         <p className="remote-hint">
           {t('remote.pairedBefore')} <code dir="ltr">{status.address}</code>
@@ -158,6 +166,16 @@ export function RemotePanel() {
         </label>
       )}
 
+      {status.remembered.length > 0 && (
+        <label className="remote-switch">
+          <input type="checkbox" role="switch" checked={status.keepReady} disabled={busy} onChange={(e) => void run(() => setKeepReady(e.target.checked))} />
+          <span>
+            <strong>{t('remote.keepReady')}</strong>
+            <span className="remote-switch-body">{t('remote.keepReadyBody')}</span>
+          </span>
+        </label>
+      )}
+
       {status.phones.length > 0 && <GiveFiles />}
 
       {status.remembered.length > 0 && (
@@ -166,7 +184,9 @@ export function RemotePanel() {
           <ul>
             {status.remembered.map((phone) => (
               <li key={phone.id}>
-                <span dir="auto">{phone.name}</span>
+                <span dir="auto">
+                  {phone.pc ? <Icon of={Monitor} size={14} /> : null} {phone.name}
+                </span>
                 {status.phones.some((p) => p.device === phone.id) && <span className="remote-dot" aria-label={t('remote.online')} />}
                 <button type="button" className="link-btn" disabled={busy} onClick={() => void run(() => forgetPhone(phone.id))}>
                   {t('remote.forget')}
@@ -181,6 +201,7 @@ export function RemotePanel() {
       <button type="button" className="icon-btn icon-btn-labeled remote-wide" disabled={busy} onClick={() => void run(stopRemote)}>
         {t('remote.turnOff')}
       </button>
+      <TwinCard pairing={status.pcPairing} />
     </div>
   );
 }
