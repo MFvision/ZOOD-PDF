@@ -494,6 +494,11 @@ fn watch_clipboard<H: Host>(shared: std::sync::Weak<Shared<H>>) {
     std::thread::spawn(move || {
         // What was on the clipboard when the remote came on is not news.
         let mut seen = clip::read().map(|c| c.fingerprint()).unwrap_or(0);
+        // The clipboard is opened only once a copy has settled: reading it
+        // every turn held it open again and again, and a screenshot tool
+        // writing its picture then found it taken (and a big picture was
+        // read and made a PNG each time).
+        let mut settle = clip::Settle::new(clip::changes());
         loop {
             std::thread::sleep(Duration::from_millis(700));
             let Some(shared) = shared.upgrade() else {
@@ -501,6 +506,9 @@ fn watch_clipboard<H: Host>(shared: std::sync::Weak<Shared<H>>) {
             };
             let anyone = shared.peers.lock().map(|p| !p.is_empty()).unwrap_or(false);
             if !shared.clipboard_on() || !anyone {
+                continue;
+            }
+            if !settle.ready(clip::changes()) {
                 continue;
             }
             let Some(now) = clip::read() else {
