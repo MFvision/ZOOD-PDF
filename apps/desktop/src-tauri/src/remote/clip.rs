@@ -32,6 +32,37 @@ impl Clip {
     }
 }
 
+/// When the clipboard may be read: once per copy, and only after the copy
+/// has settled (the change count stood still for a turn), so a tool still
+/// writing its picture is never met with the clipboard held open.
+pub struct Settle {
+    read_at: Option<u64>,
+    moving: Option<u64>,
+}
+
+impl Settle {
+    pub fn new(count: Option<u64>) -> Settle {
+        Settle {
+            read_at: count,
+            moving: count,
+        }
+    }
+
+    /// Read now? With no change count (`None`), always, as before.
+    pub fn ready(&mut self, count: Option<u64>) -> bool {
+        let Some(count) = count else {
+            return true;
+        };
+        let settled = self.moving == Some(count);
+        self.moving = Some(count);
+        if !settled || self.read_at == Some(count) {
+            return false;
+        }
+        self.read_at = Some(count);
+        true
+    }
+}
+
 /// The phone's `clip` message, as something to put on the clipboard.
 pub fn from_phone(message: &serde_json::Value) -> Option<Clip> {
     use base64::Engine;
@@ -131,6 +162,21 @@ mod system {
         encode_png(image.width, image.height, &image.bytes).map(Clip::Png)
     }
 
+    /// A number that changes with every copy, read without opening the
+    /// clipboard: while it stands still, nothing new was copied.
+    #[cfg(target_os = "windows")]
+    pub fn changes() -> Option<u64> {
+        use windows_sys::Win32::System::DataExchange::GetClipboardSequenceNumber;
+        // SAFETY: a plain query; it neither opens nor holds the clipboard.
+        Some(u64::from(unsafe { GetClipboardSequenceNumber() }))
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn changes() -> Option<u64> {
+        use objc2_app_kit::NSPasteboard;
+        Some(NSPasteboard::generalPasteboard().changeCount() as u64)
+    }
+
     pub fn write(clip: &Clip) -> bool {
         let Ok(mut board) = arboard::Clipboard::new() else {
             return false;
@@ -194,12 +240,16 @@ mod system {
         None
     }
 
+    pub fn changes() -> Option<u64> {
+        None
+    }
+
     pub fn write(_clip: &Clip) -> bool {
         false
     }
 }
 
-pub use system::{read, write};
+pub use system::{changes, read, write};
 
 #[cfg(test)]
 mod tests {
@@ -229,6 +279,17 @@ mod tests {
         assert_eq!(decode_png(&png), Some((2, 2, rgba)));
         assert_eq!(encode_png(0, 0, &[]), None);
         assert_eq!(encode_png(2, 2, &[0; 3]), None);
+    }
+
+    #[test]
+    fn the_clipboard_is_read_once_per_copy_after_it_settles() {
+        let mut settle = Settle::new(Some(5));
+        assert!(!settle.ready(Some(5)), "nothing copied");
+        assert!(!settle.ready(Some(9)), "a copy still being written");
+        assert!(!settle.ready(Some(12)), "still being written");
+        assert!(settle.ready(Some(12)), "settled: read once");
+        assert!(!settle.ready(Some(12)), "and not again");
+        assert!(Settle::new(None).ready(None), "no count: read every turn");
     }
 
     #[test]

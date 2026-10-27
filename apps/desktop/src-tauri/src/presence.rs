@@ -253,6 +253,10 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
         )
         .title("ZOOD")
         .inner_size(BUBBLE_SIDE, BUBBLE_SIDE)
+        // Without a smallest size of its own, Windows keeps a window at
+        // least as wide as a title bar needs (SM_CXMINTRACK, ~140 px), and
+        // the round bubble came out a flat oval.
+        .min_inner_size(BUBBLE_SIDE, BUBBLE_SIDE)
         .decorations(false)
         .resizable(false)
         .shadow(false)
@@ -271,6 +275,9 @@ fn show_bubble<R: Runtime>(app: &AppHandle<R>) {
             }
         };
         crate::parked::made(&window);
+        // Windows widened it to that smallest width while making it, before
+        // the size above applied: square again now that it does.
+        let _ = window.set_size(tauri::LogicalSize::new(BUBBLE_SIDE, BUBBLE_SIDE));
         if let Some((x, y)) = load(&handle).at.or_else(|| first_place(&handle)) {
             let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
         }

@@ -10,6 +10,12 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
+# Started twice below, after the first start's working folder may differ.
+$App = (Resolve-Path $App).Path
+# A copy to start again from, should the build's own file go.
+$kept = Join-Path $env:RUNNER_TEMP 'warraq-desktop-ask.exe'
+Copy-Item $App $kept -Force
+$Out = (Resolve-Path $Out).Path
 
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
@@ -129,6 +135,46 @@ Shot 'ask-3-second-tap.png'
 $second = Island 'second tap'
 Check ($second -and $second.Visible) 'the second tap shows the island window'
 Check ($second -and $second.Drawn -ge 0.2) 'the second tap draws the island'
+
+Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+# The second start once found no file at $App (twice, in CI): say what is there.
+Write-Host "app still there: $(Test-Path $App)"
+Get-ChildItem (Split-Path $App) -Filter 'warraq-desktop*' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "  $($_.Name) $($_.Length)" }
+if (-not (Test-Path $App)) {
+  # Did Windows Defender take it? (an unsigned app that reads keys and the screen)
+  Get-MpThreatDetection -ErrorAction SilentlyContinue | Select-Object -First 5 | Format-List | Out-String | Write-Host
+  Get-MpThreat -ErrorAction SilentlyContinue | Select-Object -First 5 ThreatName, Resources | Format-List | Out-String | Write-Host
+  $App = $kept
+}
+
+# 3. Talking, as on a PC set up for it: Ask ZOOD on (a tap listens), with
+# the ZOOD bubble on the screen. This machine has no microphone, so the
+# island says so — but it must show, drawn, as it does when it listens.
+'{"enabled":true,"shortcut":"","sees":false,"taps":true,"tap_key":"right-main","tap_to_type":true,"tap_speaks":true,"glow":true}' |
+  Set-Content -Encoding ascii (Join-Path $data 'ask.json')
+'{"bubble":true,"lang":"en"}' | Set-Content -Encoding ascii (Join-Path $data 'presence.json')
+$app = Start-Process -FilePath $App -PassThru `
+  -RedirectStandardOutput (Join-Path $Out 'app-talk.log') -RedirectStandardError (Join-Path $Out 'app-talk-err.log')
+Start-Sleep -Seconds 14
+Shot 'ask-4-talk-started.png'
+$before = Screen
+$bubble = [AskInput]::FindWindow([NullString]::Value, 'ZOOD')
+if ($bubble -ne [IntPtr]::Zero) {
+  $rect = New-Object AskInput+RECT
+  [AskInput]::GetWindowRect($bubble, [ref]$rect) | Out-Null
+  Write-Host "bubble: visible=$([AskInput]::IsWindowVisible($bubble)) at $($rect.Left),$($rect.Top) to $($rect.Right),$($rect.Bottom)"
+  $w = $rect.Right - $rect.Left; $h = $rect.Bottom - $rect.Top
+  Check ([Math]::Abs($w - $h) -le 2) "the bubble is round (window ${w}x${h})"
+} else { Write-Host 'bubble: no window' }
+Tap
+Start-Sleep -Seconds 4
+Shot 'ask-5-talk-tap.png'
+$talk = Island 'talk tap'
+Check ($talk -and $talk.Visible) 'a tap to talk shows the island window'
+Check ($talk -and $talk.Drawn -ge 0.2) 'a tap to talk draws the island'
+$glow = [AskInput]::FindWindow([NullString]::Value, 'ZOOD PDF')
+Write-Host "glow or other ZOOD PDF window: $glow"
 
 Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Stop-Process -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1

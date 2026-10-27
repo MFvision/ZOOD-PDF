@@ -522,8 +522,14 @@ fn tapped<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap) {
 /// Ask ZOOD from the tray icon or the ZOOD bubble (`presence.rs`): as one
 /// tap of the key — listening, or the box to type in when Settings say a
 /// tap types — and the box to type in even when a tap is set to do nothing.
+///
+/// On a thread of its own, as a tap from the key watcher is: the callers
+/// (the bubble's click, the tray, Sort's Speak button) run on the main
+/// thread, and opening the microphone there once held it for 15 minutes on
+/// the owner's PC, so every ZOOD window stopped responding (`stall.log`).
 pub fn summon<R: Runtime>(app: &AppHandle<R>) {
-    summoned(app, tap::Tap::Once, true);
+    let app = app.clone();
+    std::thread::spawn(move || summoned(&app, tap::Tap::Once, true));
 }
 
 fn summoned<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap, asked: bool) {
