@@ -5,9 +5,8 @@ import { formatBytes, modelBytes, shortModelName } from '../ai/device/models';
 import { machineMemoryGiB, useDeviceModel } from '../ai/device/useDeviceModel';
 import { useI18n } from '../i18n/useT';
 import { ActionRow, Pick, Row, Toggle } from '../settings/controls';
-import { openVoiceSettings } from '../speech/engines';
+import { NaturalVoices } from '../speech/NaturalVoices';
 import { refreshVoices, useReadAloud } from '../speech/readAloud';
-import { onlyBasicVoice } from '../speech/voices';
 import { ShortcutField } from '../settings/ShortcutField';
 import { formatShortcut } from '../shell/menuModel';
 import { isolate } from '../signatures/model';
@@ -25,18 +24,21 @@ import {
   configureAsk,
   DEFAULT_SHORTCUT,
   defaultBrainFor,
+  earFor,
   earModels,
+  microphones,
   onMac,
   ONE_TAPS,
   TALK_BACKS,
   oneTapDoes,
+  parseWords,
   readAskPreferences,
   TAP_KEYS,
   tapKeyLabel,
   voiceAvailable,
   writeAskPreferences,
 } from './settings';
-import type { AskAccess, AskPreferences, AskReadiness } from './settings';
+import type { AskAccess, AskPreferences, AskReadiness, Microphone } from './settings';
 import { MAX_ABOUT, MAX_EXAMPLES, readStyle, writeStyle } from './style';
 import type { WritingStyle } from './style';
 
@@ -66,18 +68,34 @@ export function AskSettings() {
   }, []);
   const brain = chosenBrain(prefs, memory);
   const voice = voiceAvailable();
-  const earView = useDeviceModel(earModels()[0]?.id ?? null);
+  const ear = earFor(memory);
+  const earView = useDeviceModel(ear?.id ?? null);
+  // An ear downloaded before this machine's better one: it keeps listening
+  // until the better one is here, then can be deleted.
+  const olderEar = earModels().find((model) => model.id !== ear?.id);
+  const olderEarView = useDeviceModel(olderEar?.id ?? null);
+  const [mics, setMics] = useState<Microphone[]>([]);
+  useEffect(() => {
+    let live = true;
+    const read = () => void microphones().then((found) => live && setMics(found));
+    read();
+    // A headset plugged in while the settings are open shows when the window comes back.
+    window.addEventListener('focus', read);
+    return () => {
+      live = false;
+      window.removeEventListener('focus', read);
+    };
+  }, []);
+  const [wordsText, setWordsText] = useState(() => readAskPreferences().words.join('\n'));
+  const wordsId = useId();
   const brainView = useDeviceModel(brain.id);
   const quickView = useDeviceModel(quickModel()?.id ?? null);
-  // Talk back in the system's basic voice: the way to a natural one, beside it.
+  // Talk back before a natural voice is downloaded: the way to one, beside it.
   const reading = useReadAloud();
   useEffect(() => {
     refreshVoices();
   }, []);
-  const basicVoice =
-    reading.engine === 'apple' &&
-    reading.voices.length > 0 &&
-    (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
+  const naturalOffered = reading.engine === 'neural' || reading.engine === 'apple';
   const aboutId = useId();
   const examplesId = useId();
 
@@ -103,6 +121,7 @@ export function AskSettings() {
   }, []);
 
   const earReady = earView.status?.kind === 'ready';
+  const olderEarReady = olderEarView.status?.kind === 'ready';
   const brainReady = brainView.status?.kind === 'ready';
   // The host is told again whenever a choice or a download changes.
   useEffect(() => {
@@ -123,7 +142,7 @@ export function AskSettings() {
     return () => {
       live = false;
     };
-  }, [prefs, memory, earReady, brainReady]);
+  }, [prefs, memory, earReady, olderEarReady, brainReady]);
 
   const update = (patch: Partial<AskPreferences>) => {
     const next = { ...prefs, ...patch };
@@ -213,14 +232,7 @@ export function AskSettings() {
         }))}
         onChange={(talkBack) => update({ talkBack })}
       />
-      {basicVoice && prefs.talkBack !== 'never' && (
-        <ActionRow
-          label={t('readAloud.betterVoice')}
-          hint={t('readAloud.betterVoiceHint')}
-          action={t('prefs.open')}
-          onClick={openVoiceSettings}
-        />
-      )}
+      {naturalOffered && prefs.talkBack !== 'never' && <NaturalVoices onlyFirst />}
       <Toggle
         label={t('ask.settings.doForMe')}
         hint={t('ask.settings.doForMeHint')}
@@ -379,6 +391,46 @@ export function AskSettings() {
         <>
           <h4 className="prefs-subhead">{t('ask.settings.ear')}</h4>
           <DeviceSection view={earView} />
+          {olderEarReady && (
+            <>
+              <p className="tool-panel-note">
+                {t(earReady ? 'ask.settings.olderEarDone' : 'ask.settings.olderEar')}
+              </p>
+              <DeviceSection view={olderEarView} />
+            </>
+          )}
+          {mics.length > 0 && (
+            <Pick
+              label={t('ask.settings.microphone')}
+              hint={t('ask.settings.microphoneHint')}
+              value={prefs.microphone ?? ''}
+              options={[
+                { value: '', label: t('ask.settings.microphone.system') },
+                ...(prefs.microphone && !mics.some((mic) => mic.id === prefs.microphone)
+                  ? [{ value: prefs.microphone, label: t('ask.settings.microphone.away') }]
+                  : []),
+                ...mics.map((mic) => ({ value: mic.id, label: mic.name })),
+              ]}
+              onChange={(id) => update({ microphone: id || null })}
+            />
+          )}
+          <Row
+            label={t('ask.settings.words')}
+            hint={t('ask.settings.wordsHint')}
+            htmlFor={wordsId}
+            stacked
+          >
+            <textarea
+              id={wordsId}
+              className="text-input prefs-textarea"
+              dir="auto"
+              rows={4}
+              value={wordsText}
+              placeholder={t('ask.settings.wordsPlaceholder')}
+              onChange={(event) => setWordsText(event.target.value)}
+              onBlur={() => update({ words: parseWords(wordsText) })}
+            />
+          </Row>
         </>
       )}
       <h4 className="prefs-subhead">

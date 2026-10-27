@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { TextLineData } from '../core/types';
 import type { PageBox } from '../embed/embedControl';
 import { readJson, writeJson } from '../state/preferences';
-import { pageText, sentenceBoxes, splitSentences } from './sentences';
+import { pageText, readableLines, sentenceBoxes, splitSentences } from './sentences';
 import type { Sentence } from './sentences';
 import { knownEngine, speechAvailable, speechEngine } from './engines';
 import type { EngineKind, SpeechEngine } from './engines';
@@ -47,7 +47,9 @@ export interface ReadAloudState {
   voiceAr: string | null;
   voiceEn: string | null;
   /** What stopped the reading: no voice for the text, nothing to read, or a browser without speech. */
-  notice: 'unsupported' | 'noVoices' | 'noText' | 'noSelection' | 'done' | null;
+  notice: 'unsupported' | 'noVoices' | 'noText' | 'noSelection' | 'done' | 'slept' | null;
+  /** The sleep timer: minutes chosen, or null when reading runs to the end. */
+  sleep: number | null;
 }
 
 /** What the reader reads from: the open document, as the shell provides it. */
@@ -75,7 +77,7 @@ interface Saved {
 
 function savedSettings(): Saved {
   const raw = readJson<Partial<Saved>>(SETTINGS, {});
-  const rate = typeof raw.rate === 'number' && raw.rate >= 0.5 && raw.rate <= 2 ? raw.rate : 1;
+  const rate = typeof raw.rate === 'number' && raw.rate >= 0.5 && raw.rate <= 3 ? raw.rate : 1;
   const id = (value: unknown) => (typeof value === 'string' && value.length > 0 && value.length < 300 ? value : null);
   return { rate, voiceAr: id(raw.voiceAr), voiceEn: id(raw.voiceEn) };
 }
@@ -91,8 +93,28 @@ let state: ReadAloudState = {
   voices: [],
   engine: null,
   notice: null,
+  sleep: null,
   ...savedSettings(),
 };
+
+/** The sleep timer's choices, in minutes. */
+export const SLEEP_MINUTES = [5, 15, 30, 60] as const;
+let sleepTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Stops reading after `minutes`, or never with null; choosing again starts the count again. */
+export function setSleep(minutes: number | null): void {
+  clearTimeout(sleepTimer);
+  sleepTimer = undefined;
+  const chosen = minutes !== null && SLEEP_MINUTES.includes(minutes as (typeof SLEEP_MINUTES)[number]) ? minutes : null;
+  set({ sleep: chosen });
+  if (chosen === null) return;
+  sleepTimer = setTimeout(() => {
+    sleepTimer = undefined;
+    const reading = state.active;
+    stop();
+    set({ sleep: null, notice: reading ? 'slept' : state.notice });
+  }, chosen * 60_000);
+}
 
 const listeners = new Set<() => void>();
 
@@ -142,7 +164,7 @@ export function refreshVoices(): void {
 }
 
 export function setRate(rate: number): void {
-  const clamped = Math.min(2, Math.max(0.5, rate));
+  const clamped = Math.min(3, Math.max(0.5, rate));
   set({ rate: clamped });
   writeJson(SETTINGS, { rate: clamped, voiceAr: state.voiceAr, voiceEn: state.voiceEn });
 }
@@ -167,6 +189,7 @@ export function openBar(): void {
 }
 
 export function closeBar(): void {
+  setSleep(null);
   stop();
   set({ open: false, notice: null });
 }
@@ -191,12 +214,42 @@ export function resume(): void {
   set({ paused: false });
 }
 
-/** Reads one sentence; resolves when it ends, rejects when the engine fails on it. */
-function speak(engine: SpeechEngine, sentence: Sentence, fallback: VoiceLang): Promise<void> {
+function voiceOf(sentence: Sentence, fallback: VoiceLang) {
   const lang: VoiceLang = sentence.lang === 'other' ? fallback : sentence.lang;
   const voice = pickVoice(state.voices, lang, lang === 'ar' ? state.voiceAr : state.voiceEn);
-  return engine.speak(sentence.text, voice, lang === 'ar' ? 'ar-SA' : 'en-US', state.rate);
+  return { voice, tag: lang === 'ar' ? 'ar-SA' : 'en-US' };
 }
+
+/**
+ * Reads one sentence; resolves when it ends, rejects when the engine fails
+ * on it. The sentence after it, when there is one, is made meanwhile, so
+ * a natural voice goes on without a pause.
+ */
+function speak(engine: SpeechEngine, sentence: Sentence, fallback: VoiceLang, after?: Sentence): Promise<void> {
+  const { voice, tag } = voiceOf(sentence, fallback);
+  const spoken = engine.speak(sentence.text, voice, tag, state.rate);
+  if (after && engine.prepare) {
+    const next = voiceOf(after, fallback);
+    engine.prepare(after.text, next.voice, next.tag, state.rate);
+  }
+  return spoken;
+}
+
+/** A line in the voice chosen for `lang`, so the settings can be heard before reading. */
+export async function sayExample(lang: VoiceLang): Promise<void> {
+  const engine = await speechEngine();
+  if (!engine) return;
+  stop();
+  const voices = state.voices.length > 0 ? state.voices : await engine.voices().catch(() => []);
+  const voice = pickVoice(voices, lang, lang === 'ar' ? state.voiceAr : state.voiceEn);
+  await engine.speak(EXAMPLE[lang], voice, lang === 'ar' ? 'ar-SA' : 'en-US', state.rate).catch(() => undefined);
+}
+
+/** What `sayExample` says: the kind of thing ZOOD reads and answers. */
+const EXAMPLE: Record<VoiceLang, string> = {
+  ar: 'مرحبًا، أنا زود. لخّصت لك العقد، وفيه ثلاث نقاط تستحق المراجعة قبل التوقيع.',
+  en: 'Hi, I’m ZOOD. I summarized the contract for you, and three points are worth checking before you sign.',
+};
 
 /** The main language of a page, for sentences with no script of their own (numbers, say). */
 function mainLanguage(sentences: readonly Sentence[]): VoiceLang {
@@ -242,27 +295,34 @@ export async function start(next: ReadingSource, scope: Scope): Promise<void> {
       }
       const fallback = mainLanguage(sentences);
       set({ page: null, boxes: null });
-      for (const sentence of sentences) {
+      for (const [index, sentence] of sentences.entries()) {
         if (!alive()) return;
         set({ sentence });
-        await speak(engine, sentence, fallback);
+        await speak(engine, sentence, fallback, sentences[index + 1]);
       }
     } else {
       const last = scope === 'page' ? next.currentPage : next.pageCount;
       let read = 0;
       for (let page = next.currentPage; page <= last; page += 1) {
         if (!alive()) return;
-        const lines = await next.lines(page - 1);
+        // Headers, footers and page numbers are not read: the pages either
+        // side show which lines repeat at the edges.
+        const [all, before, after] = await Promise.all([
+          next.lines(page - 1),
+          page > 1 ? next.lines(page - 2) : Promise.resolve([]),
+          page < next.pageCount ? next.lines(page) : Promise.resolve([]),
+        ]);
         if (!alive()) return;
+        const lines = readableLines(all, [before, after].filter((other) => other.length > 0));
         const sentences = splitSentences(pageText(lines));
         if (sentences.length === 0) continue;
         const fallback = mainLanguage(sentences);
         set({ page });
         if (page !== next.currentPage) next.goToPage(page);
-        for (const sentence of sentences) {
+        for (const [index, sentence] of sentences.entries()) {
           if (!alive()) return;
           set({ sentence, boxes: { page: page - 1, rects: sentenceBoxes(lines, sentence) } });
-          await speak(engine, sentence, fallback);
+          await speak(engine, sentence, fallback, sentences[index + 1]);
           read += 1;
         }
       }

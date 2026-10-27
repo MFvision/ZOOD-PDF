@@ -43,6 +43,24 @@
       "hears": true
     },
     {
+      "id": "qwen3-asr-1.7b",
+      "name": "Qwen3-ASR 1.7B (Q8_0)",
+      "file": "Qwen3-ASR-1.7B-Q8_0.gguf",
+      "url": "https://huggingface.co/ggml-org/Qwen3-ASR-1.7B-GGUF/resolve/main/Qwen3-ASR-1.7B-Q8_0.gguf",
+      "sha256": "58e22d0532d4eacaf034cfac17a6fed159f37c41390c710186783be439d1fc57",
+      "bytes": 2165034944,
+      "repo": "ggml-org/Qwen3-ASR-1.7B-GGUF",
+      "ramGiB": 8,
+      "licence": "Apache-2.0",
+      "projector": {
+        "file": "mmproj-Qwen3-ASR-1.7B-Q8_0.gguf",
+        "url": "https://huggingface.co/ggml-org/Qwen3-ASR-1.7B-GGUF/resolve/main/mmproj-Qwen3-ASR-1.7B-Q8_0.gguf",
+        "sha256": "46c1d533af3f354ceb37ce855dbceff7da7fa7cf1e6a523df3b13440bd164c0d",
+        "bytes": 355709344
+      },
+      "hears": true
+    },
+    {
       "id": "jev-style-0.8b",
       "name": "Jev-Style 0.8B Decision v3 (Q4_K_M)",
       "file": "Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf",

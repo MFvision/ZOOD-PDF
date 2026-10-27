@@ -8,14 +8,13 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { openSettingsAt } from '../settings/SettingsWindow';
 import { readOcrOptions } from '../ocr/run';
 import type { OcrProgress } from '../ocr/run';
-import { closeBar, pause, refreshVoices, resume, setRate, setVoice, start, stop, useReadAloud } from './readAloud';
+import { closeBar, pause, refreshVoices, resume, setRate, setSleep, setVoice, SLEEP_MINUTES, start, stop, useReadAloud } from './readAloud';
 import type { Scope } from './readAloud';
 import { readingSource } from './readingSource';
-import { openVoiceSettings } from './engines';
-import { onlyBasicVoice, voiceLabel, voicesFor } from './voices';
+import { voiceLabel, voicesFor } from './voices';
 import './speech.css';
 
-const RATES = [0.75, 1, 1.25, 1.5, 2];
+const RATES = [0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 
 const NOTICE: Record<NonNullable<ReturnType<typeof useReadAloud>['notice']>, TKey> = {
   unsupported: 'readAloud.unsupported',
@@ -23,6 +22,7 @@ const NOTICE: Record<NonNullable<ReturnType<typeof useReadAloud>['notice']>, TKe
   noText: 'readAloud.noText',
   noSelection: 'readAloud.noSelection',
   done: 'readAloud.done',
+  slept: 'readAloud.slept',
 };
 
 /**
@@ -99,11 +99,9 @@ export function ReadAloudBar() {
   const english = voicesFor(reading.voices, 'en');
   const busy = reading.active;
   const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced'), natural: t('readAloud.natural') };
-  // Apple's engine reads with whatever voices are downloaded; with only the
-  // basic ones, the way to a natural voice is one click away.
-  const basic = reading.engine === 'apple' && reading.voices.length > 0 && (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
-  // On Windows the app has natural voices of its own, downloaded in the settings.
-  const noNatural = reading.engine === 'neural' && !arabic.some((voice) => voice.natural);
+  // The desktop app has natural voices of its own, downloaded once in the
+  // settings; until then the way to them is one click away.
+  const noNatural = (reading.engine === 'neural' || reading.engine === 'apple') && reading.voices.length > 0 && !reading.voices.some((voice) => voice.natural);
 
   return (
     <div className="readaloud" role="region" aria-label={t('readAloud.label')}>
@@ -140,6 +138,21 @@ export function ReadAloudBar() {
         </select>
       </label>
       <label className="readaloud-field">
+        <span>{t('readAloud.sleep')}</span>
+        <select
+          className="select"
+          value={reading.sleep === null ? '' : String(reading.sleep)}
+          onChange={(event) => setSleep(event.target.value ? Number(event.target.value) : null)}
+        >
+          <option value="">{t('readAloud.sleepOff')}</option>
+          {SLEEP_MINUTES.map((minutes) => (
+            <option key={minutes} value={String(minutes)}>
+              {t('readAloud.sleepMinutes', { count: minutes })}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="readaloud-field">
         <span>{t('readAloud.voiceAr')}</span>
         <select className="select" value={reading.voiceAr ?? ''} onChange={(event) => setVoice('ar', event.target.value || null)}>
           <option value="">{t('readAloud.auto')}</option>
@@ -161,11 +174,7 @@ export function ReadAloudBar() {
           ))}
         </select>
       </label>
-      {basic ? (
-        <span title={t('readAloud.betterVoiceHint')}>
-          <IconButton label={t('readAloud.betterVoice')} icon={<Icon of={Sparkles} />} showLabel onClick={openVoiceSettings} />
-        </span>
-      ) : noNatural ? (
+      {noNatural ? (
         <span title={t('readAloud.naturalHint')}>
           <IconButton
             label={t('readAloud.betterVoice')}

@@ -598,6 +598,22 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     desktop: true,
   },
   {
+    id: 'askMicrophone',
+    section: 'ai',
+    label: 'ask.settings.microphone',
+    kind: 'show',
+    names: ['microphone', 'mic', 'which microphone', 'change microphone', 'headset', 'المايك', 'الميكروفون', 'المايكروفون', 'غير المايك', 'السماعه'],
+    desktop: true,
+  },
+  {
+    id: 'askWords',
+    section: 'ai',
+    label: 'ask.settings.words',
+    kind: 'show',
+    names: ['my words', 'your words', 'custom words', 'word list', 'dictionary', 'names to hear', 'كلماتي', 'كلماتك', 'قائمه الكلمات', 'القاموس', 'قاموسي'],
+    desktop: true,
+  },
+  {
     id: 'voice',
     section: 'ai',
     label: 'settings.speech',

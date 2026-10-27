@@ -300,9 +300,11 @@ export const ARTICLES: readonly Article[] = [
     steps: [
       { ar: 'افتح الملف واضغط زر «القراءة بصوت» في الشريط العلوي.', en: 'Open the file and press Read aloud in the top bar.', pic: 'read-button' },
       { ar: 'اختر: هذه الصفحة، أو من هنا إلى النهاية، أو النص المحدد.', en: 'Choose: this page, from here to the end, or the selection.' },
-      { ar: 'غيّر السرعة والصوت من الشريط نفسه.', en: 'Change the speed and the voice in the same bar.' },
+      { ar: 'غيّر السرعة (حتى 3×) والصوت من الشريط نفسه. «توقف بعد» يوقف القراءة بعد 5 أو 15 أو 30 أو 60 دقيقة.', en: 'Change the speed (up to 3×) and the voice in the same bar. Stop after ends the reading after 5, 15, 30 or 60 minutes.' },
+      { ar: 'لصوت طبيعي على الكمبيوتر أو الماك: الإعدادات › الذكاء الاصطناعي › القراءة بصوت مسموع › نزّل أصوات ZOOD الطبيعية (مرة واحدة، تعمل بعدها دون إنترنت). اضغط «استمع» بجانب كل صوت لتسمعه.', en: 'For a natural voice on a PC or Mac: Settings › AI › Read aloud › download ZOOD’s natural voices (once; they then work offline). Press Listen beside a voice to hear it.' },
     ],
-    keywords: ['read aloud', 'listen', 'speak', 'voice', 'audio', 'قراءه', 'صوت', 'استماع', 'اسمع', 'اقرا', 'نطق'],
+    tips: [{ ar: 'لا يقرأ رأس الصفحة وتذييلها وأرقام الصفحات، فتسمع النص نفسه فقط.', en: 'Headers, footers and page numbers are skipped, so you hear only the text itself.' }],
+    keywords: ['read aloud', 'listen', 'speak', 'voice', 'audio', 'natural voice', 'speed', 'sleep timer', 'قراءه', 'صوت', 'استماع', 'اسمع', 'اقرا', 'نطق', 'صوت طبيعي', 'سرعه', 'مؤقت'],
     guide: { needs: 'document', steps: [{ say: { ar: 'اضغط هنا ليقرأ لك.', en: 'Press here and it reads to you.' }, target: { kind: 'label', label: 'readAloud.label' } }] },
   },
   {
@@ -334,8 +336,13 @@ export const ARTICLES: readonly Article[] = [
       { ar: 'أو انقر أيقونة ZOOD في شريط المهام (شريط القوائم في الماك)، أو فقاعة ZOOD على حافة الشاشة. شغّل الفقاعة من الإعدادات › الذكاء الاصطناعي.', en: 'Or click the ZOOD icon in the tray (the menu bar on a Mac), or the ZOOD bubble on the edge of the screen. Turn the bubble on in Settings › AI.', pic: 'ask-bubble' },
       { ar: 'قل «سوّها لي»: داخل محرر زود PDF ينفّذ أوامره فورًا ويضيء كل زر يستخدمه، وفي البرامج الأخرى يضغط الأزرار بأسمائها بعد موافقتك. شغّلها أو أوقفها من الإعدادات › الذكاء الاصطناعي.', en: 'Say “do it for me”: inside ZOOD PDF it runs its own commands at once and lights each button it uses; in other apps it presses buttons by their names after you agree. Turn it on or off in Settings › AI.', pic: 'ask-doit' },
       { ar: 'غيّر المفاتيح من الإعدادات › الذكاء الاصطناعي › اسأل زود.', en: 'Change the keys in Settings › AI › Ask ZOOD.' },
+      { ar: 'في الإعدادات نفسها: اختر المايكروفون، واكتب «كلماتك» (أسماء أشخاص وشركات ومنتجات، كل كلمة في سطر) ليسمعها زود صحيحة.', en: 'In the same settings, choose the microphone and add Your words (names of people, companies and products, one a line) so ZOOD hears them right.' },
+      { ar: 'تحت كل جواب زرّان: «نسخ» و«اقرأ».', en: 'Under every answer are two buttons: Copy and Read.' },
     ],
-    tips: [{ ar: 'على ماك يحتاج إذن «تسجيل المدخلات» و«تسهيلات الاستخدام» والميكروفون.', en: 'On a Mac it needs Input Monitoring, Accessibility and the microphone.' }],
+    tips: [
+      { ar: 'على ماك يحتاج إذن «تسجيل المدخلات» و«تسهيلات الاستخدام» والميكروفون.', en: 'On a Mac it needs Input Monitoring, Accessibility and the microphone.' },
+      { ar: 'خذ وقتك للتفكير أثناء الكلام: لا يتوقف عن الاستماع عند وقفة قصيرة، ويحذف «اممم». وإن قلت «لا، قصدي…» يكتب ما قصدته في النهاية فقط.', en: 'Take your time to think while you speak: a short pause does not stop it, and “umm” is left out. Say “no, I mean…” and only what you meant in the end is written.' },
+    ],
     keywords: ['ask zood', 'voice', 'keys', 'shortcut', 'assistant', 'bubble', 'tray', 'do it for me', 'اسال زود', 'صوت', 'مفاتيح', 'اختصار', 'مساعد', 'فقاعه', 'نفذها'],
     tour: 'ask',
     desktopOnly: true,
