@@ -433,7 +433,7 @@ mod system {
         fn CFRunLoopGetCurrent() -> Ref;
         fn CFRunLoopAddSource(run_loop: Ref, source: Ref, mode: Ref);
         fn CFRunLoopRunInMode(mode: Ref, seconds: f64, return_after_source: u8) -> i32;
-        fn CFRelease(object: Ref);
+        fn CFRelease(object: *const c_void);
         static kCFRunLoopDefaultMode: Ref;
         static kCFRunLoopCommonModes: Ref;
     }
