@@ -82,7 +82,7 @@ test.describe('Offline', () => {
     // Warraq's own engine works offline too: the search in the view is its.
     await page.keyboard.press('ControlOrMeta+f');
     await page.locator('embedpdf-container [data-sidebar-id="search-panel"]').getByPlaceholder('Search').fill('وراق');
-    await expect(page.locator('embedpdf-container').getByText('7 results found')).toBeVisible();
+    await expect(page.locator('embedpdf-container').getByText('Matches: 7')).toBeVisible();
     expect(failed).toEqual([]);
 
     // What it keeps is the app's own files, from its list — nothing a person opened.

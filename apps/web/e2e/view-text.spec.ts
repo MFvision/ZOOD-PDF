@@ -55,7 +55,7 @@ async function searchState(page: Page, query: string) {
 /**
  * Types into EmbedPDF's search field and waits until it has searched for
  * exactly that: the panel searches 300 ms after the last key, and a count
- * that did not change ("7 results found" for two spellings) is no sign of it.
+ * that did not change ("Matches: 7" for two spellings) is no sign of it.
  */
 async function search(page: Page, query: string, count: number): Promise<void> {
   await panel(page).getByPlaceholder('Search').fill(query);
@@ -68,7 +68,7 @@ async function search(page: Page, query: string, count: number): Promise<void> {
       }, query.trim()),
     )
     .toBe(count);
-  await expect(panel(page).getByText(`${count} results found`)).toBeVisible();
+  await expect(panel(page).getByText(`Matches: ${count}`)).toBeVisible();
 }
 
 test.describe("Search in the page view uses Warraq's Arabic-aware engine", () => {
@@ -135,12 +135,12 @@ test.describe("Search in the page view uses Warraq's Arabic-aware engine", () =>
     await page.keyboard.press('ControlOrMeta+f');
     await search(page, 'haddad', 2);
     await panel(page).getByLabel('Case sensitive').check();
-    await expect(panel(page).getByText('1 results found')).toBeVisible();
+    await expect(panel(page).getByText('Matches: 1')).toBeVisible();
     expect((await searchState(page, 'haddad')).matched).toEqual(['haddad']);
     await panel(page).getByLabel('Case sensitive').uncheck();
     await search(page, 'Hadd', 2);
     await panel(page).getByLabel('Whole word').check();
-    await expect(panel(page).getByText('0 results found')).toBeVisible();
+    await expect(panel(page).getByText('Matches: 0')).toBeVisible();
     await search(page, 'Haddad', 2);
   });
 });

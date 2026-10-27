@@ -38,7 +38,7 @@ export const englishTranslations = {
     placeholder: 'Search',
     caseSensitive: 'Case sensitive',
     wholeWord: 'Whole word',
-    resultsFound: '{count} results found',
+    resultsFound: 'Matches: {count}',
     page: 'Page {page}',
   },
   zoom: {
@@ -199,7 +199,7 @@ export const englishTranslations = {
     selectAnnotation: 'Select an annotation to see styles',
     deleteSelected: 'Delete selected annotation',
     deleteAllSelected: 'Delete Selected',
-    multiSelect: '{count} annotations selected',
+    multiSelect: 'Annotations selected: {count}',
     group: 'Group',
     ungroup: 'Ungroup',
     moreTools: 'More Tools',

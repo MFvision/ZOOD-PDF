@@ -57,16 +57,20 @@ export function mostlyArabic(text: string): boolean {
   return arabic > latin;
 }
 
+// Small models slip English or Chinese words into Arabic answers unless told not to.
+const ARABIC =
+  'Write in Modern Standard Arabic (اكتب بالعربية الفصحى), in Arabic letters only: no English, Chinese or other words mixed in, apart from names, numbers and citations.';
+
 /**
  * The language to write in, named outright and, for Arabic, in Arabic too: a
  * small model told only "the language of the request" answers an Arabic
  * question in English as often as not (measured, docs/STATUS.md).
  */
-const writeIn = (text: string) => (mostlyArabic(text) ? 'Write in Modern Standard Arabic (اكتب بالعربية الفصحى).' : 'Write in English.');
+const writeIn = (text: string) => (mostlyArabic(text) ? ARABIC : 'Write in English.');
 
 /** Settings › AI › Answer in: the question's language, or always Arabic or English. */
 export function answerIn(request: string, answerLanguage: 'question' | 'ar' | 'en' = getSettings().answerLanguage): string {
-  if (answerLanguage === 'ar') return 'Write in Modern Standard Arabic (اكتب بالعربية الفصحى).';
+  if (answerLanguage === 'ar') return ARABIC;
   if (answerLanguage === 'en') return 'Write in English.';
   return writeIn(request);
 }
