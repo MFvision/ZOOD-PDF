@@ -653,8 +653,9 @@ button svg {
 /* Send: files flicked up to the computer, the shared clipboard, files from the computer. */
 
 .phone-send {
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 4px 16px 24px;
 }
 
@@ -908,12 +909,6 @@ button svg {
 
 .phone-typing .phone-type {
   min-block-size: 52px;
-}
-
-.phone-type-keys {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .phone-key-label {
@@ -1401,7 +1396,7 @@ button svg {
 }
 
 /* A phone on its side: the trackpad on one side, its buttons on the other. */
-@media (orientation: landscape) and (max-height: 520px) {
+@media (orientation: landscape) and (height <= 520px) {
   .phone-pc-pad {
     display: grid;
     grid-template-columns: 1fr minmax(220px, 34%);
@@ -1431,12 +1426,6 @@ button svg {
 }
 
 /* ---- Send ----------------------------------------------------------- */
-
-.phone-send {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 
 .phone-hero {
   display: grid;
