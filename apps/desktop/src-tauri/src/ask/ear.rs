@@ -1,4 +1,5 @@
-//! Ask ZOOD's ear: the default microphone, only while the shortcut is held
+//! Ask ZOOD's ear: the microphone the person chose in the settings (the
+//! system's own when none is, or when the chosen one is unplugged), only while the shortcut is held
 //! or from one tap of the tap key until the next (or a minute at most).
 //!
 //! What is heard is kept in memory as mono samples for the on-device model
@@ -8,7 +9,41 @@
 //! (`NSMicrophoneUsageDescription`). Elsewhere there is no ear.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+use serde::Serialize;
+
+/// The microphone the person chose, by cpal's id ("wasapi:{…}",
+/// "coreaudio:…"); None for the system's own.
+static CHOSEN: Mutex<Option<String>> = Mutex::new(None);
+/// The most microphones listed: a list, not whatever a system reports.
+const MAX_MICROPHONES: usize = 32;
+
+/// One microphone, as the settings list it.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct Microphone {
+    pub id: String,
+    pub name: String,
+}
+
+/// Listen on `id` from the next time on; None (or an empty or overlong id)
+/// for the system's own.
+pub fn choose(id: Option<String>) {
+    let id = id.filter(|id| !id.trim().is_empty() && id.len() <= 512);
+    *CHOSEN.lock().unwrap_or_else(|e| e.into_inner()) = id;
+}
+
+#[cfg_attr(not(any(target_os = "windows", target_os = "macos")), allow(dead_code))]
+fn chosen() -> Option<String> {
+    CHOSEN.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// The microphones on this computer, by name.
+pub fn microphones() -> Vec<Microphone> {
+    let mut found = system::microphones();
+    found.truncate(MAX_MICROPHONES);
+    found
+}
 
 /// The longest anyone holds the keys to ask something, in seconds.
 pub const MAX_SECONDS: u32 = 60;
@@ -103,7 +138,7 @@ mod system {
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
     use cpal::{SampleFormat, SizedSample};
 
-    use super::{level, to_mono, Sound, MAX_SECONDS};
+    use super::{chosen, level, to_mono, Microphone, Sound, MAX_MICROPHONES, MAX_SECONDS};
 
     type Heard = Arc<Mutex<Vec<f32>>>;
 
@@ -145,10 +180,28 @@ mod system {
         Ok(Sound { rate, samples })
     }
 
+    pub fn microphones() -> Vec<Microphone> {
+        let Ok(devices) = cpal::default_host().input_devices() else {
+            return Vec::new();
+        };
+        devices
+            .filter_map(|device| {
+                Some(Microphone {
+                    id: device.id().ok()?.to_string(),
+                    name: device.to_string().chars().take(120).collect(),
+                })
+            })
+            .take(MAX_MICROPHONES)
+            .collect()
+    }
+
     fn open() -> Result<(cpal::Stream, u32, Heard), String> {
         let host = cpal::default_host();
-        let device = host
-            .default_input_device()
+        // The chosen microphone when it is plugged in, the system's own otherwise.
+        let device = chosen()
+            .and_then(|id| id.parse::<cpal::DeviceId>().ok())
+            .and_then(|id| host.device_by_id(&id))
+            .or_else(|| host.default_input_device())
             .ok_or_else(|| "E_MIC: there is no microphone".to_string())?;
         let supported = device
             .default_input_config()
@@ -208,7 +261,11 @@ mod system {
     use std::sync::atomic::AtomicBool;
     use std::sync::mpsc::Sender;
 
-    use super::Sound;
+    use super::{Microphone, Sound};
+
+    pub fn microphones() -> Vec<Microphone> {
+        Vec::new()
+    }
 
     pub fn listen(
         _stop: &AtomicBool,

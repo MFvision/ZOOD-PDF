@@ -109,7 +109,7 @@ import {
 import type { QuickKey, TidyPreview } from './quick';
 import type { QuietWatch } from './listen';
 import { readWindow, warmUp } from './read';
-import { chosenBrain, earModels, onMac, readAskPreferences, tapKeyLabel, writerFor } from './settings';
+import { chosenBrain, onMac, readAskPreferences, readyEar, tapKeyLabel, writerFor } from './settings';
 import { isolate } from '../signatures/model';
 import { readStyle } from './style';
 import { shouldTalk, stopSpeaking, talk } from './voice';
@@ -1312,14 +1312,18 @@ function Island() {
 
   /** Speaking: the recording as words, then the request. */
   const hear = useEffectEvent(async () => {
-    const ear = earModels()[0];
+    const ear = await readyEar(await machineMemoryGiB()).catch(() => undefined);
     if (!ear) return setPhase({ kind: 'problem', message: 'ask.problem.models' });
     asked += 1;
     const id = `ask-${Date.now()}-${asked}-ear`;
     try {
       setPhase({ kind: 'hearing' });
       request.current = id;
-      const words = ((await invokeHost('ask_transcribe', { id, model: ear.id })) as string).trim();
+      const words = ((await invokeHost('ask_transcribe', {
+          id,
+          model: ear.id,
+          words: readAskPreferences().words,
+        })) as string).trim();
       request.current = null;
       if (!words) return setPhase({ kind: 'problem', message: 'ask.problem.notHeard' });
       await respond(words, true);

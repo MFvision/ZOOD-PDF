@@ -2,17 +2,20 @@ import { readJson } from '../state/preferences';
 import { speechEngine } from '../speech/engines';
 import type { SpeechEngine } from '../speech/engines';
 import { pickVoice } from '../speech/voices';
+import { splitSentences } from '../speech/sentences';
 import type { VoiceInfo } from '../speech/voices';
 import { languageOf } from './plan';
 import type { TalkBack } from './settings';
 
 /**
- * Ask ZOOD's answer, said aloud in the same voices Read aloud uses: on a
- * Mac the system's own AVSpeech voices through the host (the Premium and
- * Enhanced ones WebKit hides), in the Windows app its own natural voices
- * (Kareem for Arabic) beside the system's, and Web Speech elsewhere — the
- * voice chosen in Read aloud for the answer's language, or the best one
- * installed, at Read aloud's speed. All of them run on the computer.
+ * Ask ZOOD's answer, said aloud in the same voices Read aloud uses: the
+ * app's own natural voices once downloaded (Supertonic's, reading Arabic
+ * and English), then on a Mac the system's own AVSpeech voices through the
+ * host (the Premium and Enhanced ones WebKit hides), on Windows the
+ * system's through Web Speech — the voice chosen in Read aloud for the
+ * answer's language, or the best one installed, at Read aloud's speed. All
+ * of them run on the computer. A long answer is said a sentence at a time,
+ * the next made while one is heard, so the first words come quickly.
  * Without a voice for the language the answer is only shown.
  */
 
@@ -65,7 +68,20 @@ export async function talk(text: string): Promise<void> {
     typeof chosen.rate === 'number' && Number.isFinite(chosen.rate)
       ? Math.min(2, Math.max(0.5, chosen.rate))
       : 1;
-  await engine.speak(words, voice, lang === 'ar' ? 'ar-SA' : 'en-US', rate).catch(() => undefined);
+  const tag = lang === 'ar' ? 'ar-SA' : 'en-US';
+  // A natural voice is made a sentence at a time; the system's say it whole.
+  const parts = voice?.natural ? splitSentences(words).map((sentence) => sentence.text) : [words];
+  for (const [index, part] of parts.entries()) {
+    if (mine !== turn) return;
+    const said = engine.speak(part, voice, tag, rate);
+    const after = parts[index + 1];
+    if (after !== undefined) engine.prepare?.(after, voice, tag, rate);
+    try {
+      await said;
+    } catch {
+      return;
+    }
+  }
 }
 
 /** Says `text` without waiting for it. */

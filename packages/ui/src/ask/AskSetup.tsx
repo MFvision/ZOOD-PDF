@@ -7,6 +7,9 @@ import { machineMemoryGiB, useDeviceModel } from '../ai/device/useDeviceModel';
 import type { DeviceModelView } from '../ai/device/useDeviceModel';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
+import { downloadNeuralVoice, neuralPacks } from '../speech/neural';
+import type { NeuralPack } from '../speech/neural';
+import { refreshVoices } from '../speech/readAloud';
 import { isolate } from '../signatures/model';
 import { noteAskReady } from './ReadyHint';
 import { quickModel } from './quick';
@@ -15,7 +18,7 @@ import {
   askAllow,
   chosenBrain,
   configureAsk,
-  earModels,
+  earFor,
   missingAccess,
   onMac,
   readAskPreferences,
@@ -64,14 +67,21 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
   const live = useRef(true);
   const brain = chosenBrain(prefs, memory);
   const voice = voiceAvailable();
-  const ear = useDeviceModel(earModels()[0]?.id ?? null);
+  const ear = useDeviceModel(earFor(memory)?.id ?? null);
   const decide = useDeviceModel(brain.id);
   // The quick decider: quick asks answer in about half a second.
   const quick = useDeviceModel(quickModel()?.id ?? null);
+  // The natural voice answers are said in: part of the same one click.
+  const [voicePack, setVoicePack] = useState<NeuralPack | null>(null);
+  const [voiceShare, setVoiceShare] = useState(0);
+  const [voiceFailed, setVoiceFailed] = useState(false);
+  const talks = voicePack !== null && prefs.talkBack !== 'never';
+  const voiceReady = !talks || voicePack.state === 'ready';
 
   useEffect(() => {
     live.current = true;
     void machineMemoryGiB().then((value) => live.current && setMemory(value));
+    void neuralPacks().then((packs) => live.current && setVoicePack(packs[0] ?? null));
     const read = () => void askAccess().then((value) => live.current && setAccess(value));
     read();
     window.addEventListener('focus', read);
@@ -84,7 +94,7 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
   const views = [...(voice ? [ear] : []), decide, ...(quickModel() ? [quick] : [])];
   const missing = missingAccess(access, prefs, Boolean(brain.sees));
   const modelsReady = views.every(ready);
-  const done = modelsReady && missing.length === 0;
+  const done = modelsReady && voiceReady && missing.length === 0;
 
   // The host listens as soon as the downloads are in, wherever this was
   // pressed (Settings tells it again on its own; the tour has only this).
@@ -96,6 +106,18 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
   const start = async () => {
     setRunning(true);
     for (const view of views) if (!ready(view) && !downloading(view)) view.download();
+    if (talks && voicePack.state === 'missing') {
+      const pack = voicePack;
+      setVoiceFailed(false);
+      setVoicePack({ ...pack, state: 'downloading' });
+      void downloadNeuralVoice(pack.id, (received, total) => setVoiceShare(total > 0 ? received / total : 0))
+        .catch(() => live.current && setVoiceFailed(true))
+        .then(() => neuralPacks())
+        .then((packs) => {
+          refreshVoices();
+          if (live.current) setVoicePack(packs.find((one) => one.id === pack.id) ?? null);
+        });
+    }
     // One permission at a time: the system shows one question at a time.
     for (const kind of missingAccess(await askAccess(), prefs, Boolean(brain.sees))) {
       if (!live.current) return;
@@ -120,7 +142,7 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
   const tap = isolate(tapKeyLabel(prefs.tapKey, mac, lang === 'ar' ? 'ar' : 'en'));
   const size = views
     .filter((view) => !ready(view))
-    .reduce((sum, view) => sum + modelBytes(view.model), 0);
+    .reduce((sum, view) => sum + modelBytes(view.model), talks && !voiceReady ? voicePack.bytes : 0);
 
   if (done)
     return (
@@ -175,6 +197,18 @@ export function AskSetup({ compact = false }: { compact?: boolean }) {
             </li>
           );
         })}
+        {talks && (
+          <li className={`is-${voiceReady ? 'done' : voicePack.state === 'downloading' ? 'busy' : 'todo'}`}>
+            <StepMark state={voiceReady ? 'done' : voicePack.state === 'downloading' ? 'busy' : 'todo'} />
+            <span className="ask-setup-step">
+              {t('ask.setup.voice')}
+              {voicePack.state === 'downloading' && (
+                <progress className="ai-progress" max={1} value={voiceShare} />
+              )}
+              {voiceFailed && <span className="ask-setup-error">{t('ask.setup.voiceFailed')}</span>}
+            </span>
+          </li>
+        )}
         {(access ? missingAccess(access, prefs, Boolean(brain.sees)) : []).map((kind) => (
           <li key={kind} className={asking === kind ? 'is-busy' : 'is-todo'}>
             <StepMark state={asking === kind ? 'busy' : 'todo'} />

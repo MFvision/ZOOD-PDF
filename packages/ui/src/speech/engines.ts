@@ -9,9 +9,10 @@ import type { VoiceInfo } from './voices';
  * AVSpeechSynthesizer through the host (`apps/desktop/src-tauri/src/speech.rs`):
  * WebKit's Web Speech hides the Enhanced and Premium voices a Mac has
  * downloaded, which is why reading there sounded flat. In the Windows app,
- * the natural voices the app downloads and runs itself (`neural.ts`) beside
- * the system's through Web Speech. The host says which it is
- * (`speech_engine`); anything else, or an older host, keeps Web Speech.
+ * the system's voices through Web Speech. On both, the natural voices the
+ * app downloads and runs itself (`neural.ts`) come first, once downloaded.
+ * The host says which it is (`speech_engine`); anything else, or an older
+ * host, keeps Web Speech.
  */
 
 export type EngineKind = 'web' | 'apple' | 'neural';
@@ -25,6 +26,11 @@ export interface SpeechEngine {
    * by `cancel`; rejects when the engine fails on it.
    */
   speak(text: string, voice: VoiceInfo | null, lang: string, rate: number): Promise<void>;
+  /**
+   * Starts making what `speak` will soon be asked to read, where making it
+   * takes a while (the natural voices), so it is ready when asked for.
+   */
+  prepare?(text: string, voice: VoiceInfo | null, lang: string, rate: number): void;
   cancel(): void;
   pause(): void;
   resume(): void;
@@ -112,38 +118,50 @@ function hostEngine(kind: EngineKind): SpeechEngine {
   };
 }
 
-/** The Windows app's engine: its own natural voices first, the system's through Web Speech too. */
-function neuralEngine(synth: WebSpeech | null): SpeechEngine {
-  const web = synth ? webEngine(synth) : null;
+/**
+ * The desktop app's own natural voices first, then `system`'s voices (Web
+ * Speech on Windows, Apple's on a Mac): one engine that speaks a natural
+ * voice through the host and anything else through `system`.
+ */
+function withNatural(kind: EngineKind, system: SpeechEngine | null): SpeechEngine {
   const player = new NeuralPlayer();
   const natural = (voice: VoiceInfo | null) => (voice?.id.startsWith(NEURAL_PREFIX) ? voice.id.slice(NEURAL_PREFIX.length) : null);
   return {
-    kind: 'neural',
+    kind,
     voices: async () => {
-      const own: VoiceInfo[] = (await neuralVoices())
-        .filter((voice) => voice.state === 'ready')
-        .map((voice) => ({ id: NEURAL_PREFIX + voice.id, name: voice.name, lang: voice.lang, quality: 'premium', natural: true }));
-      return [...own, ...(web ? await web.voices() : [])];
+      const own: VoiceInfo[] = (await neuralVoices()).map((voice, order) => ({
+        id: NEURAL_PREFIX + voice.id,
+        name: voice.name,
+        lang: voice.lang,
+        quality: 'premium',
+        natural: true,
+        order,
+      }));
+      return [...own, ...(system ? await system.voices().catch(() => []) : [])];
     },
     speak: async (text, voice, lang, rate) => {
       const id = natural(voice);
       if (id) return player.speak(id, text, rate);
-      if (!web) throw new Error('E_SPEECH: no voice for this text');
-      return web.speak(text, voice, lang, rate);
+      if (!system) throw new Error('E_SPEECH: no voice for this text');
+      return system.speak(text, voice, lang, rate);
+    },
+    prepare: (text, voice, _lang, rate) => {
+      const id = natural(voice);
+      if (id) player.prepare(id, text, rate);
     },
     cancel: () => {
       player.cancel();
-      web?.cancel();
+      system?.cancel();
     },
     pause: () => {
       player.pause();
-      web?.pause();
+      system?.pause();
     },
     resume: () => {
       player.resume();
-      web?.resume();
+      system?.resume();
     },
-    watchVoices: (listener) => web?.watchVoices(listener),
+    watchVoices: (listener) => system?.watchVoices(listener),
   };
 }
 
@@ -156,8 +174,11 @@ export function speechEngine(): Promise<SpeechEngine | null> {
   chosen ??= (async () => {
     if (isTauriHost()) {
       const kind = await invokeHost('speech_engine').catch(() => 'web');
-      if (kind === 'apple') return hostEngine(kind);
-      if (kind === 'neural') return neuralEngine(webSpeech());
+      if (kind === 'apple') return withNatural(kind, hostEngine(kind));
+      if (kind === 'neural') {
+        const synth = webSpeech();
+        return withNatural(kind, synth ? webEngine(synth) : null);
+      }
     }
     const synth = webSpeech();
     return synth ? webEngine(synth) : null;
