@@ -114,6 +114,11 @@ function FileItem($called = 'sample') {
   foreach ($try in 1..10) {
     $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $named)
     if ($item) {
+      # A long folder hides items below the fold: bring it into view first.
+      try {
+        $item.GetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern).ScrollIntoView()
+        Start-Sleep -Milliseconds 500
+      } catch { }
       $box = $item.Current.BoundingRectangle
       return @([int]($box.X + 30), [int]($box.Y + $box.Height / 2))
     }
