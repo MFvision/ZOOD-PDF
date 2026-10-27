@@ -1940,7 +1940,7 @@
   "folders.signInHint": "لترى ملفاتك في {drive}",
   "home.search": "ابحث في الملفات الأخيرة والمكتبة…",
   "home.searchLabel": "بحث",
-  "home.searchHint": "الملفات الأخيرة بالاسم، ونصوص كل مستندات المكتبة. ⌘K",
+  "home.searchHint": "الملفات الأخيرة بالاسم، ونصوص كل مستندات المكتبة. {keys}",
   "home.searchResults": "نتائج البحث",
   "home.searchRecents": "الملفات الأخيرة",
   "home.searchLibrary": "في المكتبة",

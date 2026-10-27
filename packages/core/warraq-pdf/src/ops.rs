@@ -285,9 +285,7 @@ pub fn append_line_in_color(
             .encode()
             .map_err(|e| Error::Edit(e.to_string()))?,
     );
-    pdf.doc
-        .change_page_content(page_id, content)
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    pdf.replace_page_content(page_id, content)?;
     mark_page_objects(pdf, page_id);
     Ok(())
 }
@@ -474,9 +472,7 @@ pub fn replace_word(
     }
     .encode()
     .map_err(|e| Error::Edit(e.to_string()))?;
-    pdf.doc
-        .change_page_content(page_id, encoded)
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    pdf.replace_page_content(page_id, encoded)?;
     mark_page_objects(pdf, page_id);
     Ok(())
 }
@@ -599,9 +595,7 @@ pub fn erase_area_keeping_fill(
     let encoded = Content { operations: ops }
         .encode()
         .map_err(|e| Error::Edit(e.to_string()))?;
-    pdf.doc
-        .change_page_content(page_id, encoded)
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    pdf.replace_page_content(page_id, encoded)?;
     mark_page_objects(pdf, page_id);
     Ok((blanked, fill))
 }
@@ -738,9 +732,7 @@ pub fn replace_paragraph(
             .encode()
             .map_err(|e| Error::Edit(e.to_string()))?,
     );
-    pdf.doc
-        .change_page_content(page_id, content)
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    pdf.replace_page_content(page_id, content)?;
     mark_page_objects(pdf, page_id);
     Ok(Replacement {
         lines_drawn: lines.len(),
@@ -855,6 +847,45 @@ mod tests {
         let content =
             String::from_utf8_lossy(&d2.doc.get_page_content(d2.page_id(0).unwrap())).to_string();
         assert!(content.contains("/FW1 14"), "the reflow font must be used");
+    }
+
+    #[test]
+    fn a_paragraph_is_replaced_when_contents_is_a_reference_to_an_array() {
+        // Certificates from a ministry's system write `/Contents 5 0 R` with
+        // object 5 an array of streams. lopdf's own content setter changed
+        // nothing there: the font went in, Undo armed, the page stayed.
+        let mut d =
+            PdfDocument::open(corpus("raw-amiri-cid-identity-tounicode.pdf"), None).unwrap();
+        let page_id = d.page_id(0).unwrap();
+        let streams = d.content_ids(page_id);
+        assert!(!streams.is_empty());
+        let array = d.doc.add_object(Object::Array(
+            streams.iter().map(|id| Object::Reference(*id)).collect(),
+        ));
+        d.doc
+            .get_dictionary_mut(page_id)
+            .unwrap()
+            .set("Contents", Object::Reference(array));
+        let d = PdfDocument::open(d.save_to_vec().unwrap(), None).unwrap();
+        let mut d = d;
+        let before = d.doc.get_page_content(d.page_id(0).unwrap());
+        let edit = ParagraphEdit {
+            rect: (56.0, 700.0, 483.0, 90.0),
+            first_baseline: 775.0,
+            text: "فقرة جديدة",
+            font: AMIRI,
+            font_size: 14.0,
+            leading: 20.0,
+            direction: Direction::Rtl,
+            alignment: Alignment::Start,
+            synthetic_bold: false,
+        };
+        replace_paragraph(&mut d, 0, &edit).unwrap();
+        let d2 = PdfDocument::open(d.save_to_vec().unwrap(), None).unwrap();
+        let after = d2.doc.get_page_content(d2.page_id(0).unwrap());
+        assert_ne!(after, before, "the page must change");
+        let content = String::from_utf8_lossy(&after).to_string();
+        assert!(content.contains("/FW1 14"), "the new text must be drawn");
     }
 
     #[test]

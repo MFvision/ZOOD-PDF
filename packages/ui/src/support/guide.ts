@@ -177,6 +177,8 @@ function stepAsked(signal: AbortSignal): Promise<'app'> {
   });
 }
 
+/** Said while the pointer is on the tool picker on the way to a tool, which still shows the tool open now. */
+const OPEN_TOOLS: Bilingual = { ar: 'افتح قائمة الأدوات من هنا أولاً.', en: 'First open the tools list here.' };
 const DONE: Bilingual = { ar: 'انتهينا! هذا كل شيء.', en: 'Done! That’s all there is to it.' };
 const LOST: Bilingual = {
   ar: 'لم أجد هذا الزر على الشاشة الآن. أغلق النوافذ المفتوحة وجرّب مرة أخرى، أو اتبع الخطوات المكتوبة.',
@@ -221,7 +223,7 @@ export async function runGuide(article: Article, mode: GuideMode, host: GuideHos
           return 'lost';
         }
         found.element.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-        view({ box: boxOf(found.element), phase: 'pointing' });
+        view({ box: boxOf(found.element), phase: 'pointing', say: found.final ? step.say : OPEN_TOOLS });
         const isLast = index === steps.length - 1 && found.final;
         // The last step of a tool guide points at where the tool is; nothing is left to press.
         if (isLast && found.element.matches('.pane-end, .toolbar-title-name')) {

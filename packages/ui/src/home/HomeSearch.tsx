@@ -9,6 +9,7 @@ import { snippet } from '../library/snippet';
 import { useServices } from '../state/AppContext';
 import type { LibraryIndex } from './useLibraryIndex';
 import { requestPage } from './pendingPage';
+import { isApplePlatform } from '../shell/menuModel';
 
 const LIMIT = 6;
 
@@ -121,12 +122,12 @@ export function HomeSearch({ index }: { index: LibraryIndex }) {
           }}
         />
         <kbd className="home-search-key" aria-hidden="true">
-          ⌘K
+          {isApplePlatform() ? '⌘K' : 'Ctrl+K'}
         </kbd>
         {query && <IconButton className="home-search-clear" label={t('home.searchClear')} icon={<Icon of={X} size={14} />} onClick={() => setQuery('')} />}
       </div>
       <span id={`${resultsId}-hint`} className="sr-only">
-        {t('home.searchHint')}
+        {t('home.searchHint', { keys: isApplePlatform() ? '⌘K' : 'Ctrl+K' })}
       </span>
       {open && (
         <div id={resultsId} className="home-search-results glass" role="region" aria-label={t('home.searchResults')}>

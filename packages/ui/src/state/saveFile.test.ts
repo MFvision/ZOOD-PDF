@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentStem, exportFileName, pageImageName, pagesArchiveName, pdfFileName } from './saveFile';
+import { besideFile, documentStem, exportFileName, pageImageName, pagesArchiveName, pdfFileName } from './saveFile';
 
 describe('names of the files Warraq writes', () => {
   it('names an export after its document, whatever the case of ".pdf"', () => {
@@ -24,5 +24,14 @@ describe('names of the files Warraq writes', () => {
   it('keeps the PDF names it had', () => {
     expect(pdfFileName('report')).toBe('report.pdf');
     expect(documentStem('report.pdf')).toBe('report');
+  });
+});
+
+describe('besideFile', () => {
+  it('puts the name in the folder of the open file', () => {
+    expect(besideFile('C:\\Users\\pCd\\Documents\\ملف.pdf', 'ملف.pdf')).toBe('C:\\Users\\pCd\\Documents\\ملف.pdf');
+    expect(besideFile('/Users/m/Desktop/a.pdf', 'a.pdf')).toBe('/Users/m/Desktop/a.pdf');
+    expect(besideFile(undefined, 'a.pdf')).toBe('a.pdf');
+    expect(besideFile('a.pdf', 'b.pdf')).toBe('b.pdf');
   });
 });

@@ -210,6 +210,9 @@ describe('Markdown, text and CSV', () => {
   it('reads text in paragraphs, and older Arabic files in Windows-1256', () => {
     const text = readText(fixture('notes-ar.txt'));
     expect(texts(text.blocks).map((b) => b.text)).toEqual(['رسالة من ورّاق', 'هذا نص عادي بالعربية.\nوسطر ثانٍ في الفقرة نفسها.', 'This is a plain English paragraph.']);
+    // An Arabic line under an English one, no blank line between: its own block, so it starts on the right.
+    const mixed = readText(new TextEncoder().encode('\uFEFFPlain text test line 1\r\nسطر عربي للاختبار\r\n'));
+    expect(texts(mixed.blocks).map((b) => [b.text, b.spaceAfter])).toEqual([['Plain text test line 1', 0], ['سطر عربي للاختبار', 8]]);
     const legacy = new Uint8Array([0xe3, 0xd1, 0xcd, 0xc8, 0xc7]);
     expect(decodeText(legacy)).toBe('مرحبا');
   });

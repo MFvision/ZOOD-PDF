@@ -19,6 +19,13 @@ export function decodeText(bytes: Uint8Array): string {
   }
 }
 
+/** The direction of a line's first strong letter: Hebrew, Arabic and their forms are right to left. */
+function strongDir(line: string): 'rtl' | 'ltr' | null {
+  const strong = /[\p{L}]/u.exec(line);
+  if (!strong) return null;
+  return /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/u.test(strong[0]) ? 'rtl' : 'ltr';
+}
+
 /**
  * A text file read into blocks: paragraphs parted by blank lines, each line
  * of a paragraph on a line of its own, and a form feed a new page. Each
@@ -35,7 +42,19 @@ export function readText(bytes: Uint8Array): ReadDocument {
       while (lines.length > 0 && lines[0]!.trim() === '') lines.shift();
       while (lines.length > 0 && lines[lines.length - 1]!.trim() === '') lines.pop();
       if (lines.length === 0) continue;
-      blocks.push({ type: 'text', text: lines.map((l) => l.trimEnd()).join('\n'), size: 11, spaceAfter: 8 });
+      // A paragraph's lines in another direction than the first are set as
+      // their own: an Arabic line under an English one starts on the right.
+      const groups: string[][] = [];
+      let dir: 'rtl' | 'ltr' | null = null;
+      for (const line of lines) {
+        const own = strongDir(line);
+        if (groups.length === 0 || (own !== null && dir !== null && own !== dir)) groups.push([]);
+        groups[groups.length - 1]!.push(line.trimEnd());
+        dir = own ?? dir;
+      }
+      groups.forEach((group, g) =>
+        blocks.push({ type: 'text', text: group.join('\n'), size: 11, spaceAfter: g === groups.length - 1 ? 8 : 0 }),
+      );
     }
   });
   const first = blocks.find((b) => b.type === 'text');
