@@ -15,7 +15,10 @@
 #   7. drags two copied shortcuts to Arabic-named PDFs there at once: the
 #      shelf takes both PDFs;
 #   8. drags the PDF itself up and lets go on a tile: what it makes lands
-#      beside the original.
+#      beside the original;
+#   9. drags a shortcut whose PDF was since tidied into a folder (as Put away
+#      does): it is found there and taken; then one whose PDF was deleted:
+#      the zone names the missing file.
 # Each step is checked in the app's ring.log and in the folder, and by where
 # the app says it put the ring; screenshots go to $Out for ci-logs.
 param(
@@ -111,6 +114,11 @@ function FileItem($called = 'sample') {
   foreach ($try in 1..10) {
     $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $named)
     if ($item) {
+      # A long folder hides items below the fold: bring it into view first.
+      try {
+        $item.GetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern).ScrollIntoView()
+        Start-Sleep -Milliseconds 500
+      } catch { }
       $box = $item.Current.BoundingRectangle
       return @([int]($box.X + 30), [int]($box.Y + $box.Height / 2))
     }
@@ -406,6 +414,63 @@ try {
   Check ((Log) -match 'a tile made [1-9]') 'what the tile made is kept for Undo and Show'
 } catch {
   Check $false "the tile step ran ($_)"
+}
+
+# 9. A shortcut whose PDF was moved into a folder below where it was (as
+# Put away tidies a desktop) is followed there; one whose PDF was deleted
+# is named, not taken.
+try {
+  [Input]::Mouse(400, 600, 0)
+  Start-Sleep -Seconds 5
+  $moving = Join-Path $folder 'moving'
+  New-Item -ItemType Directory -Force -Path $moving | Out-Null
+  $shellApp = New-Object -ComObject Shell.Application
+  foreach ($n in 'moved', 'deleted') {
+    $name = (-join [char[]](0x645, 0x644, 0x641)) + " $n.pdf"
+    Copy-Item $Sample (Join-Path $moving $name)
+    $before = @(Get-ChildItem $moving -Filter '*.lnk').Count
+    try { $shellApp.Namespace($moving).ParseName($name).InvokeVerb('link') } catch { Write-Host "link verb: $_" }
+    foreach ($try in 1..20) {
+      if (@(Get-ChildItem $moving -Filter '*.lnk').Count -gt $before) { break }
+      Start-Sleep -Milliseconds 500
+    }
+    $lnk = Get-ChildItem $moving -Filter '*.lnk' | Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($lnk) { Copy-Item $lnk.FullName (Join-Path $folder "$n - Copy.lnk") } else { Write-Host "no shortcut was made for $n" }
+  }
+  $tidied = Join-Path $moving 'PDFs'
+  New-Item -ItemType Directory -Force -Path $tidied | Out-Null
+  Move-Item (Join-Path $moving ((-join [char[]](0x645, 0x644, 0x641)) + ' moved.pdf')) $tidied
+  Remove-Item (Join-Path $moving ((-join [char[]](0x645, 0x644, 0x641)) + ' deleted.pdf'))
+  Start-Sleep -Seconds 3
+  # The deleted one first: the moved one lands on the Web tile, whose browser
+  # window would then cover File Explorer.
+  foreach ($n in 'deleted', 'moved') {
+    $seen = (Log).Length
+    $at = FileItem "$n - Copy"
+    [Input]::Mouse($at[0], $at[1], 0); Start-Sleep -Milliseconds 300
+    [Input]::Mouse($at[0], $at[1], 0x0002); Start-Sleep -Milliseconds 200
+    foreach ($step in 1..30) {
+      [Input]::Mouse($at[0] + $step * ($zx - $at[0]) / 30, $at[1] + $step * ($zy - $at[1]) / 30, 0)
+      Start-Sleep -Milliseconds 50
+    }
+    foreach ($step in 1..10) { [Input]::Mouse($zx + 10 - $step, $zy, 0); Start-Sleep -Milliseconds 60 }
+    Start-Sleep -Milliseconds 800
+    Shot "zone-9-$n-over.png"
+    [Input]::Mouse($zx, $zy, 0x0004)
+    Start-Sleep -Seconds 3
+    Shot "zone-9-$n-after.png"
+    $new = (Log).Substring([Math]::Min($seen, (Log).Length))
+    Write-Host "log for the $n shortcut: $new"
+    if ($n -eq 'moved') {
+      Check ($new -match '1 files dropped on the drop zone') 'a shortcut whose PDF was tidied into a folder is followed there'
+    } else {
+      Check ($new -match 'a shortcut leads nowhere: .*deleted - Copy\.lnk \(made for .*deleted\.pdf\)') 'a shortcut whose PDF was deleted names the file it was made for'
+    }
+    [Input]::Mouse(400, 600, 0)
+    Start-Sleep -Seconds 5
+  }
+} catch {
+  Check $false "the moved shortcut step ran ($_)"
 }
 
 Set-Content (Join-Path $Out 'ring.log') (Log)

@@ -3573,5 +3573,9 @@
   "board.empty": "Drag here",
   "board.moved": "{name} moved to {place}",
   "board.item": "{name}, {place}, {at} of {of}",
-  "board.chatInput": "Ask about this PDF…"
+  "board.chatInput": "Ask about this PDF…",
+  "shelf.missedGone": "{count} could not be added: «{name}» is no longer where its shortcut points. Drag the file itself.",
+  "stow.goneOne": "This shortcut’s file «{name}» is no longer where it was",
+  "stow.goneMany": "These shortcuts lead to files that are gone, like «{name}»",
+  "stow.goneNote": "ZOOD looked nearby too. Drag the file itself instead."
 }
