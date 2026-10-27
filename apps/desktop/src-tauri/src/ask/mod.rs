@@ -74,6 +74,8 @@ pub const HEARD_EVENT: &str = "ask://heard";
 pub const POINT_EVENT: &str = "ask://point";
 /// The tap key was tapped. Payload: [`Tapped`].
 pub const TAP_EVENT: &str = "ask://tap";
+/// The keys again while the island waits for typing: it goes, as Esc would.
+pub const HIDE_EVENT: &str = "ask://hide";
 /// Shorter than this is a tap, not a question.
 const SHORTEST: f32 = 0.4;
 /// The island's width, in the window's own units.
@@ -566,10 +568,10 @@ fn summoned<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap, asked: bool) {
         .map(|s| (s.enabled && s.tap_speaks, s.tap_to_type))
         .unwrap_or((false, true));
     if tap == tap::Tap::Once && speaks {
-        // A tap while the island has the keyboard is the person reaching
-        // for their own app again, not a question.
+        // A tap while the island waits for typing closes it, not a question:
+        // Esc cannot reach it once another window has the keyboard.
         if state.moment.lock().map(|m| m.typing).unwrap_or(false) {
-            return;
+            return close_island(app);
         }
         return pressed(app, Opened::Tapped);
     }
@@ -577,10 +579,10 @@ fn summoned<R: Runtime>(app: &AppHandle<R>, tap: tap::Tap, asked: bool) {
         return;
     }
     let typing = tap == tap::Tap::Once;
-    // A tap while the island is up and has the keyboard is the person
-    // reaching for their own app again: the window in front is the island.
+    // A tap while the island waits for typing closes it, as the same keys
+    // opened it: Esc cannot reach it once another window has the keyboard.
     if state.moment.lock().map(|m| m.typing).unwrap_or(false) {
-        return;
+        return close_island(app);
     }
     hide_point(app);
     guide::stop_watching();
@@ -843,6 +845,12 @@ fn monitor_at_pointer<R: Runtime>(
         .flatten()
         .or_else(|| app.primary_monitor().ok().flatten())?;
     Some((*monitor.position(), *monitor.size(), monitor.scale_factor()))
+}
+
+/// The island goes as Esc would take it: its page lets go of the question
+/// and hides it (`ask_hide`).
+fn close_island<R: Runtime>(app: &AppHandle<R>) {
+    let _ = app.emit_to(LABEL, HIDE_EVENT, ());
 }
 
 fn show_island<R: Runtime>(app: &AppHandle<R>) {

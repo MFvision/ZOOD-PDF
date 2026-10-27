@@ -30,6 +30,25 @@ export const ENGLISH_MISSING: Tree = {
   form: { toggleFillMode: 'Fill Form Fields' },
 };
 
+/**
+ * EmbedPDF English that reads wrong for one: "1 results found". Said as the
+ * Arabic says counts ("label: {count}"), so no plural is needed. Written over
+ * its own (`addMissingEnglish`).
+ */
+export const ENGLISH_BETTER: Tree = {
+  search: { resultsFound: 'Matches: {count}' },
+};
+
+/** Writes every string of `from` into `into`, over what it had. */
+export function writeOver(into: Tree, from: Tree): void {
+  for (const [key, value] of Object.entries(from)) {
+    const current = into[key];
+    if (typeof value === 'string') into[key] = value;
+    else if (current !== undefined && typeof current === 'object') writeOver(current, value);
+    else into[key] = structuredClone(value);
+  }
+}
+
 /** Copies into `into` whatever of `from` it does not have; nothing it has is changed. */
 export function fillIn(into: Tree, from: Tree): void {
   for (const [key, value] of Object.entries(from)) {
@@ -51,7 +70,9 @@ export function fillIn(into: Tree, from: Tree): void {
  */
 function addMissingEnglish(i18n: I18nCapability): void {
   const english = i18n.getLocaleInfo('en');
-  if (english) fillIn(english.translations, ENGLISH_MISSING);
+  if (!english) return;
+  fillIn(english.translations, ENGLISH_MISSING);
+  writeOver(english.translations, ENGLISH_BETTER);
 }
 
 /**

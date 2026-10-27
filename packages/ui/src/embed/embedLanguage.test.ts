@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { ENGLISH_MISSING, fillIn, setEmbedLanguage } from './embedLanguage';
+import { ENGLISH_BETTER, ENGLISH_MISSING, fillIn, setEmbedLanguage, writeOver } from './embedLanguage';
 import { arabic, arabicBeyondEnglish } from './locales/ar';
 import { englishTranslations } from './locales/en';
 
@@ -55,14 +55,15 @@ describe("EmbedPDF's language follows Warraq's", () => {
     expect(fake.current()).toBe('en');
   });
 
-  it("gives EmbedPDF's English the strings it lacks, and changes none it has", () => {
+  it("gives EmbedPDF's English the strings it lacks, and changes only the ones that read wrong", () => {
     const fake = fakeRegistry();
+    const wanted = { form: { textfield: 'Text Field', toggleFillMode: 'Fill Form Fields' }, search: { resultsFound: 'Matches: {count}' } };
     setEmbedLanguage(fake.registry, 'en');
-    expect(fake.english.translations).toEqual({ form: { textfield: 'Text Field', toggleFillMode: 'Fill Form Fields' } });
+    expect(fake.english.translations).toEqual(wanted);
     // Twice is the same as once.
     setEmbedLanguage(fake.registry, 'ar');
     setEmbedLanguage(fake.registry, 'en');
-    expect(fake.english.translations).toEqual({ form: { textfield: 'Text Field', toggleFillMode: 'Fill Form Fields' } });
+    expect(fake.english.translations).toEqual(wanted);
   });
 });
 
@@ -84,5 +85,27 @@ describe('the English EmbedPDF lacks', () => {
     const into: Tree = { a: 'kept', b: { c: 'kept' } };
     fillIn(into, { a: 'new', b: { c: 'new', d: 'added' }, e: { f: 'added' } });
     expect(into).toEqual({ a: 'kept', b: { c: 'kept', d: 'added' }, e: { f: 'added' } });
+  });
+});
+
+describe('the English EmbedPDF says wrong', () => {
+  type Tree = { [key: string]: string | Tree };
+  const leaves = (tree: Tree, prefix = ''): string[] =>
+    Object.entries(tree).flatMap(([key, value]) => (typeof value === 'string' ? [`${prefix}${key}`] : leaves(value, `${prefix}${key}.`)));
+
+  it('is only keys its English locale has, with their placeholders kept', () => {
+    const english = englishTranslations as Tree;
+    for (const key of leaves(ENGLISH_BETTER as Tree)) {
+      const theirs = key.split('.').reduce<string | Tree | undefined>((at, part) => (typeof at === 'object' ? at[part] : undefined), english);
+      expect(typeof theirs, key).toBe('string');
+      const ours = key.split('.').reduce<string | Tree | undefined>((at, part) => (typeof at === 'object' ? at[part] : undefined), ENGLISH_BETTER as Tree);
+      expect((ours as string).match(/\{\w+\}/g), key).toEqual((theirs as string).match(/\{\w+\}/g));
+    }
+  });
+
+  it('is written over what was there', () => {
+    const into: Tree = { a: 'old', b: { c: 'old', d: 'kept' } };
+    writeOver(into, { a: 'new', b: { c: 'new' }, e: { f: 'added' } });
+    expect(into).toEqual({ a: 'new', b: { c: 'new', d: 'kept' }, e: { f: 'added' } });
   });
 });
