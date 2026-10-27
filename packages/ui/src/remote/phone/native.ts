@@ -7,7 +7,9 @@
  * - what the PC copies is put on the iPhone's clipboard at once (`copy`);
  * - "Paste on the computer" takes what the iPhone copied in one tap (`paste`);
  * - the pairing is handed to the app (`paired`), so it can bring it back when
- *   the PC's address changes and the page comes from a new place.
+ *   the PC's address changes and the page comes from a new place;
+ * - the app hears when the PC can't be reached (`lost`), so it can look for
+ *   the PC on the Wi-Fi by its name and open it at its new address.
  *
  * Outside the app every call here is a quiet no.
  */
@@ -75,4 +77,9 @@ export async function pasteFromPhone(): Promise<Pasted> {
 /** The app keeps this phone's pairing with the PC, by the PC's name. */
 export function tellPaired(pairing: { device: string; key: string }, pc: string): void {
   handler()?.postMessage({ kind: 'paired', device: pairing.device, key: pairing.key, pc });
+}
+
+/** The PC has not answered for a while: the app may find it somewhere new. */
+export function tellLost(): void {
+  handler()?.postMessage({ kind: 'lost' });
 }

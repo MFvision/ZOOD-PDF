@@ -464,6 +464,10 @@ async fn connect<H: Host>(
             if let Ok(mut phones) = shared.phones.lock() {
                 phones.add(device.clone(), &name, &key);
             }
+            // Its tag joins the announcement, so the iPhone app trusts it
+            // (off this task: the network may take a moment).
+            let again = shared.clone();
+            std::thread::spawn(move || again.announce());
             let welcome =
                 json!({ "t": "welcome", "device": device, "key": seal::key_to_text(&key) });
             (device, code, name, Some(welcome))

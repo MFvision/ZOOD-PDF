@@ -21,6 +21,7 @@ import type { InkTool, PagePoint, PcMessage, PhoneMessage, RemoteDocumentState }
 import { Catch } from './Catch';
 import { Files } from './Files';
 import { Logo } from './Logo';
+import { tellLost } from './native';
 import { SendTab } from './Send';
 import type { RemoteLink } from './link';
 import { PhoneSession } from './session';
@@ -72,6 +73,10 @@ export function PhoneApp() {
     return () => window.clearTimeout(timer);
   }, [linkState, changes]);
   const stuck = linkState === 'connecting' && stuckAt === changes;
+  // Inside the iPhone app, it looks for the PC at a new address.
+  useEffect(() => {
+    if (stuck) tellLost();
+  }, [stuck]);
 
 
   useEffect(() => {

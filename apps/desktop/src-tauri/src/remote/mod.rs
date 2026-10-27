@@ -234,7 +234,13 @@ impl<H: Host> Shared<H> {
         if let Ok(mut slot) = self.announced.lock() {
             // The old one goes first, so the network never hears two.
             *slot = None;
-            *slot = first.and_then(|ip| announce::Announcer::start(&pc_name(), ip, self.port));
+            let keys: Vec<seal::SealKey> = self
+                .phones
+                .lock()
+                .map(|phones| phones.list().iter().filter_map(|p| p.key()).collect())
+                .unwrap_or_default();
+            *slot =
+                first.and_then(|ip| announce::Announcer::start(&pc_name(), ip, self.port, &keys));
             if slot.is_none() {
                 core_bridge_log(
                     "remote: not announced on this network (the QR code still works)".into(),
