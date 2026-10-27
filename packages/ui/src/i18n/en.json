@@ -2506,6 +2506,8 @@
   "tour.remote.watch": "Watch again",
   "tour.remote.controlTitle": "Control from your phone",
   "tour.remote.controlBody": "Turn the slides, move the pointer with your finger, and flick files to the computer.",
+  "tour.remote.clip": "Copy on one, paste on the other.",
+  "tour.remote.twin": "Two computers? Phone remote › Two computers, one mouse: push the mouse off this screen and it carries on on the other one.",
   "tour.remote.pill.scanning": "Scanning…",
   "tour.remote.pill.read": "Code read",
   "tour.remote.pill.connected": "Connected",

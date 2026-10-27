@@ -2506,6 +2506,8 @@
   "tour.remote.watch": "شاهد مرة أخرى",
   "tour.remote.controlTitle": "تحكّم من جوالك",
   "tour.remote.controlBody": "قلّب الشرائح، وحرّك المؤشر بإصبعك، وارمِ الملفات إلى الحاسب.",
+  "tour.remote.clip": "انسخ على أحدهما والصق على الآخر.",
+  "tour.remote.twin": "عندك جهازا كمبيوتر؟ التحكم من الجوال › جهازان بفأرة واحدة: ادفع الفأرة خارج هذه الشاشة فتكمل على الجهاز الآخر.",
   "tour.remote.pill.scanning": "جارٍ المسح…",
   "tour.remote.pill.read": "قُرئ الرمز",
   "tour.remote.pill.connected": "متصل",
