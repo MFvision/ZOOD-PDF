@@ -318,3 +318,233 @@
   color: var(--label);
   font-size: var(--text-callout);
 }
+
+/* Two computers, one mouse (TwinCard.tsx, remote/twin.rs). */
+
+.twin-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-block-start: var(--space-5);
+  border-block-start: 1px solid var(--separator);
+}
+
+.twin-head {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  color: var(--secondary-label);
+}
+
+.twin-title {
+  margin: 0 0 var(--space-1);
+  color: var(--label);
+  font-size: var(--text-headline);
+  font-weight: 600;
+}
+
+.twin-note {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: var(--text-callout);
+}
+
+.twin-found {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.twin-found li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-8);
+  background: var(--tertiary-fill);
+}
+
+.twin-found li > span {
+  flex: 1;
+}
+
+.twin-digits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-5);
+  border-radius: var(--radius-10);
+  background: var(--accent-soft);
+  text-align: center;
+}
+
+.twin-digits > span,
+.twin-digits-big {
+  font-size: var(--text-title1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.twin-digits-big {
+  margin: var(--space-3) 0;
+  color: var(--accent);
+  text-align: center;
+}
+
+/* The desk: this screen in the middle, the other one at its side. */
+.twin-board {
+  display: grid;
+  grid-template-areas:
+    '. top .'
+    'left here right'
+    '. bottom .';
+  grid-template-columns: 64px 1fr 64px;
+  grid-template-rows: 40px 76px 40px;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-12);
+  background: var(--tertiary-fill);
+  touch-action: none;
+  user-select: none;
+}
+
+.twin-board-label {
+  margin: 0 0 var(--space-2);
+  color: var(--secondary-label);
+  font-size: var(--text-footnote);
+}
+
+.twin-slot {
+  border: 1.5px dashed var(--separator);
+  border-radius: var(--radius-8);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--motion, 160ms) var(--ease-out, ease), border-color var(--motion, 160ms) var(--ease-out, ease);
+}
+
+.twin-slot-top {
+  grid-area: top;
+}
+
+.twin-slot-left {
+  grid-area: left;
+}
+
+.twin-slot-right {
+  grid-area: right;
+}
+
+.twin-slot-bottom {
+  grid-area: bottom;
+}
+
+.twin-board.is-dragging .twin-slot {
+  border-color: var(--secondary-label);
+}
+
+.twin-slot.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.twin-here {
+  display: flex;
+  flex-direction: column;
+  grid-area: here;
+  gap: var(--space-1);
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--label);
+  border-radius: var(--radius-8);
+  background: var(--secondary-fill);
+  color: var(--label);
+  font-size: var(--text-footnote);
+}
+
+.twin-other {
+  display: flex;
+  z-index: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: var(--space-1);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-8);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: var(--text-footnote);
+  cursor: grab;
+  transition: transform var(--motion, 160ms) var(--ease-out, ease);
+}
+
+.twin-other > span {
+  overflow: hidden;
+  max-inline-size: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.twin-board.is-dragging .twin-other {
+  transform: scale(1.06);
+  cursor: grabbing;
+}
+
+/* Side by side it stands tall; above or below it lies wide. */
+.twin-at-left {
+  grid-area: left;
+}
+
+.twin-at-right {
+  grid-area: right;
+}
+
+.twin-at-top {
+  flex-direction: row;
+  grid-area: top;
+}
+
+.twin-at-bottom {
+  flex-direction: row;
+  grid-area: bottom;
+}
+
+.twin-board-foot {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block-start: var(--space-3);
+}
+
+.twin-auto {
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--separator);
+  border-radius: var(--radius-capsule);
+  background: transparent;
+  color: var(--label);
+  font: inherit;
+  cursor: pointer;
+}
+
+.twin-auto.is-on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.twin-forget {
+  align-self: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-slot,
+  .twin-other {
+    transition: none;
+  }
+}
