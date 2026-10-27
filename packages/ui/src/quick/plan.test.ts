@@ -44,6 +44,8 @@ describe('the quick tools', () => {
     expect(startingOptions(findQuickTool('webp')!)).toMatchObject({ format: 'webp' });
     expect(startingOptions(findQuickTool('compress')!)).toMatchObject({ level: 'balanced' });
     expect(startingOptions(findQuickTool('extract')!)).toMatchObject({ pages: { which: 'list', list: '1-' } });
+    // Split has no batch step: it once started on {} and its window crashed.
+    expect(startingOptions(findQuickTool('split')!)).toEqual({ how: 'every', every: 1, ranges: '' });
     expect(findQuickTool('format-disk')).toBeUndefined();
   });
 
