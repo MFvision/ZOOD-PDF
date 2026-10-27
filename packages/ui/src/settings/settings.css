@@ -1233,3 +1233,20 @@ html[data-reduce-motion="on"] .prefs-kbd.is-listening {
     animation: none;
   }
 }
+
+/* Read aloud's voice for a language, with the button to hear it beside it. */
+.voice-pick {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.voice-pick > .field {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.voice-pick > .prefs-button {
+  flex: none;
+  margin-block-end: 2px;
+}

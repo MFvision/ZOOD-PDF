@@ -14,8 +14,10 @@ export interface VoiceInfo {
   lang: string;
   /** Marked by its name as a premium or enhanced voice: preferred. */
   quality: 'premium' | 'enhanced' | 'standard';
-  /** One of the app's own natural voices (Windows), not the system's. */
+  /** One of the app's own natural voices, not the system's. */
   natural?: boolean;
+  /** A natural voice's place in the host's list: its first is the one read with by default. */
+  order?: number;
 }
 
 export type VoiceLang = 'ar' | 'en';
@@ -55,12 +57,18 @@ function regionRank(voice: VoiceInfo, lang: VoiceLang): number {
   return at === -1 ? HOME_REGIONS[lang].length : at;
 }
 
-/** The voices for `lang`, best first: premium, then enhanced, then the rest; robotic ones last; the home regions first; then by name. */
+/**
+ * The voices for `lang`, best first: the app's own natural voices in the
+ * host's order, then premium, enhanced and the rest; robotic ones last; the
+ * home regions first; then by name.
+ */
 export function voicesFor(voices: readonly VoiceInfo[], lang: VoiceLang): VoiceInfo[] {
   return voices
     .filter((voice) => voice.lang.toLowerCase().startsWith(lang))
     .sort(
       (a, b) =>
+        Number(!a.natural) - Number(!b.natural) ||
+        (a.natural && b.natural ? (a.order ?? 0) - (b.order ?? 0) : 0) ||
         RANK[a.quality] - RANK[b.quality] ||
         Number(ROBOTIC.test(a.name)) - Number(ROBOTIC.test(b.name)) ||
         regionRank(a, lang) - regionRank(b, lang) ||

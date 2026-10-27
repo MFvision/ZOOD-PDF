@@ -163,11 +163,6 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Securit
 # sign-in on and off through the package's startup task (src/packaged.rs).
 # Dropped shortcuts are read by the Shell's own IShellLinkW (src/lnk.rs).
 windows = { version = "0.61", features = ["ApplicationModel", "Foundation", "Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Variant", "Win32_UI_Accessibility", "Win32_UI_Shell"] }
-# Read aloud's natural voices (src/neural/): Piper voices and libtashkeel's
-# diacritizer, both ONNX, run by ONNX Runtime through ort (MIT OR
-# Apache-2.0; ONNX Runtime itself MIT), linked statically from the build
-# ort downloads at compile time. No runtime download of the engine.
-ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "download-binaries", "tls-rustls", "api-22"] }
 
 [target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
 keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }
@@ -177,6 +172,10 @@ keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }
 # one it cannot read without a word). Already in the tree through tauri; MIT
 # OR Apache-2.0.
 muda = { version = "0.19", default-features = false }
+# The natural voices' own code is tested on every system, Linux's CI too
+# (src/neural/, which the app builds on Windows and macOS only).
+ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "download-binaries", "tls-rustls", "api-22"] }
+unicode-normalization = "0.1"
 
 # A test that prints through PDFKit into a file: AppKit wants the main thread,
 # which only a test without the harness runs on.
@@ -195,6 +194,14 @@ panic = "unwind"
 strip = true
 
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+# Natural voices for Read aloud and Ask ZOOD's answers (src/neural/):
+# Supertonic 3, Piper voices and libtashkeel's diacritizer, all ONNX, run by
+# ONNX Runtime through ort (MIT OR Apache-2.0; ONNX Runtime itself MIT),
+# linked statically from the build ort downloads at compile time. No runtime
+# download of the engine. Supertonic reads text decomposed as it was
+# trained (unicode-normalization, MIT OR Apache-2.0, already in the tree).
+ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "download-binaries", "tls-rustls", "api-22"] }
+unicode-normalization = "0.1"
 # Files dragged off ZOOD's shelf into Explorer, Finder, an email or a chat
 # (src/shelf.rs): the system's own drag of files out of a window
 # (CrabNebula's drag, Apache-2.0 OR MIT; what tauri-plugin-drag uses).

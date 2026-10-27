@@ -91,14 +91,14 @@ impl Voice {
         phoneme_ids(&self.ids, phonemes)
     }
 
-    /// Speaks `phonemes` at `rate` (1 normal, 0.5 to 2), as 16-bit samples.
+    /// Speaks `phonemes` at `rate` (1 normal, 0.5 to 3), as 16-bit samples.
     pub fn speak(&mut self, phonemes: &[char], rate: f32) -> Result<Vec<i16>, String> {
         let ids = self.phoneme_ids(&phonemes[..phonemes.len().min(MAX_PHONEMES)]);
         if ids.len() <= 3 {
             return Ok(Vec::new());
         }
         let rate = if rate.is_finite() {
-            rate.clamp(0.5, 2.0)
+            rate.clamp(0.5, 3.0)
         } else {
             1.0
         };

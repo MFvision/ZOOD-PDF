@@ -133,12 +133,12 @@ pub fn speech_open_settings() -> Result<(), String> {
     Ok(())
 }
 
-/// The interface's speed (1 normal, 0.5 to 2) as AVSpeechUtterance's rate,
+/// The interface's speed (1 normal, 0.5 to 3) as AVSpeechUtterance's rate,
 /// whose normal is 0.5 on a scale of 0 to 1 that speeds up steeply past
-/// about 0.75: half speed is 0.35, double speed 0.75.
+/// about 0.75: half speed is 0.35, double speed 0.75, triple the fastest.
 pub fn apple_rate(rate: f32) -> f32 {
     let rate = if rate.is_finite() {
-        rate.clamp(0.5, 2.0)
+        rate.clamp(0.5, 3.0)
     } else {
         1.0
     };
@@ -372,7 +372,8 @@ mod tests {
         assert!((apple_rate(2.0) - 0.75).abs() < 1e-6);
         assert!((apple_rate(0.5) - 0.35).abs() < 1e-6);
         assert!(apple_rate(1.25) > apple_rate(1.0));
-        assert_eq!(apple_rate(9.0), apple_rate(2.0));
+        assert_eq!(apple_rate(3.0), 1.0);
+        assert_eq!(apple_rate(9.0), apple_rate(3.0));
         assert_eq!(apple_rate(f32::NAN), 0.5);
     }
 

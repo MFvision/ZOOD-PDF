@@ -29,6 +29,7 @@
 
 pub mod access;
 pub mod book;
+pub mod clean;
 pub mod controls;
 pub mod deck;
 pub mod ear;
@@ -39,6 +40,7 @@ pub mod notch;
 pub mod reach;
 pub mod tap;
 pub mod tidy;
+pub mod words;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -145,6 +147,9 @@ pub struct Settings {
     /// The edges of the screen glow while listening.
     #[serde(default = "yes")]
     pub glow: bool,
+    /// The microphone chosen in the settings (`ear::choose`); None for the system's own.
+    #[serde(default)]
+    pub microphone: Option<String>,
 }
 
 impl Default for Settings {
@@ -158,6 +163,7 @@ impl Default for Settings {
             tap_to_type: true,
             tap_speaks: true,
             glow: true,
+            microphone: None,
         }
     }
 }
@@ -208,6 +214,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) {
             saved.sees,
             Some(taps),
             Some(saved.glow),
+            saved.microphone,
         ) {
             debug_log(format!("ask: {e}"));
         }
@@ -283,6 +290,7 @@ pub struct Point {
 /// glow (left as they were when not given). Keys the system will not take
 /// are an error, and the ones before stay.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // A command's arguments are what the interface sends.
 pub fn ask_configure<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AskState>,
@@ -291,8 +299,11 @@ pub fn ask_configure<R: Runtime>(
     sees: bool,
     taps: Option<TapChoice>,
     glow: Option<bool>,
+    microphone: Option<String>,
 ) -> Result<(), String> {
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    // Read when the microphone next opens.
+    ear::choose(microphone.clone());
     let keys = shortcut
         .filter(|k| !k.trim().is_empty())
         .unwrap_or_else(|| SHORTCUT.to_string());
@@ -312,6 +323,7 @@ pub fn ask_configure<R: Runtime>(
         tap_to_type: taps.to_type,
         tap_speaks: taps.speak,
         glow: glow.unwrap_or(settings.glow),
+        microphone,
     };
     if *settings == next {
         return Ok(());
@@ -1148,7 +1160,18 @@ pub fn ask_point_last() -> Option<Point> {
 
 /* -------------------------------------------------------------- models */
 
-/// What the person said, as text: the recording read by a model that hears.
+/// The microphones on this computer, for the settings to choose from.
+#[tauri::command]
+pub async fn ask_microphones() -> Vec<ear::Microphone> {
+    tauri::async_runtime::spawn_blocking(ear::microphones)
+        .await
+        .unwrap_or_default()
+}
+
+/// What the person said, as text: the recording made ready (`clean.rs`)
+/// and read by a model that hears, told the person's own `words` first —
+/// names and terms it would not know — then tidied, and any of those words
+/// it still misheard put right (`words.rs`).
 #[tauri::command]
 pub async fn ask_transcribe<R: Runtime>(
     app: AppHandle<R>,
@@ -1156,6 +1179,7 @@ pub async fn ask_transcribe<R: Runtime>(
     state: State<'_, AskState>,
     id: String,
     model: String,
+    words: Option<Vec<String>>,
 ) -> Result<String, String> {
     if !ai::model_spec(&model)?.hears {
         return Err("E_ARGS: that model does not hear".to_string());
@@ -1166,23 +1190,46 @@ pub async fn ask_transcribe<R: Runtime>(
         .ok()
         .and_then(|m| m.sound.clone())
         .ok_or_else(|| "E_ASK: nothing was heard".to_string())?;
+    let words = words.unwrap_or_default();
+    let samples =
+        tauri::async_runtime::spawn_blocking(move || clean::for_model(&sound.samples, sound.rate))
+            .await
+            .map_err(|e| format!("E_ASK: {e}"))?;
     let request = GenerateRequest {
         id,
         model,
-        messages: vec![Message {
-            role: "user".into(),
-            content: MEDIA_MARKER.into(),
-        }],
+        messages: transcribe_messages(&words),
         grammar: None,
         max_tokens: 400,
         context_tokens: Some(4096),
         media: vec![Media::Sound {
-            rate: sound.rate,
-            samples: sound.samples,
+            rate: clean::MODEL_RATE,
+            samples,
         }],
     };
     let heard = ai::run(&app, &ai_state, request).await?;
-    Ok(clean_transcript(&heard.text))
+    Ok(words::apply_custom_words(
+        &words::tidy(&clean_transcript(&heard.text)),
+        &words,
+    ))
+}
+
+/// The hearing model's request: the person's words as its context (the
+/// system turn, as Qwen3-ASR takes hot words), then the sound.
+pub fn transcribe_messages(words: &[String]) -> Vec<Message> {
+    let context = words::context(words);
+    let mut messages = Vec::new();
+    if !context.is_empty() {
+        messages.push(Message {
+            role: "system".into(),
+            content: context.replace(MEDIA_MARKER, ""),
+        });
+    }
+    messages.push(Message {
+        role: "user".into(),
+        content: MEDIA_MARKER.into(),
+    });
+    messages
 }
 
 /// A model's request from the island, as `ai_generate` takes it, and

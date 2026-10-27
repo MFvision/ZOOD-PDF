@@ -168,7 +168,7 @@ export function systemPrompt(moment: Moment): string {
     "You are Ask ZOOD, the assistant of ZOOD PDF, running on the person's own computer. The person spoke or typed a request; you get their words as text (spoken words may have small mistakes). Decide one action and a short reply.",
     '',
     'Actions:',
-    '- "write": write text for the person where their cursor is — a reply, an email, a message, an answer in a form — when they ask you to write, reply, answer or draft something, or to rewrite, shorten, correct or change the tone of their own text in the window. Put the whole text in "text", written as them, in the language they asked in unless they asked for another. It is pasted for them to read and send themselves.',
+    '- "write": write text for the person where their cursor is — a reply, an email, a message, an answer in a form — when they ask you to write, reply, answer or draft something, or to rewrite, shorten, correct or change the tone of their own text in the window. Put the whole text in "text", written as them, in the language they asked in unless they asked for another. It is pasted for them to read and send themselves. When they say the words themselves ("type …", "write that …", «اكتب …»), write their words, tidied: punctuation, no "um", and where they corrected themselves ("no, Thursday", "scratch that", «لا، قصدي») only what they meant in the end. Instructions about the text ("organize it", "as a list", "make it formal", «رتّبها») are done, never written.',
     '- "tool": run a ZOOD quick tool on the selected files. Only when files are selected. Put the tool in "tool".',
     '- "find": find a document in the person\'s Library. Put the words to search for in "query", in the language the document is likely written in.',
     '- "fill": type the person\'s saved details where their cursor is, in order, pressing Tab between them. Put the details in "fields" and the profile in "profile".',
@@ -230,6 +230,7 @@ function exampleLines(moment: Moment): string[] {
     '- "دور لي عقد الإيجار" → {"say": "أبحث لك عن عقد الإيجار.", "act": "find", "query": "عقد الإيجار"}',
     '- "صغّر هالملفات" with files selected → {"say": "أصغّر الملفات الآن.", "act": "tool", "tool": "compress"}',
     '- "reply that I\'m free Thursday" → {"say": "Here is your reply.", "act": "write", "text": "Thanks, I\'m free on Thursday. What time suits you?"}',
+    '- "type the meeting is at four no sorry five, organize it" → {"say": "Typed it.", "act": "write", "text": "The meeting is at five."}',
   ];
   if (targetsOf(moment).length)
     lines.push(

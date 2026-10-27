@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TextLineData } from '../core/types';
-import { languageOf, pageText, sentenceBoxes, splitSentences } from './sentences';
+import { languageOf, pageText, readableLines, sentenceBoxes, splitSentences } from './sentences';
 
 const line = (text: string, y: number, direction: 'ltr' | 'rtl' = 'ltr'): TextLineData => ({ text, x: 100, y, width: 200, height: 12, direction });
 
@@ -54,5 +54,39 @@ describe('sentenceBoxes', () => {
     const arabic = sentenceBoxes(lines, third!)[0]!;
     expect(arabic.x + arabic.width).toBeCloseTo(300);
     expect(arabic.width).toBeCloseTo(200 * (10 / 15));
+  });
+});
+
+describe('readableLines', () => {
+  const line = (text: string, y: number): TextLineData => ({ text, x: 50, y, width: 400, height: 12, direction: 'ltr' });
+  const page = (number: number, body: string[]): TextLineData[] => [
+    line('ZOOD Realty — Lease agreement', 20),
+    ...body.map((text, index) => line(text, 100 + index * 20)),
+    line(`Page ${number} of 9`, 780),
+  ];
+
+  it('leaves out the running header and the page number, never the body', () => {
+    const one = page(1, ['The tenant pays rent monthly.', 'The term is one year.', 'Notice is 30 days.']);
+    const two = page(2, ['The landlord keeps the deposit.', 'Repairs are shared.', 'Pets are allowed.']);
+    expect(readableLines(two, [one]).map((l) => l.text)).toEqual([
+      'The landlord keeps the deposit.',
+      'Repairs are shared.',
+      'Pets are allowed.',
+    ]);
+  });
+
+  it('keeps a first line that only one page has: it is the page’s own title', () => {
+    const one = [line('Chapter one', 20), line('It began in Riyadh.', 100), line('It rained.', 120), line('Then it stopped.', 140), line('٣', 780)];
+    expect(readableLines(one, []).map((l) => l.text)).toEqual(['Chapter one', 'It began in Riyadh.', 'It rained.', 'Then it stopped.']);
+  });
+
+  it('knows Arabic page numbers and keeps a number in the body', () => {
+    const lines = [line('صفحة ٣ من ١٠', 20), line('المبلغ', 100), line('25', 120), line('ريال', 140), line('نهاية', 160), line('- 3 -', 780)];
+    expect(readableLines(lines).map((l) => l.text)).toEqual(['المبلغ', '25', 'ريال', 'نهاية']);
+  });
+
+  it('keeps everything when everything would go', () => {
+    const lines = [line('12', 20)];
+    expect(readableLines(lines)).toEqual(lines);
   });
 });

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { isApplePlatform } from '../shell/menuModel';
 import { useI18n } from '../i18n/useT';
-import { refreshVoices, setRate, setVoice, speechSupported, useReadAloud } from './readAloud';
+import { refreshVoices, sayExample, setRate, setVoice, speechSupported, useReadAloud } from './readAloud';
 import { openVoiceSettings } from './engines';
 import { NaturalVoices } from './NaturalVoices';
 import { onlyBasicVoice, voiceLabel, voicesFor } from './voices';
@@ -9,9 +9,10 @@ import { onlyBasicVoice, voiceLabel, voicesFor } from './voices';
 const RATES = [0.75, 1, 1.25, 1.5, 2];
 
 /**
- * Read aloud in the settings: the voice for Arabic and for English from the
- * system's own, and the speed. Says where more voices come from, and that
- * Siri's are not offered to apps.
+ * Read aloud in the settings: the voice for Arabic and for English — the
+ * app's own natural voices once downloaded, and the system's — each with a
+ * button to hear it, and the speed. Says where more voices come from, and
+ * that Siri's are not offered to apps.
  */
 export function VoiceSettings() {
   const { t } = useI18n();
@@ -30,6 +31,7 @@ export function VoiceSettings() {
   const quality = { premium: t('readAloud.premium'), enhanced: t('readAloud.enhanced'), natural: t('readAloud.natural') };
   const basic = reading.engine === 'apple' && (onlyBasicVoice(reading.voices, 'ar') || onlyBasicVoice(reading.voices, 'en'));
   const pick = (lang: 'ar' | 'en') => (
+    <div className="voice-pick">
     <label className="field">
       <span>{t(lang === 'ar' ? 'readAloud.voiceAr' : 'readAloud.voiceEn')}</span>
       <select className="select" value={(lang === 'ar' ? reading.voiceAr : reading.voiceEn) ?? ''} onChange={(event) => setVoice(lang, event.target.value || null)}>
@@ -41,6 +43,10 @@ export function VoiceSettings() {
         ))}
       </select>
     </label>
+      <button type="button" className="prefs-button" onClick={() => void sayExample(lang)}>
+        {t('readAloud.listen')}
+      </button>
+    </div>
   );
   return (
     <section className="settings-section" aria-labelledby="settings-speech">
@@ -57,12 +63,12 @@ export function VoiceSettings() {
           ))}
         </select>
       </label>
-      {reading.engine === 'neural' ? <NaturalVoices /> : null}
+      {reading.engine === 'neural' || reading.engine === 'apple' ? <NaturalVoices /> : null}
       {basic ? (
         <>
           <p className="tool-panel-note">{t('readAloud.betterVoiceHint')}</p>
           <button type="button" className="prefs-button" onClick={openVoiceSettings}>
-            {t('readAloud.betterVoice')}
+            {t('readAloud.appleVoices')}
           </button>
         </>
       ) : null}
