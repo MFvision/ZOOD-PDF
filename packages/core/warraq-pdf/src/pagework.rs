@@ -46,6 +46,24 @@ impl PdfDocument {
         Ok(())
     }
 
+    /// The page's whole content, replaced by `content` in a stream of its own.
+    ///
+    /// Not lopdf's `change_page_content`: when `/Contents` is a reference to
+    /// an array of streams (as a ministry's certificates are written), it
+    /// changes nothing and still says it did, so an edit embedded its font,
+    /// offered Undo and left the page as it was. A new stream also keeps a
+    /// stream two pages share from changing on the other page.
+    pub(crate) fn replace_page_content(
+        &mut self,
+        page_id: ObjectId,
+        content: Vec<u8>,
+    ) -> Result<()> {
+        let mut stream = Stream::new(Dictionary::new(), content);
+        let _ = stream.compress();
+        let id = self.doc.add_object(stream);
+        self.set_contents(page_id, Object::Reference(id))
+    }
+
     /// A stream's decoded bytes, bounded.
     pub(crate) fn stream_bytes(&self, id: ObjectId) -> Result<Vec<u8>> {
         let stream = self

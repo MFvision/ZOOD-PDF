@@ -212,9 +212,7 @@ impl PdfDocument {
                     .encode()
                     .map_err(|e| Error::Edit(e.to_string()))?,
             );
-            self.doc
-                .change_page_content(page_id, content)
-                .map_err(|e| Error::Edit(e.to_string()))?;
+            self.replace_page_content(page_id, content)?;
             mark_page_objects(self, page_id);
             report.pages += 1;
         }

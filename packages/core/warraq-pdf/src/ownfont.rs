@@ -642,9 +642,7 @@ pub fn replace_paragraph_own_font(
             .encode()
             .map_err(|e| Error::Edit(e.to_string()))?,
     );
-    pdf.doc
-        .change_page_content(page_id, content)
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    pdf.replace_page_content(page_id, content)?;
     mark_page_objects(pdf, page_id);
     Ok(Some(Replacement {
         lines_drawn: lines.len(),
