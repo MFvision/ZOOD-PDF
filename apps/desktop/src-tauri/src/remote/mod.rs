@@ -176,6 +176,9 @@ pub struct Shared<H: Host> {
     streams: Mutex<stream::Streams>,
     /// Where the remote is, said on the network for the iPhone app (`announce.rs`).
     announced: Mutex<Option<announce::Announcer>>,
+    /// Files let go on "To phone" before any phone was there: the first
+    /// phone that joins gets them (`give_waiting`).
+    waiting: Mutex<Vec<std::path::PathBuf>>,
 }
 
 impl<H: Host> Shared<H> {
@@ -311,6 +314,9 @@ pub struct Status {
     pub clipboard_available: bool,
     /// The remote comes on by itself at launch for phones paired before.
     pub keep_ready: bool,
+    /// Files waiting for a phone to join (let go on "To phone" with none
+    /// there): the panel opens with its QR code while there are some.
+    pub waiting: usize,
 }
 
 fn phones_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
@@ -396,6 +402,7 @@ fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<
             clipboard: clipboard_wanted(app),
             clipboard_available: CLIPBOARD_AVAILABLE,
             keep_ready: ready_wanted(app),
+            waiting: 0,
         };
     };
     shared.status()
@@ -458,6 +465,7 @@ impl<H: Host> Shared<H> {
             clipboard: shared.clipboard_on(),
             clipboard_available: CLIPBOARD_AVAILABLE,
             keep_ready: shared.keep_ready.load(Ordering::Relaxed),
+            waiting: shared.waiting.lock().map(|w| w.len()).unwrap_or(0),
         }
     }
 }
@@ -509,6 +517,7 @@ async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
         keep_ready: AtomicBool::new(ready_wanted(app)),
         streams: Mutex::new(Default::default()),
         announced: Mutex::new(None),
+        waiting: Mutex::new(Vec::new()),
     });
     if code {
         shared.new_code();
@@ -914,6 +923,97 @@ pub fn give_paths<R: Runtime>(
     sent
 }
 
+/// The most files kept waiting for a phone.
+const MAX_WAITING: usize = 20;
+
+/// Files let go on "To phone" (the drop panel, the ring): to the connected
+/// phones now, or, with none connected, kept until one joins while the
+/// remote's panel shows its QR code (the remote comes on for it).
+pub fn give_or_wait<R: Runtime>(
+    app: &AppHandle<R>,
+    files: Vec<std::path::PathBuf>,
+    from: Option<(f64, f64)>,
+) {
+    if files.is_empty() {
+        return;
+    }
+    if has_phone(app) {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let sent = give_paths(&app, &files, from);
+            core_bridge_log(format!(
+                "remote: {sent} of {} files to the phone",
+                files.len()
+            ));
+        });
+        return;
+    }
+    // The remote runs on the real app only (its state is kept for `Wry`).
+    let Some(app) = (app as &dyn std::any::Any).downcast_ref::<AppHandle<Wry>>() else {
+        return;
+    };
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = start(&app, true).await {
+            core_bridge_log(format!("remote: could not start for waiting files: {e}"));
+            return;
+        }
+        let Some(shared) = running(&app.state::<RemoteState>()) else {
+            return;
+        };
+        if let Ok(mut waiting) = shared.waiting.lock() {
+            for file in files {
+                if waiting.len() < MAX_WAITING && !waiting.contains(&file) {
+                    waiting.push(file);
+                }
+            }
+        }
+        // A phone may have joined while the remote came on.
+        if shared.peers.lock().map(|p| !p.is_empty()).unwrap_or(false) {
+            give_waiting(&shared);
+        }
+        crate::quick::show_editor(&app);
+        shared.changed();
+    });
+}
+
+/// The files waiting for a phone go to the phone that just joined.
+fn give_waiting<H: Host>(shared: &Arc<Shared<H>>) {
+    let files = shared
+        .waiting
+        .lock()
+        .map(|mut w| std::mem::take(&mut *w))
+        .unwrap_or_default();
+    if files.is_empty() {
+        return;
+    }
+    let shared = shared.clone();
+    std::thread::spawn(move || {
+        let sent = files
+            .iter()
+            .filter(|path| {
+                let name = transfer::safe_name(
+                    &path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_default(),
+                );
+                give_to_all(
+                    &shared,
+                    stream::Source::Path((*path).clone()),
+                    &name,
+                    mime_of(&name),
+                )
+            })
+            .count();
+        core_bridge_log(format!(
+            "remote: {sent} of {} waiting files to the phone",
+            files.len()
+        ));
+        shared.changed();
+    });
+}
+
 /// Forgets a remembered phone; if it is connected, it is let go.
 #[tauri::command]
 pub fn remote_forget(app: AppHandle<Wry>, state: State<'_, RemoteState>, device: String) -> Status {
@@ -1060,6 +1160,7 @@ mod tests {
             keep_ready: AtomicBool::new(false),
             streams: Mutex::new(Default::default()),
             announced: Mutex::new(None),
+            waiting: Mutex::new(Vec::new()),
         });
         shared.new_code();
         let url = shared.status().url.unwrap();
@@ -1353,6 +1454,36 @@ mod tests {
         );
         assert!(!landing.join(".zood-big1.part").exists());
         let _ = std::fs::remove_dir_all(&landing);
+    }
+
+    /// A file let go on "To phone" before any phone was there goes to the
+    /// first phone that joins, and the panel stops saying it waits.
+    #[test]
+    fn a_file_waiting_for_a_phone_goes_to_the_first_that_joins() {
+        let (shared, url, _told, _stop) = serve(false);
+        let file = std::env::temp_dir().join(format!("zood-waiting-{}.txt", std::process::id()));
+        std::fs::write(&file, b"for the phone").unwrap();
+        shared.waiting.lock().unwrap().push(file.clone());
+        assert_eq!(shared.status().waiting, 1);
+        let start = tauri::async_runtime::block_on(async {
+            let (mut socket, session, _first) = pair(&url).await;
+            loop {
+                if let tokio_tungstenite::tungstenite::Message::Binary(sealed) =
+                    next(&mut socket).await
+                {
+                    let m: Value =
+                        serde_json::from_slice(&seal::open(&session, &sealed).unwrap()).unwrap();
+                    if m["t"] == "giveStart" {
+                        return m;
+                    }
+                }
+            }
+        });
+        let name = file.file_name().unwrap().to_string_lossy().into_owned();
+        assert_eq!(start["name"], name.as_str());
+        assert_eq!(start["size"], 13);
+        assert_eq!(shared.status().waiting, 0);
+        let _ = std::fs::remove_file(&file);
     }
 
     /// The phone page end to end: the page this build serves (the web app's

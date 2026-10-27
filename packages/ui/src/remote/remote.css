@@ -305,3 +305,16 @@
   display: grid;
   gap: 6px;
 }
+
+/* Files let go on "To phone" before a phone was there. */
+.remote-waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--label);
+  font-size: var(--text-callout);
+}

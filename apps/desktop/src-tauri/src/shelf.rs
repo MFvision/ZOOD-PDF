@@ -463,20 +463,15 @@ pub fn shelf_has_phone<R: Runtime>(app: AppHandle<R>) -> bool {
     crate::remote::has_phone(&app)
 }
 
-/// Sends files of the shelf to the connected phone, off the main thread.
+/// Sends files of the shelf to the connected phone, off the main thread (or
+/// keeps them for the first phone that joins).
 #[tauri::command]
 pub fn shelf_phone<R: Runtime>(app: AppHandle<R>, paths: Vec<String>) {
     let files = on_shelf(&paths);
     if files.is_empty() {
         return;
     }
-    std::thread::spawn(move || {
-        let sent = crate::remote::give_paths(&app, &files, None);
-        log(&format!(
-            "{sent} of {} shelf files to the phone",
-            files.len()
-        ));
-    });
+    crate::remote::give_or_wait(&app, files, None);
 }
 
 #[cfg(test)]

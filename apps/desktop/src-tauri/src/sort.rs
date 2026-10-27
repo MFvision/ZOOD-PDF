@@ -655,16 +655,8 @@ pub fn zone_act<R: Runtime>(app: AppHandle<R>, id: u64, act: String) -> bool {
         "open" => crate::open_in_editor_at(&app, files.first().cloned(), None),
         "organize" => open(&app, files),
         "tools" => crate::quick::request(&app, crate::quick::QuickRequest { tool: None, files }),
-        "phone" => {
-            let app = app.clone();
-            std::thread::spawn(move || {
-                let sent = crate::remote::give_paths(&app, &files, None);
-                log(&format!(
-                    "{sent} of {} dropped files to the phone",
-                    files.len()
-                ));
-            });
-        }
+        // To the phone now, or once one joins (the remote's QR code shows).
+        "phone" => crate::remote::give_or_wait(&app, files, None),
         other => {
             let Some(tool) = other
                 .strip_prefix("quick:")

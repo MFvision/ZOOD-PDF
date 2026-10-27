@@ -21,6 +21,10 @@ export interface RemoteStatus {
   /** The clipboard is shared with the phones (`remote/clip.rs`). */
   clipboard: boolean;
   clipboardAvailable: boolean;
+  /** The remote comes on by itself at launch for phones paired before. */
+  keepReady: boolean;
+  /** Files let go on "To phone" with no phone there, waiting for one to join. */
+  waiting: number;
 }
 
 export const STATUS_EVENT = 'warraq://remote-status';
@@ -35,6 +39,7 @@ export const stopRemote = () => invokeHost('remote_stop') as Promise<RemoteStatu
 export const remoteStatus = () => invokeHost('remote_status') as Promise<RemoteStatus>;
 export const setPcControl = (on: boolean) => invokeHost('remote_pc_control', { on }) as Promise<RemoteStatus>;
 export const setClipboardSharing = (on: boolean) => invokeHost('remote_clipboard', { on }) as Promise<RemoteStatus>;
+export const setKeepReady = (on: boolean) => invokeHost('remote_keep_ready', { on }) as Promise<RemoteStatus>;
 /** A file for every connected phone: it shows under "From the computer". */
 export const giveToPhone = (name: string, mime: string, data: string) => invokeHost('remote_give', { name, mime, data }) as Promise<boolean>;
 export const forgetPhone = (device: string) => invokeHost('remote_forget', { device }) as Promise<RemoteStatus>;

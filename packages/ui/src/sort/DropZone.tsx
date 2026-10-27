@@ -312,7 +312,8 @@ function Zone() {
 
   const targets = targetsOf(items, picked);
   const names = targets.map((item) => item.name);
-  const actions = actionsFor(names, phone);
+  // To phone is always there: with no phone connected, the remote's QR code shows and the files wait for it.
+  const actions = actionsFor(names, true);
   const fits = convertibleTo(names);
   const busy = work !== null && work.end === null;
 
@@ -388,7 +389,7 @@ function Zone() {
         return void shelfOpen(paths[0]!);
       case 'phone':
         void shelfPhone(paths);
-        return setNote('shelf.sentPhone');
+        return setNote(phone ? 'shelf.sentPhone' : 'shelf.phoneWaiting');
     }
   };
 
@@ -651,7 +652,7 @@ function Zone() {
     const available = new Set<DropItem>([
       ...tiles.map((tile) => `tile:${tile.id}` as DropItem),
       ...formats.map((chip) => `format:${chip.id}` as DropItem),
-      ...moreFor(hand.names, phone).map((id) => `more:${id}` as DropItem),
+      ...moreFor(hand.names, true).map((id) => `more:${id}` as DropItem),
     ]);
     const layout = { big: settings.dropBig, small: settings.dropSmall, pills: settings.dropPills, auto: settings.dropAuto };
     return (

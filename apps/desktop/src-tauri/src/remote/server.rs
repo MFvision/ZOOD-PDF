@@ -503,6 +503,7 @@ async fn connect<H: Host>(
         MESSAGE_EVENT,
         json!({ "peer": peer, "message": { "t": "joined" } }),
     );
+    super::give_waiting(&shared);
 
     let mut window = Instant::now();
     let mut count = 0u32;
