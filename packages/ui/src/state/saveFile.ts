@@ -98,6 +98,13 @@ export function downloadFile(bytes: Uint8Array<ArrayBuffer>, name: string, type:
   }
 }
 
+/** `name` in the folder of the file at `path` (a native path), or `name` alone when there is none. */
+export function besideFile(path: string | null | undefined, name: string): string {
+  if (!path) return name;
+  const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+  return cut > 0 ? `${path.slice(0, cut + 1)}${name}` : name;
+}
+
 /** `downloadFile` for a PDF, named `<original-name>.pdf`. */
 export function downloadPdf(bytes: Uint8Array<ArrayBuffer>, name: string): void {
   downloadFile(bytes, pdfFileName(name), 'application/pdf');

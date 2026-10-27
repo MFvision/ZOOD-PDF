@@ -1894,7 +1894,7 @@
   "folders.signInHint": "to see your files in {drive}",
   "home.search": "Search recent files and the Library…",
   "home.searchLabel": "Search",
-  "home.searchHint": "Recent files by name, and the text of every document in the Library. ⌘K",
+  "home.searchHint": "Recent files by name, and the text of every document in the Library. {keys}",
   "home.searchResults": "Search results",
   "home.searchRecents": "Recent files",
   "home.searchLibrary": "In the Library",

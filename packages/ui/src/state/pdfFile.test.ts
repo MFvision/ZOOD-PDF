@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPdf, looksLikePdf } from './pdfFile';
+import { isPdf, looksLikePdf, typeForName } from './pdfFile';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 
@@ -46,5 +46,14 @@ describe('recognising a PDF by what it is, not what it is called', () => {
       type: 'image/png',
     });
     expect(await isPdf(file)).toBe(false);
+  });
+});
+
+describe('a file read from disk', () => {
+  it('is typed a PDF only when named one, so a Word file goes to Create', async () => {
+    expect(typeForName('report.PDF')).toBe('application/pdf');
+    expect(typeForName('letter-ar.docx')).toBe('');
+    const docx = new File([bytes('PK\u0003\u0004 not a pdf')], 'letter-ar.docx', { type: typeForName('letter-ar.docx') });
+    expect(await isPdf(docx)).toBe(false);
   });
 });

@@ -27,6 +27,16 @@ export function namedLikePdf(file: File): boolean {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 }
 
+/**
+ * The type a file read from disk is given, by its name: a PDF only when named
+ * one. A Word file or a picture opened with ZOOD (Explorer's Open with) was
+ * typed a PDF, taken for one and refused as "Could not open the file",
+ * instead of going to Create PDF.
+ */
+export function typeForName(name: string): string {
+  return /\.pdf$/i.test(name) ? 'application/pdf' : '';
+}
+
 export async function isPdf(file: File): Promise<boolean> {
   const head = new Uint8Array(await file.slice(0, PDF_SNIFF_BYTES).arrayBuffer());
   return looksLikePdf(head) || namedLikePdf(file);

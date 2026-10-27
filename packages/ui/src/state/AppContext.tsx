@@ -54,8 +54,8 @@ import { fileKey, keepVersion, noteSaved } from '../history/versions';
 import { drawPages, mountSheet } from '../print/printPages';
 import { keepFirstPage } from '../home/recentPicture';
 import { addRecent, clearRecent as clearStoredRecent, forgetRecentThumbnail, readRecent, removeRecent as removeStoredRecent } from './recent';
-import { isPdf, namedLikePdf } from './pdfFile';
-import { combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
+import { isPdf, namedLikePdf, typeForName } from './pdfFile';
+import { besideFile, combinedFileName, downloadPdf, extractedFileName, pdfFileName, saveBytes, splitArchiveName } from './saveFile';
 import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
 import { keepPolicy, mentionsSignature } from '../signatures/marker';
@@ -378,7 +378,7 @@ const ServicesContext = createContext<AppServices | null>(null);
 
 /** A file the desktop host read for us, in the shape the open path expects. */
 function toFile(picked: PickedFile): File {
-  return keepNativePath(new File([picked.bytes], picked.name, { type: 'application/pdf' }), picked.path);
+  return keepNativePath(new File([picked.bytes], picked.name, { type: typeForName(picked.name) }), picked.path);
 }
 
 /** A dropped or picked file whose name or type says PDF; see `pdfFile.ts`. */
@@ -2027,8 +2027,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         if (isTauriHost()) {
-          // Cancelling the panel is not a failure, and not a save either.
-          if (!(await savePdfFile(bytes, pdfFileName(name)))) return;
+          // The panel opens beside the file, not in the last folder used
+          // (Downloads, on the owner's PC). Cancelling it is not a failure.
+          const from = tabsRef.current.find((tab) => tab.key === activeTabRef.current)?.path;
+          if (!(await savePdfFile(bytes, besideFile(from, pdfFileName(name))))) return;
         } else {
           downloadPdf(bytes, name);
         }
