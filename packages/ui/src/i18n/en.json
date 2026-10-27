@@ -3030,6 +3030,8 @@
   "ask.send": "Ask",
   "ask.putAtCursor": "Put it at my cursor",
   "ask.copy": "Copy",
+  "ask.read": "Read",
+  "ask.stopReading": "Stop",
   "ask.copied": "Copied",
   "ask.again": "Write it again",
   "ask.settings.onHintTaps": "Your key is {tap}, on the right-hand side of the keyboard.",

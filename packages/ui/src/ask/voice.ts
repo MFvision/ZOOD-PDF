@@ -66,7 +66,7 @@ export async function talk(text: string): Promise<void> {
   if (mine !== turn || (!voice && engine.kind !== 'apple')) return;
   const rate =
     typeof chosen.rate === 'number' && Number.isFinite(chosen.rate)
-      ? Math.min(2, Math.max(0.5, chosen.rate))
+      ? Math.min(3, Math.max(0.5, chosen.rate))
       : 1;
   const tag = lang === 'ar' ? 'ar-SA' : 'en-US';
   // A natural voice is made a sentence at a time; the system's say it whole.

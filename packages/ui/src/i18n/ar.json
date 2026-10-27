@@ -3030,6 +3030,8 @@
   "ask.send": "اسأل",
   "ask.putAtCursor": "ضعه مكان المؤشر",
   "ask.copy": "نسخ",
+  "ask.read": "اقرأ",
+  "ask.stopReading": "إيقاف",
   "ask.copied": "نُسخ",
   "ask.again": "اكتبه من جديد",
   "ask.settings.onHintTaps": "مفتاحك هو {tap}، في الجهة اليمنى من لوحة المفاتيح.",

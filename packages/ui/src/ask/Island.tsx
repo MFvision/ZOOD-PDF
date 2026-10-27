@@ -18,6 +18,8 @@ import {
   SkipForward,
   Sparkles,
   Square,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react';
 import '../styles/tokens.css';
@@ -297,6 +299,8 @@ function Island() {
   const leaveTimer = useRef(0);
   const [typed, setTyped] = useState('');
   const [copied, setCopied] = useState(false);
+  /** An answer is being read out from its Read button. */
+  const [readingOut, setReadingOut] = useState(false);
   const card = useRef<HTMLDivElement | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
   const request = useRef<string | null>(null);
@@ -1348,6 +1352,7 @@ function Island() {
       request.current = null;
       windowText.current = null;
       setCopied(false);
+      setReadingOut(false);
     };
     const stops = [
       onHostEvent<{ screen: boolean; tapped?: boolean }>('ask://listen', (payload) => {
@@ -1507,6 +1512,29 @@ function Island() {
   const copy = (text: string) => {
     void invokeHost('ask_copy', { text }).then(() => setCopied(true), fail);
   };
+
+  /** Reads an answer out, whatever the talk-back setting; pressed again, stops. */
+  const readOut = (text: string) => {
+    if (readingOut) {
+      stopSpeaking();
+      setReadingOut(false);
+      return;
+    }
+    setReadingOut(true);
+    void talk(text).finally(() => setReadingOut(false));
+  };
+
+  /** Copy and Read, under every answer that has words to keep or hear. */
+  const answerButtons = (text: string) => (
+    <>
+      <button type="button" className="ask-cancel" onClick={() => copy(text)}>
+        {copied ? <Check /> : <Copy />} {t(copied ? 'ask.copied' : 'ask.copy')}
+      </button>
+      <button type="button" className="ask-cancel" aria-pressed={readingOut} onClick={() => readOut(text)}>
+        {readingOut ? <VolumeX /> : <Volume2 />} {t(readingOut ? 'ask.stopReading' : 'ask.read')}
+      </button>
+    </>
+  );
 
   const submit = () => {
     const words = typed.trim();
@@ -1786,11 +1814,12 @@ function Island() {
             >
               <ClipboardPaste /> {t('ask.putAtCursor')}
             </button>
-            <button type="button" className="ask-cancel" onClick={() => copy(phase.decision.text)}>
-              {copied ? <Check /> : <Copy />} {t(copied ? 'ask.copied' : 'ask.copy')}
-            </button>
+            {answerButtons(phase.decision.text)}
           </div>
         </div>
+      )}
+      {phase.kind === 'said' && !phase.decision.text && phase.decision.act === 'answer' && phase.decision.say && (
+        <div className="ask-actions">{answerButtons(phase.decision.say)}</div>
       )}
       {phase.kind === 'placed' && (
         <div className="ask-plan">
@@ -1835,9 +1864,7 @@ function Island() {
             >
               <RotateCcw /> {t('ask.again')}
             </button>
-            <button type="button" className="ask-cancel" onClick={() => copy(phase.text)}>
-              {copied ? <Check /> : <Copy />} {t(copied ? 'ask.copied' : 'ask.copy')}
-            </button>
+            {answerButtons(phase.text)}
           </div>
         </div>
       )}
