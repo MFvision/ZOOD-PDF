@@ -5,15 +5,18 @@ import {
   chosenBrain,
   DEFAULT_SHORTCUT,
   defaultBrainFor,
+  earFor,
   earModels,
   missingAccess,
   oneTapDoes,
+  parseWords,
   readAskPreferences,
   tapKeyLabel,
   writeAskPreferences,
 } from './settings';
+import type { AskPreferences } from './settings';
 
-const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true, talkBack: 'spoken', doForMe: true } as const;
+const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true, talkBack: 'spoken', doForMe: true, words: [] as string[], microphone: null as string | null } as const;
 
 /** A `localStorage` for the node test environment. */
 beforeEach(() => {
@@ -43,7 +46,7 @@ describe('Ask ZOOD settings', () => {
   });
 
   it('keeps a choice, and forgets a model the catalogue no longer has', () => {
-    const mine = {
+    const mine: AskPreferences = {
       enabled: false,
       brain: 'qwen2.5-0.5b',
       screen: false,
@@ -54,7 +57,9 @@ describe('Ask ZOOD settings', () => {
       glow: false,
       talkBack: 'never',
       doForMe: false,
-    } as const;
+      words: ['Hostinger', 'الغماس'],
+      microphone: 'wasapi:{0.0.1.00000000}.{abc}',
+    };
     writeAskPreferences(mine);
     expect(readAskPreferences()).toEqual(mine);
     writeAskPreferences({
@@ -88,6 +93,23 @@ describe('Ask ZOOD settings', () => {
     const ears = new Set(earModels().map((model) => model.id));
     expect(brainChoices().some((model) => ears.has(model.id))).toBe(false);
     expect(brainChoices().map((model) => model.id)).toContain('qwen2.5-1.5b');
+  });
+
+  it('hears with the larger ear where the memory allows, the small one otherwise', () => {
+    expect(earFor(16)?.id).toBe('qwen3-asr-1.7b');
+    expect(earFor(8)?.id).toBe('qwen3-asr-1.7b');
+    expect(earFor(4)?.id).toBe('qwen3-asr-0.6b');
+    expect(earFor(null)?.id).toBe('qwen3-asr-0.6b');
+  });
+
+  it('reads the person\'s words one a line, each once, bounded', () => {
+    expect(parseWords(' Hostinger \nالغماس، ZOOD,\n\nhostinger')).toEqual(['Hostinger', 'الغماس', 'ZOOD']);
+    expect(parseWords('x'.repeat(61))).toEqual([]);
+    expect(parseWords(Array.from({ length: 300 }, (_, i) => `w${i}`).join('\n'))).toHaveLength(200);
+    localStorage.setItem('warraq.ask', JSON.stringify({ words: ['ZOOD', 7, ''] }));
+    expect(readAskPreferences().words).toEqual(['ZOOD']);
+    localStorage.setItem('warraq.ask', JSON.stringify({ words: 'ZOOD' }));
+    expect(readAskPreferences().words).toEqual([]);
   });
 
   it('turns one tap that only typed, or did nothing, into the new choice', () => {

@@ -7298,6 +7298,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "tokio-tungstenite",
+ "unicode-normalization",
  "ureq",
  "warraq-core",
  "warraq-render",

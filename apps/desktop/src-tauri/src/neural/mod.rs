@@ -1,25 +1,36 @@
-//! Natural voices for reading aloud on Windows, run on the device.
+//! Natural voices for reading aloud and for Ask ZOOD's answers, run on the
+//! device, on Windows and on a Mac.
 //!
-//! Windows' own offline voices (Hamed, Naayf) sound mechanical, and a
-//! webview offers nothing better. Here the app downloads a Piper voice — a
-//! small neural model, ONNX — once, on the person's click, and speaks with
-//! it through ONNX Runtime (the `ort` crate): about twenty times faster than
-//! real time on an ordinary PC. Arabic is written without its vowels, so a
-//! second small model (libtashkeel's, compiled in) puts them back first, and
-//! the app's own rules (`arabic.rs`) turn the vowelled text into the sounds
-//! the voice was trained on — in place of espeak-ng, which is GPL.
+//! Windows' own offline voices (Hamed, Naayf, David) sound mechanical, a
+//! webview offers nothing better, and a Mac without its Premium voices
+//! downloaded reads in a flat compact one. Here the app downloads a pack of
+//! neural voices once, on the person's click, and speaks with them through
+//! ONNX Runtime (the `ort` crate):
+//!
+//! - Supertonic 3 (`supertonic.rs`): one model, ten voices, each reading
+//!   Arabic and English straight from the letters, about four times faster
+//!   than real time on four ordinary cores. The one offered first.
+//! - Kareem, a Piper voice (`piper.rs`) for Arabic: Arabic is written
+//!   without its vowels, so a small model (libtashkeel's, compiled in) puts
+//!   them back first, and the app's own rules (`arabic.rs`) turn the
+//!   vowelled text into the sounds the voice was trained on — in place of
+//!   espeak-ng, which is GPL.
 //!
 //! Nothing here reaches the network except `speech_neural_download`, which
-//! fetches the two files the catalogue (`voices.json`) names from Hugging
-//! Face, through the same checked download as the on-device AI model
-//! (`ai::open_download`), and keeps them only once their size and SHA-256
-//! match. The interface reads with these voices when `speech_engine` says
-//! `neural` (`packages/ui/src/speech/engines.ts`).
+//! fetches the files the catalogue (`voices.json`) names from Hugging Face,
+//! through the same checked download as the on-device AI model
+//! (`ai::open_download`), and keeps each only once its size and SHA-256
+//! match. The interface reads with these voices when the host lists them
+//! (`packages/ui/src/speech/engines.ts`).
 
 pub mod arabic;
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 pub mod piper;
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
+pub mod stretch;
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
+pub mod supertonic;
+#[cfg(any(target_os = "windows", target_os = "macos", test))]
 pub mod tashkeel;
 
 use std::collections::HashMap;
@@ -35,7 +46,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use crate::core_bridge::debug_log;
 
 /// Whether this build can speak with the natural voices.
-pub const AVAILABLE: bool = cfg!(target_os = "windows");
+pub const AVAILABLE: bool = cfg!(any(target_os = "windows", target_os = "macos"));
 
 const VOICES_JSON: &str = include_str!("voices.json");
 
@@ -47,31 +58,107 @@ pub struct VoiceFile {
     pub sha256: String,
 }
 
+#[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Engine {
+    Piper,
+    Supertonic,
+}
+
+/// One voice of a pack, as the catalogue writes it.
 #[derive(Deserialize, Clone, Debug)]
-pub struct VoiceSpec {
+pub struct PackVoice {
+    pub id: String,
+    pub name: String,
+    /// Supertonic: the voice's style file, one of the pack's files.
+    #[serde(default)]
+    pub style: Option<String>,
+    pub langs: Vec<String>,
+}
+
+/// What one download brings: files, and the voices they speak.
+#[derive(Deserialize, Clone, Debug)]
+pub struct PackSpec {
+    pub id: String,
+    pub name: String,
+    pub engine: Engine,
+    /// The pack's own folder under the voices folder; none keeps its files
+    /// beside the others' (Kareem, as earlier versions kept it).
+    #[serde(default)]
+    pub folder: Option<String>,
+    pub files: Vec<VoiceFile>,
+    pub voices: Vec<PackVoice>,
+}
+
+impl PackSpec {
+    pub fn bytes(&self) -> u64 {
+        self.files.iter().map(|f| f.bytes).sum()
+    }
+
+    #[cfg_attr(not(any(target_os = "windows", target_os = "macos")), allow(dead_code))]
+    fn file(&self, name: &str) -> Option<&VoiceFile> {
+        self.files.iter().find(|f| f.file == name)
+    }
+}
+
+/// A voice in one language, as the interface lists it: a Supertonic voice
+/// once for Arabic and once for English (`st-f1-ar`, `st-f1-en`); a voice
+/// of one language under the pack's own id for it (`ar-kareem`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Speaker {
     pub id: String,
     pub name: String,
     pub lang: String,
-    pub model: VoiceFile,
-    pub config: VoiceFile,
+    pub pack: String,
+    pub style: Option<String>,
 }
 
 #[derive(Deserialize)]
 struct Catalogue {
-    voices: Vec<VoiceSpec>,
+    packs: Vec<PackSpec>,
 }
 
-fn catalogue() -> &'static [VoiceSpec] {
+fn catalogue() -> &'static [PackSpec] {
     static LIST: OnceLock<Catalogue> = OnceLock::new();
     &LIST
         .get_or_init(|| serde_json::from_str(VOICES_JSON).expect("voices.json is well formed"))
-        .voices
+        .packs
 }
 
-pub fn voice_spec(id: &str) -> Result<&'static VoiceSpec, String> {
+pub fn pack_spec(id: &str) -> Result<&'static PackSpec, String> {
     catalogue()
         .iter()
-        .find(|voice| voice.id == id)
+        .find(|pack| pack.id == id)
+        .ok_or_else(|| format!("E_ARGS: there is no voice pack called {id:?}"))
+}
+
+/// Every voice in every language, in the catalogue's order.
+pub fn speakers() -> Vec<Speaker> {
+    let mut out = Vec::new();
+    for pack in catalogue() {
+        for voice in &pack.voices {
+            for lang in &voice.langs {
+                out.push(Speaker {
+                    id: if voice.langs.len() == 1 {
+                        voice.id.clone()
+                    } else {
+                        format!("{}-{lang}", voice.id)
+                    },
+                    name: voice.name.clone(),
+                    lang: lang.clone(),
+                    pack: pack.id.clone(),
+                    style: voice.style.clone(),
+                });
+            }
+        }
+    }
+    out
+}
+
+pub fn speaker(id: &str) -> Result<Speaker, String> {
+    speakers()
+        .into_iter()
+        .find(|s| s.id == id)
         .ok_or_else(|| format!("E_ARGS: there is no natural voice called {id:?}"))
 }
 
@@ -82,6 +169,16 @@ fn voices_dir<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|e| format!("E_IO: no data directory for this app: {e}"))?;
     let dir = base.join("voices");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("E_IO: {}: {e}", dir.display()))?;
+    Ok(dir)
+}
+
+/// The folder a pack's files are kept in.
+fn pack_dir(voices: &Path, pack: &PackSpec) -> Result<PathBuf, String> {
+    let Some(folder) = &pack.folder else {
+        return Ok(voices.to_path_buf());
+    };
+    let dir = voices.join(folder);
     std::fs::create_dir_all(&dir).map_err(|e| format!("E_IO: {}: {e}", dir.display()))?;
     Ok(dir)
 }
@@ -100,9 +197,10 @@ fn is_verified(path: &Path, spec: &VoiceFile) -> bool {
             .is_ok_and(|kept| kept.trim() == spec.sha256)
 }
 
-fn is_ready(dir: &Path, voice: &VoiceSpec) -> bool {
-    is_verified(&dir.join(&voice.model.file), &voice.model)
-        && is_verified(&dir.join(&voice.config.file), &voice.config)
+fn is_ready(dir: &Path, pack: &PackSpec) -> bool {
+    pack.files
+        .iter()
+        .all(|file| is_verified(&dir.join(&file.file), file))
 }
 
 /* ---------------------------------------------------------------- state */
@@ -115,59 +213,78 @@ struct Downloading {
 #[derive(Default)]
 pub struct NeuralState {
     downloads: Mutex<HashMap<String, Downloading>>,
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     engine: Mutex<Option<engine::Engine>>,
 }
 
-/// One natural voice, as the interface lists it.
+/// One voice of a pack in one language, as the interface lists it.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NeuralVoice {
     pub id: String,
     pub name: String,
     pub lang: String,
-    /// Its download size, both files.
+}
+
+/// One pack, as the interface lists it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NeuralPack {
+    pub id: String,
+    pub name: String,
+    /// Its download size, every file.
     pub bytes: u64,
     /// `ready`, `missing` or `downloading`.
     pub state: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub received: Option<u64>,
+    pub voices: Vec<NeuralVoice>,
 }
 
-/// The natural voices this build can use, and whether each is downloaded.
-/// None where the app reads with the system's engine instead.
+/// The voice packs this build can use, and whether each is downloaded.
+/// None where the app reads with the webview's voices only.
 // Off the main thread on Windows, where it draws every window (`stall.rs`).
 #[cfg_attr(windows, tauri::command(async))]
 #[cfg_attr(not(windows), tauri::command)]
 pub fn speech_neural_voices<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, NeuralState>,
-) -> Result<Vec<NeuralVoice>, String> {
+) -> Result<Vec<NeuralPack>, String> {
     if !AVAILABLE {
         return Ok(Vec::new());
     }
-    let dir = voices_dir(&app)?;
+    let voices = voices_dir(&app)?;
     let downloads = state.downloads.lock().unwrap_or_else(|e| e.into_inner());
-    Ok(catalogue()
+    let speakers = speakers();
+    catalogue()
         .iter()
-        .map(|voice| {
-            let downloading = downloads.get(&voice.id);
-            NeuralVoice {
-                id: voice.id.clone(),
-                name: voice.name.clone(),
-                lang: voice.lang.clone(),
-                bytes: voice.model.bytes + voice.config.bytes,
+        .map(|pack| {
+            let downloading = downloads.get(&pack.id);
+            let dir = pack_dir(&voices, pack)?;
+            Ok(NeuralPack {
+                id: pack.id.clone(),
+                name: pack.name.clone(),
+                bytes: pack.bytes(),
                 state: if downloading.is_some() {
                     "downloading"
-                } else if is_ready(&dir, voice) {
+                } else if is_ready(&dir, pack) {
                     "ready"
                 } else {
                     "missing"
                 },
                 received: downloading.map(|d| d.received),
-            }
+                voices: speakers
+                    .iter()
+                    .filter(|s| s.pack == pack.id)
+                    .map(|s| NeuralVoice {
+                        id: s.id.clone(),
+                        name: s.name.clone(),
+                        lang: s.lang.clone(),
+                    })
+                    .collect(),
+            })
         })
-        .collect())
+        .collect()
 }
 
 /* ------------------------------------------------------------- download */
@@ -185,11 +302,12 @@ const PROGRESS_EVERY: u64 = 1 << 20;
 
 /// One file into `dir`: streamed into `.part`, hashed as it goes, renamed
 /// into place only once its size and digest match. `done` is what came
-/// before it, for the progress shown.
+/// before it in the pack, for the progress shown.
+#[allow(clippy::too_many_arguments)]
 fn fetch<R: Runtime>(
     app: &AppHandle<R>,
     state: &NeuralState,
-    voice: &VoiceSpec,
+    pack: &PackSpec,
     file: &VoiceFile,
     dir: &Path,
     done: u64,
@@ -206,7 +324,7 @@ fn fetch<R: Runtime>(
         let mut received: u64 = 0;
         let mut announced: u64 = 0;
         let mut buffer = vec![0u8; 256 * 1024];
-        let total = voice.model.bytes + voice.config.bytes;
+        let total = pack.bytes();
         loop {
             if cancel.load(Ordering::Relaxed) {
                 return Err("E_CANCELLED: the download was stopped".to_string());
@@ -228,14 +346,14 @@ fn fetch<R: Runtime>(
                     .downloads
                     .lock()
                     .unwrap_or_else(|e| e.into_inner())
-                    .get_mut(&voice.id)
+                    .get_mut(&pack.id)
                 {
                     entry.received = done + received;
                 }
                 let _ = app.emit(
                     DOWNLOAD_EVENT,
                     DownloadEvent {
-                        id: voice.id.clone(),
+                        id: pack.id.clone(),
                         received: done + received,
                         total,
                     },
@@ -261,8 +379,9 @@ fn fetch<R: Runtime>(
     result
 }
 
-/// Downloads a natural voice, on the person's click: its settings file, then
-/// the model. Progress goes to the interface as `warraq://speech-download`.
+/// Downloads a voice pack, on the person's click: each file it does not
+/// have yet, smallest first. Progress goes to the interface as
+/// `warraq://speech-download`.
 #[tauri::command]
 pub async fn speech_neural_download<R: Runtime>(
     app: AppHandle<R>,
@@ -272,7 +391,7 @@ pub async fn speech_neural_download<R: Runtime>(
     if !AVAILABLE {
         return Err("E_SPEECH: this build reads with the system's voices".into());
     }
-    let voice = voice_spec(&id)?.clone();
+    let pack = pack_spec(&id)?.clone();
     let cancel = Arc::new(AtomicBool::new(false));
     {
         let mut downloads = state.downloads.lock().unwrap_or_else(|e| e.into_inner());
@@ -290,22 +409,17 @@ pub async fn speech_neural_download<R: Runtime>(
     let handle = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         let state = handle.state::<NeuralState>();
-        let dir = voices_dir(&handle)?;
-        let config = (!is_verified(&dir.join(&voice.config.file), &voice.config))
-            .then(|| fetch(&handle, &state, &voice, &voice.config, &dir, 0, &cancel));
-        config.unwrap_or(Ok(()))?;
-        if is_verified(&dir.join(&voice.model.file), &voice.model) {
-            return Ok(());
+        let dir = pack_dir(&voices_dir(&handle)?, &pack)?;
+        let mut files: Vec<&VoiceFile> = pack.files.iter().collect();
+        files.sort_by_key(|f| f.bytes);
+        let mut done = 0;
+        for file in files {
+            if !is_verified(&dir.join(&file.file), file) {
+                fetch(&handle, &state, &pack, file, &dir, done, &cancel)?;
+            }
+            done += file.bytes;
         }
-        fetch(
-            &handle,
-            &state,
-            &voice,
-            &voice.model,
-            &dir,
-            voice.config.bytes,
-            &cancel,
-        )
+        Ok(())
     })
     .await
     .map_err(|e| format!("E_IO: {e}"))
@@ -331,7 +445,7 @@ pub fn speech_neural_cancel_download(state: State<'_, NeuralState>, id: String) 
     }
 }
 
-/// Deletes a downloaded voice, and lets go of it if it is loaded.
+/// Deletes a downloaded pack, and lets go of it if it is loaded.
 // Off the main thread on Windows, where it draws every window (`stall.rs`).
 #[cfg_attr(windows, tauri::command(async))]
 #[cfg_attr(not(windows), tauri::command)]
@@ -340,8 +454,8 @@ pub fn speech_neural_delete<R: Runtime>(
     state: State<'_, NeuralState>,
     id: String,
 ) -> Result<(), String> {
-    let voice = voice_spec(&id)?;
-    #[cfg(target_os = "windows")]
+    let pack = pack_spec(&id)?;
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     if let Some(engine) = state
         .engine
         .lock()
@@ -350,10 +464,10 @@ pub fn speech_neural_delete<R: Runtime>(
     {
         engine.unload(&id);
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let _ = &state;
-    let dir = voices_dir(&app)?;
-    for file in [&voice.model, &voice.config] {
+    let dir = pack_dir(&voices_dir(&app)?, pack)?;
+    for file in &pack.files {
         let path = dir.join(&file.file);
         for path in [
             with_suffix(&path, ".sha256"),
@@ -367,6 +481,9 @@ pub fn speech_neural_delete<R: Runtime>(
             }
         }
     }
+    if pack.folder.is_some() {
+        let _ = std::fs::remove_dir(&dir);
+    }
     Ok(())
 }
 
@@ -376,8 +493,9 @@ pub fn speech_neural_delete<R: Runtime>(
 /// time, so this only bounds a runaway call.
 const TEXT_LIMIT: usize = 4000;
 
-/// Speaks `text` in the natural voice `voice` at `rate` (1 normal, 0.5 to
-/// 2) and answers with the sound as a WAV file, which the webview plays.
+/// Speaks `text` in the natural voice `voice` (an id the packs list) at
+/// `rate` (1 normal, 0.5 to 3) and answers with the sound as a WAV file,
+/// which the webview plays.
 #[tauri::command]
 pub async fn speech_synthesize<R: Runtime>(
     app: AppHandle<R>,
@@ -386,11 +504,12 @@ pub async fn speech_synthesize<R: Runtime>(
     rate: f32,
 ) -> Result<tauri::ipc::Response, String> {
     let text: String = text.chars().take(TEXT_LIMIT).collect();
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
     {
-        let spec = voice_spec(&voice)?;
-        let dir = voices_dir(&app)?;
-        if !is_ready(&dir, spec) {
+        let speaker = speaker(&voice)?;
+        let pack = pack_spec(&speaker.pack)?;
+        let dir = pack_dir(&voices_dir(&app)?, pack)?;
+        if !is_ready(&dir, pack) {
             return Err("E_SPEECH: this voice is not downloaded".into());
         }
         let handle = app.clone();
@@ -399,13 +518,13 @@ pub async fn speech_synthesize<R: Runtime>(
             let mut engine = state.engine.lock().unwrap_or_else(|e| e.into_inner());
             engine
                 .get_or_insert_with(engine::Engine::default)
-                .speak(spec, &dir, &text, rate)
+                .speak(pack, &speaker, &dir, &text, rate)
         })
         .await
         .map_err(|e| format!("E_SPEECH: {e}"))??;
         Ok(tauri::ipc::Response::new(wav))
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = (app, voice, text, rate);
         Err("E_SPEECH: this build reads with the system's voices".into())
@@ -437,42 +556,123 @@ pub fn pieces(phonemes: &[char]) -> Vec<&[char]> {
     out
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 mod engine {
+    use std::collections::HashMap;
     use std::path::Path;
 
     use ort::session::Session;
 
-    use super::{arabic, piper, tashkeel, VoiceSpec};
+    use super::{arabic, piper, stretch, supertonic, tashkeel, Engine as Kind, PackSpec, Speaker};
 
-    /// The models in memory: the diacritizer, and the one voice last used.
+    /// The models in memory: the diacritizer, the Piper voice last used,
+    /// and the Supertonic model with the voices it has read in.
     #[derive(Default)]
     pub struct Engine {
         tashkeel: Option<Session>,
-        voice: Option<(String, piper::Voice)>,
+        piper: Option<(String, piper::Voice)>,
+        supertonic: Option<(
+            String,
+            supertonic::Model,
+            HashMap<String, supertonic::Style>,
+        )>,
     }
 
     impl Engine {
-        pub fn unload(&mut self, id: &str) {
-            if self.voice.as_ref().is_some_and(|(loaded, _)| loaded == id) {
-                self.voice = None;
+        /// Lets go of whatever `pack` loaded.
+        pub fn unload(&mut self, pack: &str) {
+            if self.piper.as_ref().is_some_and(|(id, _)| id == pack) {
+                self.piper = None;
+            }
+            if self
+                .supertonic
+                .as_ref()
+                .is_some_and(|(id, _, _)| id == pack)
+            {
+                self.supertonic = None;
             }
         }
 
         pub fn speak(
             &mut self,
-            spec: &VoiceSpec,
+            pack: &PackSpec,
+            speaker: &Speaker,
             dir: &Path,
             text: &str,
             rate: f32,
         ) -> Result<Vec<u8>, String> {
-            if self.voice.as_ref().is_none_or(|(id, _)| *id != spec.id) {
-                self.voice = None;
-                let voice =
-                    piper::Voice::load(&dir.join(&spec.model.file), &dir.join(&spec.config.file))?;
-                self.voice = Some((spec.id.clone(), voice));
+            match pack.engine {
+                Kind::Supertonic => self.speak_supertonic(pack, speaker, dir, text, rate),
+                Kind::Piper => self.speak_piper(pack, dir, text, rate),
             }
-            let Some((_, voice)) = self.voice.as_mut() else {
+        }
+
+        fn speak_supertonic(
+            &mut self,
+            pack: &PackSpec,
+            speaker: &Speaker,
+            dir: &Path,
+            text: &str,
+            rate: f32,
+        ) -> Result<Vec<u8>, String> {
+            if self
+                .supertonic
+                .as_ref()
+                .is_none_or(|(id, _, _)| *id != pack.id)
+            {
+                self.supertonic = None;
+                let model = supertonic::Model::load(dir)?;
+                self.supertonic = Some((pack.id.clone(), model, HashMap::new()));
+            }
+            let Some((_, model, styles)) = self.supertonic.as_mut() else {
+                return Err("E_SPEECH: the voice did not load".into());
+            };
+            let style_file = speaker
+                .style
+                .as_deref()
+                .ok_or("E_SPEECH: this voice has no style")?;
+            if !styles.contains_key(style_file) {
+                styles.insert(
+                    style_file.to_string(),
+                    supertonic::Style::load(&dir.join(style_file))?,
+                );
+            }
+            let style = &styles[style_file];
+            // Numbers are read as words in Arabic by the app's own rules;
+            // the model reads English ones itself.
+            let text = if speaker.lang == "ar" {
+                arabic::spell_numbers(text)
+            } else {
+                text.to_string()
+            };
+            // Past the speed the voice stays clear at, its sound is played faster.
+            let (voice_rate, quicker) = stretch::split(rate);
+            let samples = model.speak(&text, &speaker.lang, style, voice_rate)?;
+            let samples = stretch::faster(&samples, quicker, model.sample_rate);
+            Ok(piper::wav(&supertonic::to_pcm(&samples), model.sample_rate))
+        }
+
+        fn speak_piper(
+            &mut self,
+            pack: &PackSpec,
+            dir: &Path,
+            text: &str,
+            rate: f32,
+        ) -> Result<Vec<u8>, String> {
+            let model = pack
+                .files
+                .iter()
+                .find(|f| f.file.ends_with(".onnx"))
+                .ok_or("E_SPEECH: the pack has no model")?;
+            let config = pack
+                .file(&format!("{}.json", model.file))
+                .ok_or("E_SPEECH: the pack has no settings")?;
+            if self.piper.as_ref().is_none_or(|(id, _)| *id != pack.id) {
+                self.piper = None;
+                let voice = piper::Voice::load(&dir.join(&model.file), &dir.join(&config.file))?;
+                self.piper = Some((pack.id.clone(), voice));
+            }
+            let Some((_, voice)) = self.piper.as_mut() else {
                 return Err("E_SPEECH: the voice did not load".into());
             };
             let tashkeel = match self.tashkeel.as_mut() {
@@ -485,9 +685,14 @@ mod engine {
             };
             let vowelled = tashkeel::diacritize(tashkeel, &arabic::spell_numbers(text))?;
             let phonemes = arabic::phonemize(&vowelled);
+            let (voice_rate, quicker) = stretch::split(rate);
             let mut samples = Vec::new();
             for piece in super::pieces(&phonemes) {
-                samples.extend(voice.speak(piece, rate)?);
+                samples.extend(voice.speak(piece, voice_rate)?);
+            }
+            if quicker > 1.0 {
+                let sound: Vec<f32> = samples.iter().map(|s| f32::from(*s) / 32768.0).collect();
+                samples = supertonic::to_pcm(&stretch::faster(&sound, quicker, voice.sample_rate));
             }
             Ok(piper::wav(&samples, voice.sample_rate))
         }
@@ -499,19 +704,79 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_catalogue_pins_each_voice_to_hugging_face_with_its_checksums() {
+    fn the_catalogue_pins_each_pack_to_hugging_face_with_its_checksums() {
         assert!(!catalogue().is_empty());
-        for voice in catalogue() {
-            for file in [&voice.model, &voice.config] {
-                assert!(file
+        for pack in catalogue() {
+            assert!(!pack.files.is_empty() && !pack.voices.is_empty());
+            for file in &pack.files {
+                assert!(file.url.starts_with("https://huggingface.co/"));
+                // Pinned to one revision, never a branch that moves.
+                let revision = file
                     .url
-                    .starts_with("https://huggingface.co/rhasspy/piper-voices/resolve/"));
+                    .split("/resolve/")
+                    .nth(1)
+                    .unwrap()
+                    .split('/')
+                    .next()
+                    .unwrap();
+                assert_eq!(revision.len(), 40, "{}", file.url);
                 assert!(file.url.ends_with(&file.file));
                 assert_eq!(file.sha256.len(), 64);
                 assert!(file.bytes > 0);
             }
-            assert_eq!(voice.config.file, format!("{}.json", voice.model.file));
+            let mut names: Vec<_> = pack.files.iter().map(|f| &f.file).collect();
+            names.sort();
+            names.dedup();
+            assert_eq!(
+                names.len(),
+                pack.files.len(),
+                "{}: one file per name",
+                pack.id
+            );
+            for voice in &pack.voices {
+                if let Some(style) = &voice.style {
+                    assert!(pack.file(style).is_some(), "{}: {style}", voice.id);
+                }
+            }
+            if pack.engine == Engine::Supertonic {
+                assert!(pack.folder.is_some());
+                for name in [
+                    "duration_predictor.onnx",
+                    "text_encoder.onnx",
+                    "vector_estimator.onnx",
+                    "vocoder.onnx",
+                    "tts.json",
+                    "unicode_indexer.json",
+                ] {
+                    assert!(pack.file(name).is_some(), "{name}");
+                }
+            }
         }
+        // The first pack, the one offered first, reads both languages.
+        let first = &catalogue()[0];
+        assert_eq!(first.engine, Engine::Supertonic);
+        assert!(first.voices.iter().all(|v| v.langs == ["ar", "en"]));
+    }
+
+    #[test]
+    fn each_voice_is_listed_once_a_language_and_kareem_keeps_its_id() {
+        let all = speakers();
+        let mut ids: Vec<_> = all.iter().map(|s| s.id.clone()).collect();
+        ids.sort();
+        ids.dedup();
+        assert_eq!(ids.len(), all.len());
+        let kareem = speaker("ar-kareem").unwrap();
+        assert_eq!(
+            (kareem.lang.as_str(), kareem.pack.as_str()),
+            ("ar", "kareem")
+        );
+        let sara = speaker("st-f1-en").unwrap();
+        assert_eq!(
+            (sara.lang.as_str(), sara.style.as_deref()),
+            ("en", Some("F1.json"))
+        );
+        assert_eq!(speaker("st-f1-ar").unwrap().lang, "ar");
+        assert!(speaker("st-f1").is_err());
     }
 
     #[test]

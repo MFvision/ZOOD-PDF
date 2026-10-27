@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TextLineData } from '../core/types';
 import { resetSpeechEngine } from './engines';
-import { closeBar, pause, readAloudState, resume, setRate, start, stop } from './readAloud';
+import { closeBar, pause, readAloudState, resume, setRate, setSleep, start, stop } from './readAloud';
 import type { ReadingSource } from './readAloud';
 
 /**
@@ -156,5 +156,33 @@ describe('read aloud', () => {
     expect(readAloudState().notice).toBe('unsupported');
     closeBar();
     expect(readAloudState().open).toBe(false);
+  });
+
+  it('stops at the sleep timer, and a timer turned off never stops it', async () => {
+    vi.useFakeTimers();
+    try {
+      const pages = [[line('One.', 10), line('Two.', 30)]];
+      void start(source(pages), 'page');
+      await vi.advanceTimersByTimeAsync(0);
+      setSleep(15);
+      expect(readAloudState().sleep).toBe(15);
+      await vi.advanceTimersByTimeAsync(14 * 60_000);
+      expect(readAloudState().active).toBe(true);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(readAloudState().active).toBe(false);
+      expect(readAloudState().notice).toBe('slept');
+      expect(readAloudState().sleep).toBeNull();
+      void start(source(pages), 'page');
+      await vi.advanceTimersByTimeAsync(0);
+      setSleep(5);
+      setSleep(null);
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      expect(readAloudState().active).toBe(true);
+      setSleep(7);
+      expect(readAloudState().sleep).toBeNull();
+    } finally {
+      stop();
+      vi.useRealTimers();
+    }
   });
 });

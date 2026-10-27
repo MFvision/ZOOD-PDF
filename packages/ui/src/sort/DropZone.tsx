@@ -60,7 +60,7 @@ import {
   zoneTook,
   zoneUndoMade,
 } from '../core/host-tauri';
-import type { DropZoneState, PutAwayBatch, ShelfItem, ZoneDropped, ZoneHand } from '../core/host-tauri';
+import type { DropZoneState, PutAwayBatch, ShelfItem, ShelfMissed, ZoneDropped, ZoneHand } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
@@ -180,7 +180,7 @@ function Zone() {
   const [work, setWork] = useState<Work | null>(null);
   const [note, setNote] = useState<TKey | null>(null);
   /** Of the last drop, how many ZOOD could not take (folders, shortcuts to files that are gone). */
-  const [missed, setMissed] = useState(0);
+  const [missed, setMissed] = useState<ShelfMissed>({ count: 0, gone: [] });
   const missedTimer = useRef<number | undefined>(undefined);
   const [hand, setHand] = useState<ZoneHand>({ names: [], pictures: [] });
   const [hot, setHot] = useState<string | null>(null);
@@ -223,10 +223,10 @@ function Zone() {
       onHostEvent<[number, number]>(ZONE_POINTER_EVENT, ([x, y]) => setHot(dropTargetAt(x, y))),
       onHostEvent<ZoneDropped>(ZONE_DROPPED_EVENT, (dropped) => onDropped(dropped)),
       onHostEvent<PutAwayBatch>(PUT_AWAY_EVENT, (batch) => onPutAway(batch)),
-      onHostEvent<number>(SHELF_MISSED_EVENT, (count) => {
-        setMissed(count);
+      onHostEvent<ShelfMissed>(SHELF_MISSED_EVENT, (next) => {
+        setMissed(next);
         window.clearTimeout(missedTimer.current);
-        missedTimer.current = window.setTimeout(() => setMissed(0), MISSED_SHOWN_MS);
+        missedTimer.current = window.setTimeout(() => setMissed({ count: 0, gone: [] }), MISSED_SHOWN_MS);
       }),
     ];
     return () => stops.forEach((stop) => stop());
@@ -567,8 +567,16 @@ function Zone() {
               </span>
             </>
           ) : (
-            <span className={missed > 0 ? 'shelf-foot-words is-missed' : 'shelf-foot-words'}>
-              {missed > 0 ? t('shelf.missed', { count: missed }) : note ? t(note) : items.length === 0 ? '' : t('shelf.hint')}
+            <span className={missed.count > 0 ? 'shelf-foot-words is-missed' : 'shelf-foot-words'}>
+              {missed.count > 0
+                ? missed.gone[0]
+                  ? t('shelf.missedGone', { count: missed.count, name: missed.gone[0] })
+                  : t('shelf.missed', { count: missed.count })
+                : note
+                  ? t(note)
+                  : items.length === 0
+                    ? ''
+                    : t('shelf.hint')}
             </span>
           )}
         </footer>
@@ -667,6 +675,23 @@ function Zone() {
   }
 
   const open = look === 'open' || look === 'over';
+  // Only shortcuts whose files are gone in hand: say which, rather than promise to keep them.
+  const gone = open && hand.names.length === 0 ? (hand.gone ?? []) : [];
+  if (gone.length > 0) {
+    return (
+      <main className={`zood-drop zood-drop-${look} is-gone`} aria-label={t('sort.zone.label')}>
+        <span className="zood-drop-mark">
+          <ZoodMark size={40} />
+        </span>
+        <span className="zood-drop-words">
+          <strong>
+            <bdi>{gone.length > 1 ? t('stow.goneMany', { name: gone[0]!, count: gone.length }) : t('stow.goneOne', { name: gone[0]! })}</bdi>
+          </strong>
+          <span>{t('stow.goneNote')}</span>
+        </span>
+      </main>
+    );
+  }
   return (
     <main className={`zood-drop zood-drop-${look}`} aria-hidden={look === 'hidden'} aria-label={t('sort.zone.label')}>
       <span className="zood-drop-mark">

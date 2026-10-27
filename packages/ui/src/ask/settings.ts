@@ -32,6 +32,10 @@ export interface AskPreferences {
   talkBack: TalkBack;
   /** Inside ZOOD PDF, Ask ZOOD may click the steps itself; elsewhere it only points. */
   doForMe: boolean;
+  /** The person's own words — names, companies, products — the ear is told and put right to. */
+  words: string[];
+  /** The microphone Ask ZOOD listens on, by the host's id; null for the system's own. */
+  microphone: string | null;
 }
 
 export const TALK_BACKS = ['spoken', 'always', 'never'] as const;
@@ -46,6 +50,39 @@ export const TAP_KEYS = ['right-main', 'right-alt', 'right-shift'] as const;
 export type TapKey = (typeof TAP_KEYS)[number];
 
 const KEY = 'warraq.ask';
+/** As many of the person's words as the host tells the model (`ask/words.rs`). */
+export const MAX_WORDS = 200;
+const MAX_WORD_LENGTH = 60;
+
+/** A microphone on this computer, as the host lists it (`ask/ear.rs`). */
+export interface Microphone {
+  id: string;
+  name: string;
+}
+
+/** The microphones to choose from; none outside the desktop or when they cannot be read. */
+export async function microphones(): Promise<Microphone[]> {
+  try {
+    const found = (await invokeHost('ask_microphones')) as Microphone[];
+    return Array.isArray(found) ? found : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The person's words from what they typed: one a line (or between commas), each once. */
+export function parseWords(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const piece of text.split(/[\n,،]/)) {
+    const word = piece.trim();
+    if (!word || word.length > MAX_WORD_LENGTH || seen.has(word.toLowerCase())) continue;
+    seen.add(word.toLowerCase());
+    out.push(word);
+    if (out.length === MAX_WORDS) break;
+  }
+  return out;
+}
 export const DEFAULT_SHORTCUT = 'Mod+Shift+Space';
 
 export function readAskPreferences(): AskPreferences {
@@ -77,6 +114,13 @@ export function readAskPreferences(): AskPreferences {
     glow: raw.glow !== false,
     talkBack: TALK_BACKS.includes(raw.talkBack as TalkBack) ? (raw.talkBack as TalkBack) : 'spoken',
     doForMe: raw.doForMe !== false,
+    words: Array.isArray(raw.words)
+      ? parseWords(raw.words.filter((word) => typeof word === 'string').join('\n'))
+      : [],
+    microphone:
+      typeof raw.microphone === 'string' && raw.microphone.length > 0 && raw.microphone.length <= 512
+        ? raw.microphone
+        : null,
   };
 }
 
@@ -87,6 +131,32 @@ export function writeAskPreferences(next: AskPreferences): void {
 /** The models that hear: Ask ZOOD's ear. */
 export function earModels(): DeviceModel[] {
   return DEVICE_MODELS.filter((model) => model.hears);
+}
+
+/**
+ * The ear for this machine: the larger one (four times fewer Arabic
+ * mistakes) on a computer with the memory it asks for, the small one below
+ * that or when the memory is not known.
+ */
+export function earFor(memoryGiB: number | null): DeviceModel | undefined {
+  const ears = [...earModels()].sort((a, b) => b.bytes - a.bytes);
+  return (
+    ears.find((model) => memoryGiB !== null && memoryGiB + 0.5 >= model.ramGiB) ?? ears.at(-1)
+  );
+}
+
+/**
+ * The ear that listens now: this machine's own once downloaded, otherwise
+ * one downloaded before it, so speaking keeps working while the better ear
+ * comes down.
+ */
+export async function readyEar(memoryGiB: number | null): Promise<DeviceModel | undefined> {
+  const best = earFor(memoryGiB);
+  const others = earModels()
+    .filter((model) => model !== best)
+    .sort((a, b) => b.bytes - a.bytes);
+  for (const model of best ? [best, ...others] : others) if (await modelReady(model)) return model;
+  return undefined;
 }
 
 /** The models that can decide, the one that sees first. */
@@ -266,9 +336,8 @@ export async function askReadiness(
   prefs: AskPreferences,
   memoryGiB: number | null,
 ): Promise<AskReadiness> {
-  const ear = earModels()[0];
   const brainReady = prefs.enabled && (await modelReady(chosenBrain(prefs, memoryGiB)));
-  const voice = brainReady && ear !== undefined && (await modelReady(ear));
+  const voice = brainReady && (await readyEar(memoryGiB)) !== undefined;
   return { voice, taps: brainReady && prefs.taps };
 }
 
@@ -294,6 +363,7 @@ export async function configureAsk(
       speak: prefs.oneTap === 'speak',
     },
     glow: prefs.glow,
+    microphone: prefs.microphone,
   });
   return { voice, taps };
 }

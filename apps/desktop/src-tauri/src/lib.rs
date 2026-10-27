@@ -593,6 +593,7 @@ pub fn run() {
             presence::presence_settings,
             presence::presence_configure,
             ask::ask_transcribe,
+            ask::ask_microphones,
             ask::ask_think,
             ask::ask_moment,
             ask::ask_run_tool,
