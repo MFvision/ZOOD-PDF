@@ -517,6 +517,7 @@ pub fn run() {
             updates::unsaved_total,
             quick::quick_job,
             quick::quick_close,
+            quick::quick_settled,
             quick_open_in_editor,
             shell_menu::shell_menu_set,
             shell_menu::shell_menu_state,

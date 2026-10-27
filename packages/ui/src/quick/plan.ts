@@ -180,6 +180,8 @@ export function toolsFor(names: readonly string[]): QuickTool[] {
 
 /** The step's options for a tool: the step's defaults with the tool's own on top. */
 export function startingOptions(tool: QuickTool): unknown {
+  // Split has no batch step of its own: its choice is here, not after it.
+  if (tool.id === 'split') return { ...DEFAULT_SPLIT };
   if (!tool.step) return {};
   const step = findStep(tool.step);
   const defaults = (step?.defaults() ?? {}) as Record<string, unknown>;
@@ -189,7 +191,6 @@ export function startingOptions(tool: QuickTool): unknown {
   if (tool.id === 'extract') return { ...options, pages: { which: 'list', list: '1-' } };
   if (tool.id === 'numbers') return { ...options, form: { ...DEFAULT_FORM, section: 'pageNumber', numberPosition: 'bottom' } };
   if (tool.id === 'watermark') return { ...options, form: { ...DEFAULT_FORM, section: 'watermark', watermarkText: '' } };
-  if (tool.id === 'split') return DEFAULT_SPLIT;
   return options;
 }
 

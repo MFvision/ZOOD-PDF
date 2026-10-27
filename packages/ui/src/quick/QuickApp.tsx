@@ -12,7 +12,7 @@ import './quick.css';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { getSharedCoreClient } from '../core/client';
-import { isQuickWindow, quickClose, quickJob, quickOpenInEditor } from '../core/host-tauri';
+import { isQuickWindow, quickClose, quickJob, quickOpenInEditor, quickSettled } from '../core/host-tauri';
 import type { QuickJob } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
@@ -115,6 +115,11 @@ function QuickWindow() {
   useEffect(() => {
     document.title = t('quick.title');
   }, [t]);
+
+  // Done, it makes way for the next quick window instead of staying behind.
+  useEffect(() => {
+    void quickSettled(phase === 'done').catch(() => undefined);
+  }, [phase]);
 
   // Esc closes the window, unless work is under way.
   useEffect(() => {
