@@ -148,6 +148,9 @@ final class AITests: XCTestCase {
         let assistant = AIAssistant(model: model, engine: nil, availability: nil)
         if !assistant.availability.isAvailable {
             XCTAssertNil(assistant.engine)
+            // A question needs the model (a summary is made without one, from key sentences).
+            assistant.task = .ask
+            assistant.question = "What is the total?"
             await assistant.run()
             XCTAssertEqual(assistant.state, .failed(String(localized: "On-device AI is not available.")))
         }
