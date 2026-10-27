@@ -813,3 +813,37 @@ mod system {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_rect_knows_its_size_and_middle() {
+        let r = Rect {
+            left: -1920,
+            top: 0,
+            right: 1920,
+            bottom: 1080,
+        };
+        assert_eq!((r.width(), r.height()), (3840, 1080));
+        assert_eq!(r.center(), (0, 540));
+    }
+
+    /// The hooks go on and come off again on a real Windows desktop: the
+    /// pointer is held while taken and moves again once given back.
+    #[cfg(target_os = "windows")]
+    #[test]
+    #[ignore = "takes the real mouse; desktop-windows.yml runs it"]
+    fn the_mouse_is_taken_and_given_back() {
+        let (tx, _events) = std::sync::mpsc::channel();
+        let park = main_screen().unwrap().center();
+        let grab = Grab::start(park, tx).expect("hooks set");
+        assert_eq!(cursor(), Some(park));
+        assert!(grab.alive());
+        assert!(desktop().unwrap().width() > 0);
+        drop(grab);
+        place(park.0 + 10, park.1 + 10);
+        assert_eq!(cursor(), Some((park.0 + 10, park.1 + 10)));
+    }
+}
