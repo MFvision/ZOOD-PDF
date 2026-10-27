@@ -186,6 +186,10 @@ targets:
         # plain http on the local network, sealed by the page itself with the
         # key in the QR code. Local addresses only; the internet stays https.
         NSLocalNetworkUsageDescription: "The phone remote connects to ZOOD PDF on your computer over your Wi-Fi."
+        # The computer says where it is on the Wi-Fi (Bonjour), so the remote
+        # finds it again when its address changes (Remote/RemoteFinder.swift).
+        NSBonjourServices:
+          - _zoodremote._tcp
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         # Batch keeps running in the background from iOS 26 as a continued-

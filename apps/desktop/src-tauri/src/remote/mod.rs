@@ -9,6 +9,7 @@
 //! other message to the interface as [`MESSAGE_EVENT`], where the document
 //! is (`packages/ui/src/remote/`). The interface answers with `remote_send`.
 
+pub mod announce;
 pub mod clip;
 pub mod devices;
 pub mod input;
@@ -173,6 +174,8 @@ pub struct Shared<H: Host> {
     keep_ready: AtomicBool,
     /// Files on their way in parts, either way (`stream.rs`).
     streams: Mutex<stream::Streams>,
+    /// Where the remote is, said on the network for the iPhone app (`announce.rs`).
+    announced: Mutex<Option<announce::Announcer>>,
 }
 
 impl<H: Host> Shared<H> {
@@ -223,6 +226,21 @@ impl<H: Host> Shared<H> {
             sent |= peer.tx.send(message.clone()).is_ok();
         }
         sent
+    }
+
+    /// Says on the network where the remote is now (again, after a move).
+    fn announce(&self) {
+        let first = self.addresses.lock().ok().and_then(|a| a.first().copied());
+        if let Ok(mut slot) = self.announced.lock() {
+            // The old one goes first, so the network never hears two.
+            *slot = None;
+            *slot = first.and_then(|ip| announce::Announcer::start(&pc_name(), ip, self.port));
+            if slot.is_none() {
+                core_bridge_log(
+                    "remote: not announced on this network (the QR code still works)".into(),
+                );
+            }
+        }
     }
 
     /// Sends `message` to one connected phone.
@@ -484,6 +502,7 @@ async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
         last_clip: AtomicU64::new(0),
         keep_ready: AtomicBool::new(ready_wanted(app)),
         streams: Mutex::new(Default::default()),
+        announced: Mutex::new(None),
     });
     if code {
         shared.new_code();
@@ -508,8 +527,12 @@ async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
             drop(slot);
             return Ok(status_of(running(&state).as_deref(), app));
         }
-        *slot = Some(Running { shared, stop });
+        *slot = Some(Running {
+            shared: shared.clone(),
+            stop,
+        });
     }
+    shared.announce();
     let _ = app.emit(STATUS_EVENT, status.clone());
     Ok(status)
 }
@@ -605,6 +628,7 @@ fn watch_network<H: Host>(shared: std::sync::Weak<Shared<H>>) {
             })
             .unwrap_or(false);
         if moved {
+            shared.announce();
             shared.changed();
             core_bridge_log(format!("remote: the PC's address is now {:?}", now.first()));
         }
@@ -678,6 +702,9 @@ pub fn remote_stop(app: AppHandle<Wry>, state: State<'_, RemoteState>) -> Status
     let taken = state.0.lock().ok().and_then(|mut slot| slot.take());
     if let Some(running) = taken {
         running.shared.pc_control.store(false, Ordering::Relaxed);
+        if let Ok(mut announced) = running.shared.announced.lock() {
+            *announced = None;
+        }
         let _ = running.stop.send(true);
     }
     let status = status_of::<Wry>(None, &app);
@@ -1026,6 +1053,7 @@ mod tests {
             last_clip: AtomicU64::new(0),
             keep_ready: AtomicBool::new(false),
             streams: Mutex::new(Default::default()),
+            announced: Mutex::new(None),
         });
         shared.new_code();
         let url = shared.status().url.unwrap();

@@ -112,6 +112,7 @@ base64 = "0.22"
 # The remote's shared clipboard (src/remote/clip.rs): pictures go between the
 # phone and the PC as PNG (png, MIT OR Apache-2.0, already in the graph).
 png = "0.18"
+mdns-sd = { version = "0.21.6", default-features = false }
 
 # Print (src/print.rs): PDFKit prints the PDF itself in the system's print
 # sheet. The same objc2 family Tauri already links (MIT OR Apache-2.0 OR Zlib).
