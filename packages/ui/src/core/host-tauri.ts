@@ -335,6 +335,12 @@ export function quickClose(): Promise<void> {
   return invoke('quick_close').then(() => undefined);
 }
 
+/** Tells the host this quick window's work is done (it closes when the next one opens) or not. */
+export function quickSettled(done: boolean): Promise<void> {
+  if (!internals()) return Promise.resolve();
+  return invoke('quick_settled', { done }).then(() => undefined);
+}
+
 /** Opens a quick tool's result in the editor, or a file at the editor's own tool for one (`sign`). */
 export function quickOpenInEditor(path: string, tool?: string): Promise<void> {
   return invoke('quick_open_in_editor', { path, tool: tool ?? null }).then(() => undefined);
