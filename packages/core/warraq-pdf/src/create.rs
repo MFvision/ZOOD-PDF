@@ -25,13 +25,23 @@ use std::collections::HashMap;
 
 use lopdf::content::{Content, Operation};
 use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream, StringFormat};
-use warraq_text::{base_direction, Direction, ShapedGlyph, Shaper};
+use warraq_text::normalize::mirror_bracket;
+use warraq_text::{base_direction, visual_runs_in, Direction, ShapedGlyph, Shaper};
 
 use crate::attachments::text_string;
 use crate::fonts::{embed_subset_font, FontSubset};
 use crate::picture::{add_picture, add_picture_pages, picture_info, upright_matrix, PictureInfo};
 use crate::show::{show_line, ShownLine};
 use crate::{Error, Result};
+
+/// Sets a left-to-right stretch apart inside a line (UAX #9 LRI and PDI).
+pub const LTR_ISOLATE: char = '\u{2066}';
+pub const POP_ISOLATE: char = '\u{2069}';
+
+/// A character that only steers the order of a line and draws nothing.
+fn is_bidi_control(c: char) -> bool {
+    matches!(c, '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}')
+}
 
 /// PDF's own limit on a page side (Annex C: 14,400 units).
 const MAX_SIDE: f32 = 14_400.0;
@@ -140,6 +150,9 @@ pub struct TextBlock {
     /// Spaces and line breaks kept exactly (code); otherwise runs of spaces
     /// are one space.
     pub preserve: bool,
+    /// The face the source names for it (an index into the document's
+    /// faces), used when it has every letter; otherwise the first that does.
+    pub face: Option<usize>,
 }
 
 impl Default for TextBlock {
@@ -161,6 +174,7 @@ impl Default for TextBlock {
             spacing: 1.0,
             shade: None,
             preserve: false,
+            face: None,
         }
     }
 }
@@ -186,6 +200,10 @@ pub struct TableCell {
     pub span: usize,
     /// A shade behind the cell.
     pub fill: Option<[f32; 3]>,
+    /// The colour of its text; black when absent.
+    pub color: Option<[f32; 3]>,
+    /// The face the source names for it; the table's when absent.
+    pub face: Option<usize>,
 }
 
 /// A table: rows of cells over columns of relative widths, drawn with
@@ -201,6 +219,8 @@ pub struct TableBlock {
     pub size: f32,
     pub space_before: f32,
     pub space_after: f32,
+    /// The face the source names for its cells.
+    pub face: Option<usize>,
 }
 
 /// A picture of the document: `index` into the pictures handed over, at its
@@ -441,6 +461,8 @@ enum Draw {
         color: [f32; 3],
         bold: bool,
         skew: f32,
+        /// Stretches of `glyphs` that read as one text (`ShownLine::groups`).
+        groups: Vec<(std::ops::Range<usize>, String)>,
     },
     Line {
         from: (f32, f32),
@@ -495,6 +517,9 @@ struct LaidCell {
     align: BlockAlign,
     dir: Direction,
     fill: Option<[f32; 3]>,
+    /// Its text's size: the table's, or smaller so its longest word fits.
+    size: f32,
+    color: [f32; 3],
 }
 
 /// The room text flows in: the page inside its margins, or a frame.
@@ -695,6 +720,14 @@ impl<'a> Typesetter<'a> {
         }
         self.links.push(uri);
         Some(self.links.len() - 1)
+    }
+
+    /// `face_for`, the face the source named first when it has every letter.
+    fn face_named(&mut self, named: Option<usize>, text: &str) -> usize {
+        match named {
+            Some(k) if self.faces.get(k).is_some_and(|f| f.shaper.covers(text)) => k,
+            _ => self.face_for(text),
+        }
     }
 
     /// The first face with a glyph for every letter of `text`, or the one
@@ -907,7 +940,62 @@ impl<'a> Typesetter<'a> {
         for (k, (b, _)) in text.char_indices().enumerate() {
             char_at[b] = k as u32;
         }
-        let glyphs = self.faces[face].shaper.shape_line_in(&text, Some(dir));
+        let mut glyphs = self.faces[face].shaper.shape_line_in(&text, Some(dir));
+        if glyphs.is_empty() {
+            return;
+        }
+        // A bracket in a right-to-left run is drawn mirrored: "(" shows as
+        // ")". Its glyph reads as the shape it shows, as in Word's PDFs, so
+        // a reader that puts the line in reading order turns it back and
+        // "(FCFS)" never comes out as ")FCFS(".
+        let rtl: Vec<std::ops::Range<usize>> = visual_runs_in(&text, Some(dir))
+            .into_iter()
+            .filter(|r| r.direction == Direction::Rtl)
+            .map(|r| r.range)
+            .collect();
+        for g in &mut glyphs {
+            let mut chars = g.text.chars();
+            if let (Some(c), None) = (chars.next(), chars.next()) {
+                let mirrored = mirror_bracket(c);
+                if mirrored != c && rtl.iter().any(|r| r.contains(&g.offset)) {
+                    g.text = mirrored.to_string();
+                }
+            }
+        }
+        // A left-to-right stretch the source set apart (Word's run that is
+        // not right to left: a date range, "(27/01/2026 - 27/01/2027)") is
+        // isolated in the text; it reads as one text, in its own order, and
+        // the marks that set it apart draw nothing.
+        let mut isolates: Vec<(std::ops::Range<usize>, String)> = Vec::new();
+        let mut open: Option<usize> = None;
+        for (b, c) in text.char_indices() {
+            match c {
+                LTR_ISOLATE => open = Some(b + c.len_utf8()),
+                POP_ISOLATE => {
+                    if let Some(start) = open.take() {
+                        isolates.push((start..b, text[start..b].to_string()));
+                    }
+                }
+                _ => {}
+            }
+        }
+        // A letter the face has no glyph for is left out rather than drawn
+        // as the empty box (.notdef); `face_for` counted it as missing.
+        glyphs.retain(|g| {
+            !g.text.chars().any(is_bidi_control) && !(g.gid == 0 && !g.text.trim().is_empty())
+        });
+        let groups: Vec<(std::ops::Range<usize>, String)> = isolates
+            .into_iter()
+            .filter_map(|(bytes, said)| {
+                let first = glyphs.iter().position(|g| bytes.contains(&g.offset))?;
+                let last = glyphs.iter().rposition(|g| bytes.contains(&g.offset))?;
+                let mut end = last + 1;
+                while end < glyphs.len() && glyphs[end].text.is_empty() {
+                    end += 1;
+                }
+                (!said.trim().is_empty()).then_some((first..end, said))
+            })
+            .collect();
         if glyphs.is_empty() {
             return;
         }
@@ -954,8 +1042,14 @@ impl<'a> Typesetter<'a> {
             }
             let style = styles.get(s as usize).unwrap_or(&own).clone();
             let (x0, x1) = (x + from, x + pen);
+            let inside: Vec<(std::ops::Range<usize>, String)> = groups
+                .iter()
+                .filter(|(r, _)| r.start >= start && r.end <= k)
+                .map(|(r, t)| (r.start - start..r.end - start, t.clone()))
+                .collect();
             self.draw(Draw::Text {
                 face,
+                groups: inside,
                 glyphs: glyphs[start..k].to_vec(),
                 x: x0,
                 baseline,
@@ -989,7 +1083,7 @@ impl<'a> Typesetter<'a> {
     fn text(&mut self, b: &TextBlock, next_line: f32) {
         let (chars, styles) = self.styled(b);
         let plain = text_of(&chars);
-        let face = self.face_for(&plain);
+        let face = self.face_named(b.face, &plain);
         let dir = resolve(b.dir, &plain, self.dir);
         let size = if b.size.is_finite() {
             b.size.clamp(4.0, 144.0)
@@ -1082,7 +1176,7 @@ impl<'a> Typesetter<'a> {
     fn first_line(&mut self, block: Option<&Block>) -> f32 {
         match block {
             Some(Block::Text(t)) => {
-                let face = self.face_for(&t.plain());
+                let face = self.face_named(t.face, &t.plain());
                 2.0 * self.faces[face].line(t.size.clamp(4.0, 144.0), t.spacing).0 + t.space_before
             }
             Some(Block::Table(t)) => {
@@ -1235,10 +1329,27 @@ impl<'a> Typesetter<'a> {
                     break;
                 }
                 let (x, width) = cell_x(from, n);
-                let face = self.face_for(&c.text);
-                let inner = (width - 2.0 * CELL_PAD.0).max(size);
+                let face = self.face_named(c.face.or(t.face), &c.text);
+                let inner = (width - 2.0 * CELL_PAD.0).max(1.0);
+                // A word is never broken inside a cell, as a spreadsheet never
+                // breaks one: a cell whose longest word is wider than it is
+                // set smaller, down to half the size, and only a word wider
+                // still is split.
+                let longest = c
+                    .text
+                    .split_whitespace()
+                    .map(|w| self.faces[face].width(w))
+                    .fold(0.0f32, f32::max)
+                    * size
+                    / 1000.0
+                    * if c.bold || r < t.header_rows { 1.04 } else { 1.0 };
+                let cell_size = if longest > inner {
+                    (size * inner / longest).max(size / 2.0).max(4.0)
+                } else {
+                    size
+                };
                 let chars: Vec<SChar> = c.text.chars().map(|ch| (ch, 0)).collect();
-                let lines = self.break_lines(face, &chars, size, inner, false);
+                let lines = self.break_lines(face, &chars, cell_size, inner.max(cell_size), false);
                 cells.push(LaidCell {
                     x,
                     width,
@@ -1248,6 +1359,8 @@ impl<'a> Typesetter<'a> {
                     align: c.align,
                     dir: resolve(c.dir, &c.text, dir),
                     fill: c.fill,
+                    size: cell_size,
+                    color: c.color.unwrap_or([0.0; 3]),
                 });
                 from += n;
             }
@@ -1283,14 +1396,14 @@ impl<'a> Typesetter<'a> {
                 {
                     self.new_page();
                     if !header {
-                        self.repeat_header(&laid[..header_rows], line_h, size);
+                        self.repeat_header(&laid[..header_rows], line_h);
                     }
                     continue;
                 }
                 let fit = (((self.y - self.bottom() - 2.0 * CELL_PAD.1) / line_h).floor() as usize)
                     .max(1);
                 let take: Vec<usize> = left_over.iter().map(|n| (*n).min(fit)).collect();
-                let height = self.row_fragment(&laid[r], &from, &take, line_h, size, header);
+                let height = self.row_fragment(&laid[r], &from, &take, line_h, header);
                 self.y -= height;
                 for (f, n) in from.iter_mut().zip(&take) {
                     *f += n;
@@ -1300,18 +1413,18 @@ impl<'a> Typesetter<'a> {
                 }
                 self.new_page();
                 if !header {
-                    self.repeat_header(&laid[..header_rows], line_h, size);
+                    self.repeat_header(&laid[..header_rows], line_h);
                 }
             }
         }
         self.y -= t.space_after.max(0.0);
     }
 
-    fn repeat_header(&mut self, header: &[Vec<LaidCell>], line_h: f32, size: f32) {
+    fn repeat_header(&mut self, header: &[Vec<LaidCell>], line_h: f32) {
         for cells in header {
             let from = vec![0; cells.len()];
             let take: Vec<usize> = cells.iter().map(|c| c.lines.len()).collect();
-            let h = self.row_fragment(cells, &from, &take, line_h, size, true);
+            let h = self.row_fragment(cells, &from, &take, line_h, true);
             self.y -= h;
         }
     }
@@ -1324,32 +1437,29 @@ impl<'a> Typesetter<'a> {
         from: &[usize],
         take: &[usize],
         line_h: f32,
-        size: f32,
         header: bool,
     ) -> f32 {
         let height =
             take.iter().copied().max().unwrap_or(0).max(1) as f32 * line_h + 2.0 * CELL_PAD.1;
         let top = self.y;
-        let plain = [Style {
-            bold: false,
-            italic: false,
-            underline: false,
-            strike: false,
-            color: [0.0; 3],
-            link: None,
-        }];
-        let bold = [Style {
-            bold: true,
-            ..plain[0].clone()
-        }];
         for (k, c) in cells.iter().enumerate() {
+            let style = [Style {
+                bold: c.bold,
+                italic: false,
+                underline: false,
+                strike: false,
+                color: c.color,
+                link: None,
+            }];
             let rect = [c.x, top - height, c.width, height];
             if let Some(color) = c.fill.or(header.then_some(HEADER_SHADE)) {
                 self.draw(Draw::Fill { rect, color });
             }
-            let baseline_off = self.faces[c.face].line(size, 1.0).1;
+            // A smaller cell's lines sit in the middle of the table's.
+            let baseline_off = self.faces[c.face].line(c.size, 1.0).1
+                + (line_h - self.faces[c.face].line(c.size, 1.0).0) / 2.0;
             let bounds = (c.x + CELL_PAD.0, c.x + c.width - CELL_PAD.0);
-            let styles = if c.bold { &bold } else { &plain };
+            let styles = &style;
             for (i, line) in c.lines.iter().skip(from[k]).take(take[k]).enumerate() {
                 let baseline = top - CELL_PAD.1 - i as f32 * line_h - baseline_off;
                 self.draw_line(
@@ -1358,7 +1468,7 @@ impl<'a> Typesetter<'a> {
                     line.last,
                     bounds,
                     baseline,
-                    size,
+                    c.size,
                     c.align,
                     c.dir,
                     styles,
@@ -1554,6 +1664,7 @@ fn page_ops(
                 color,
                 bold,
                 skew,
+                groups,
             } => {
                 let Some(subset) = subsets.get(*face).and_then(Option::as_ref) else {
                     continue;
@@ -1582,6 +1693,7 @@ fn page_ops(
                         matrix: [1.0, 0.0, *skew, 1.0, *x, *baseline],
                         size: *size,
                         space_stretch: *stretch,
+                        groups,
                     },
                 );
                 ops.push(op("ET", vec![]));

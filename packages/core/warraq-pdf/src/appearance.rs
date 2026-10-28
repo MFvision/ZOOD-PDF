@@ -845,6 +845,7 @@ fn draw_line(
             matrix: [1.0, 0.0, 0.0, 1.0, line.x, line.y],
             size,
             space_stretch: 0.0,
+            groups: &[],
         },
     );
 }

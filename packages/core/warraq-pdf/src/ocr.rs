@@ -198,6 +198,7 @@ impl PdfDocument {
                         matrix: frame.text_matrix(x0.min(x1), baseline, stretch),
                         size,
                         space_stretch: 0.0,
+                        groups: &[],
                     },
                 );
                 report.words += 1;

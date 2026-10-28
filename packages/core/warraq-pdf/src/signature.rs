@@ -1064,6 +1064,7 @@ impl PdfDocument {
                         matrix: [1.0, 0.0, 0.0, 1.0, x, y],
                         size,
                         space_stretch: 0.0,
+                        groups: &[],
                     },
                 );
                 y -= leading;

@@ -232,13 +232,13 @@ fn arabic_the_core_wrote_loses_its_actual_text_and_the_rest_reads_back() {
         .unwrap();
     let before = doc.save().unwrap();
     there(&before, "الحربي");
-    // The core writes a word whose glyphs would not read back alone (this
-    // one: the font moves its letters) with an /ActualText in UTF-16BE, so
-    // the word is in the bytes until it is redacted. Searched for with a
-    // dotless yaa.
+    // The core writes the letters of a word whose glyphs would not read
+    // back alone (this one: the font moves its letters) with an /ActualText
+    // in UTF-16BE, letter by letter in a right-to-left word, so its letters
+    // are in the bytes until it is redacted. Searched for with a dotless yaa.
     assert!(readable(&before)
         .iter()
-        .any(|p| encodings("الحربي").iter().any(|(_, e)| contains(p, e))));
+        .any(|p| contains(p, b"ActualText")));
     let found = find(&before, serde_json::json!({ "query": "الحربى" }));
     assert_eq!(found.len(), 1);
     let (_, after) = apply(&before, marks_of(&found));
