@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PRESENTATION, SPREADSHEET, validate } from './ooxml.testing';
 import { buildPptx } from './pptx';
 import type { Slide } from './pptx';
-import { pageSheet, parseNumber, tableSheets } from './tables';
+import { fillCells, joinWrapped, pageSheet, pageSheets, parseDate, parseNumber, tableSheets } from './tables';
 import type { PageItem, TableItem } from './tables';
 import { buildXlsx, columnName, formatCode, sheetNames, xlsxParts } from './xlsx';
 
@@ -127,9 +127,9 @@ describe('the Excel workbook', () => {
     const files = unzipSync(buildXlsx(sheets));
     const sheet = strFromU8(files['xl/worksheets/sheet1.xml']!);
     expect(sheet).toContain('rightToLeft="1"');
-    expect(sheet).toMatch(/<c r="A1" t="inlineStr"><is><t xml:space="preserve">البند<\/t>/);
+    expect(sheet).toMatch(/<c r="A1"(?: s="\d+")? t="inlineStr"><is><t xml:space="preserve">البند<\/t>/);
     expect(sheet).toMatch(/<c r="B2" s="\d+"><v>1200.5<\/v><\/c>/);
-    expect(sheet).toMatch(/<c r="B3"><v>750<\/v><\/c>/);
+    expect(sheet).toMatch(/<c r="B3"(?: s="\d+")?><v>750<\/v><\/c>/);
     expect(sheet).toMatch(/<c r="C2" s="\d+"><v>0.625<\/v><\/c>/);
     const styles = strFromU8(files['xl/styles.xml']!);
     // #,##0.00 is built in (4); 0.0% is the workbook's own.
@@ -197,5 +197,83 @@ describe('the PowerPoint presentation', () => {
     expect(turned).toContain('<a:xfrm rot="16200000"><a:off x="-3924300" y="4229100"/><a:ext cx="8255000" cy="254000"/>');
     const presentation = strFromU8(files['ppt/presentation.xml']!);
     expect(presentation).toContain('<p:sldSz cx="7556500" cy="10693400"/>');
+  });
+});
+
+describe('a sheet you can add up', () => {
+  it('reads riyals written SR or ريال as numbers in a currency format, and keeps long IDs as text', () => {
+    expect(parseNumber('52.17 SR')).toEqual({ value: 52.17, format: { decimals: 2, grouped: false, percent: false, currency: { symbol: 'SR', before: false } } });
+    expect(parseNumber('SAR 1,250.00')?.value).toBe(1250);
+    expect(parseNumber('€ 52.17')?.value).toBe(52.17);
+    expect(parseNumber('300 ريال')?.value).toBe(300);
+    expect(formatCode(parseNumber('12,500.00 SR')!.format)).toBe('#,##0.00 "SR"');
+    for (const id of ['505257674', '1098765432', '0551234567']) expect(parseNumber(id), id).toBeNull();
+    expect(parseNumber('1,234,567')?.value).toBe(1234567);
+  });
+
+  it('reads dates as dates, written back as they were', () => {
+    const date = parseDate('27/01/2026')!;
+    // 27 January 2026 is Excel day 46049.
+    expect(date.value).toBe(46049);
+    expect(formatCode(date.format)).toBe('dd/mm/yyyy');
+    expect(formatCode(parseDate('2026-01-27')!.format)).toBe('yyyy-mm-dd');
+    expect(parseDate('٢٧/٠١/٢٠٢٦')?.value).toBe(46049);
+    expect(parseDate('01/27/2026')?.value).toBe(46049);
+    for (const text of ['31/02/2026', '27/01/26', 'INV-C01136/2026', '27/13/2026']) expect(parseDate(text), text).toBeNull();
+  });
+
+  it('joins a cell\'s wrapped line back into it', () => {
+    const at = (text: string, x: number, y: number) => ({ text, rows: 1, columns: 1, box: [x, y, 60, 10] as [number, number, number, number] });
+    const found: TableItem = {
+      kind: 'table',
+      ruled: false,
+      direction: 'ltr',
+      widths: [80, 80, 80],
+      rows: [
+        [at('No.', 0, 0), at('Description', 80, 0), at('Amount', 160, 0)],
+        [at('1', 0, 20), at('Design of the', 80, 20), at('52.17', 160, 20)],
+        [null, at('main entrance', 80, 31), null],
+        [at('2', 0, 50), at('Survey', 80, 50), at('10.00', 160, 50)],
+      ],
+    };
+    const joined = joinWrapped(found);
+    expect(joined.rows.map((row) => row.map((c) => c?.text ?? ''))).toEqual([
+      ['No.', 'Description', 'Amount'],
+      ['1', 'Design of the main entrance', '52.17'],
+      ['2', 'Survey', '10.00'],
+    ]);
+    // Far below, it is a row of its own.
+    const apart = joinWrapped({ ...found, rows: [found.rows[1]!, [null, at('Note', 80, 60), null]] });
+    expect(apart.rows).toHaveLength(2);
+  });
+
+  it('keeps a table that runs over pages on one sheet, its repeated header and page footer left out', () => {
+    const page = (rows: string[][], footer: string): PageItem[] => [
+      table(rows.map((r) => r.map((t) => cell(t))), 'ltr'),
+      { kind: 'line', text: footer, direction: 'ltr', cells: [] },
+    ];
+    const pages = [page([['Name', 'ID'], ['Ali', 'A1']], 'Page 1 of 2'), page([['Name', 'ID'], ['Sara', 'B2']], 'Page 2 of 2')];
+    const sheets = pageSheets(pages, (n) => `Page ${n}`);
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0]!.rows.map((row) => row.map((c) => c?.value.text ?? ''))).toEqual([['Name', 'ID'], ['Ali', 'A1'], ['Sara', 'B2'], [], ['Page 1 of 2']]);
+    expect(tableSheets(pages, (k) => `Table ${k}`)).toHaveLength(1);
+    // The pages themselves are left as they were.
+    expect((pages[0]![0] as TableItem).rows).toHaveLength(2);
+  });
+
+  it('keeps the fill behind a header row, white text on it, and the rules as borders', () => {
+    const found: TableItem = { ...table([[cell('Name'), cell('ID')], [cell('Ali'), cell('A1')]], 'ltr'), left: 0, top: 0, heights: [20, 20] };
+    // A 160 x 40 page at one pixel a point: navy behind the first row, white below.
+    const rgba = new Uint8Array(160 * 40 * 4).fill(255);
+    for (let y = 0; y < 20; y += 1) for (let x = 0; x < 160; x += 1) rgba.set([0x1f, 0x3a, 0x5f, 255], (y * 160 + x) * 4);
+    fillCells(found, rgba, 160, 40, 1);
+    expect(found.rows[0]![0]!.fill).toBe('1F3A5F');
+    expect(found.rows[1]![0]!.fill).toBeUndefined();
+    const sheet = pageSheet([found], 'p');
+    expect(sheet.rows[0]![0]).toMatchObject({ fill: '1F3A5F', color: 'FFFFFF', border: true });
+    const styles = strFromU8(unzipSync(buildXlsx([sheet]))['xl/styles.xml']!);
+    expect(styles).toContain('<patternFill patternType="solid"><fgColor rgb="FF1F3A5F"/>');
+    expect(styles).toContain('<color rgb="FFFFFFFF"/>');
+    expect(styles).toContain('<left style="thin">');
   });
 });

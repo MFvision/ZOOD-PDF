@@ -65,6 +65,7 @@ export function sheetNames(wanted: readonly string[]): string[] {
 
 /** A number format's code: `#,##0.00`, `0%`… */
 export function formatCode(format: NumberFormat): string {
+  if (format.date) return format.date;
   const whole = format.grouped ? '#,##0' : '0';
   const decimals = format.decimals > 0 ? `.${'0'.repeat(format.decimals)}` : '';
   const number = `${whole}${decimals}${format.percent ? '%' : ''}`;
@@ -78,22 +79,37 @@ export function formatCode(format: NumberFormat): string {
 /** The formats Excel has built in, by code; the rest are the workbook's own from 164. */
 const BUILT_IN_FORMATS: Record<string, number> = { General: 0, '0': 1, '0.00': 2, '#,##0': 3, '#,##0.00': 4, '0%': 9, '0.00%': 10 };
 
-/** The cell styles a workbook uses: each a number format, with the plain one first. */
+/** The cell styles a workbook uses: each a number format, font, fill and border, with the plain one first. */
 class Styles {
   private codes = new Map<string, number>();
-  /** Each cell format, as "number format id:font id", in the order written; the first is the default. */
-  private xfs = new Map<string, number>([['0:0', 0]]);
+  /** Fonts after the two every workbook has (plain, link): a colour each. */
+  private colors = new Map<string, number>();
+  /** Fills after the two Excel reserves: a colour each. */
+  private fills = new Map<string, number>();
+  /** Each cell format, as "number format id:font id:fill id:border id", in the order written; the first is the default. */
+  private xfs = new Map<string, number>([['0:0:0:0', 0]]);
 
   index(cell: SheetCell): number {
     // A linked cell is blue and underlined (font 1), as Excel shows a link.
-    const font = cell.link && cell.value.kind === 'text' ? 1 : 0;
-    const key = `${this.format(cell)}:${font}`;
+    let font = cell.link && cell.value.kind === 'text' ? 1 : 0;
+    if (font === 0 && cell.color) font = 2 + this.id(this.colors, cell.color);
+    const fill = cell.fill ? 2 + this.id(this.fills, cell.fill) : 0;
+    const key = `${this.format(cell)}:${font}:${fill}:${cell.border ? 1 : 0}`;
     let xf = this.xfs.get(key);
     if (xf === undefined) {
       xf = this.xfs.size;
       this.xfs.set(key, xf);
     }
     return xf;
+  }
+
+  private id(map: Map<string, number>, color: string): number {
+    let id = map.get(color);
+    if (id === undefined) {
+      id = map.size;
+      map.set(color, id);
+    }
+    return id;
   }
 
   /** The number format of a cell: 0, General, for text and plain whole numbers. */
@@ -117,17 +133,25 @@ class Styles {
         : '';
     const xfs = [...this.xfs.keys()]
       .map((key) => {
-        const [id, font] = key.split(':').map(Number) as [number, number];
-        return `<xf numFmtId="${id}" fontId="${font}" fillId="0" borderId="0" xfId="0"${id > 0 ? ' applyNumberFormat="1"' : ''}${font > 0 ? ' applyFont="1"' : ''}/>`;
+        const [id, font, fill, border] = key.split(':').map(Number) as [number, number, number, number];
+        return (
+          `<xf numFmtId="${id}" fontId="${font}" fillId="${fill}" borderId="${border}" xfId="0"` +
+          `${id > 0 ? ' applyNumberFormat="1"' : ''}${font > 0 ? ' applyFont="1"' : ''}${fill > 0 ? ' applyFill="1"' : ''}${border > 0 ? ' applyBorder="1"' : ''}/>`
+        );
       })
       .join('');
     const name = xmlAttribute(XLSX_FONT);
     return (
       `${DECLARATION}<styleSheet xmlns="${MAIN}">${numFmts}` +
-      `<fonts count="2"><font><sz val="11"/><name val="${name}"/><family val="2"/></font>` +
-      `<font><u/><sz val="11"/><color rgb="FF0563C1"/><name val="${name}"/><family val="2"/></font></fonts>` +
-      '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
-      '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      `<fonts count="${2 + this.colors.size}"><font><sz val="11"/><name val="${name}"/><family val="2"/></font>` +
+      `<font><u/><sz val="11"/><color rgb="FF0563C1"/><name val="${name}"/><family val="2"/></font>` +
+      [...this.colors.keys()].map((rgb) => `<font><sz val="11"/><color rgb="FF${rgb}"/><name val="${name}"/><family val="2"/></font>`).join('') +
+      '</fonts>' +
+      `<fills count="${2 + this.fills.size}"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>` +
+      [...this.fills.keys()].map((rgb) => `<fill><patternFill patternType="solid"><fgColor rgb="FF${rgb}"/><bgColor indexed="64"/></patternFill></fill>`).join('') +
+      '</fills>' +
+      '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+      '<border><left style="thin"><color rgb="FFBFBFBF"/></left><right style="thin"><color rgb="FFBFBFBF"/></right><top style="thin"><color rgb="FFBFBFBF"/></top><bottom style="thin"><color rgb="FFBFBFBF"/></bottom><diagonal/></border></borders>' +
       '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
       `<cellXfs count="${this.xfs.size}">${xfs}</cellXfs>` +
       '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
@@ -155,7 +179,9 @@ function worksheetXml(sheet: Sheet, styles: Styles, first: boolean, links: strin
       const style = s > 0 ? ` s="${s}"` : '';
       if (cell.value.kind === 'number') {
         cells.push(`<c r="${ref}"${style}><v>${cell.value.value}</v></c>`);
-      } else if (cell.value.text.length > 0) {
+      } else if (cell.value.text.length === 0) {
+        if (s > 0) cells.push(`<c r="${ref}"${style}/>`);
+      } else {
         const text = cell.value.text.slice(0, LIMITS.cell);
         cells.push(`<c r="${ref}"${style} t="inlineStr"><is><t xml:space="preserve">${xmlText(text)}</t></is></c>`);
         if (cell.link) {
