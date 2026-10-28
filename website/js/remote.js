@@ -1,7 +1,7 @@
 // The remote room: a computer and a phone side by side, and the phone runs the
 // computer, one ability per scroll beat, quick to read at a glance: the laser,
 // the highlighter and turning pages while presenting (Present); then the
-// computer's own mouse, keyboard, any slideshow and the volume (Control); then
+// computer's own mouse, its shortcuts (Paste), any slideshow and the volume (Control); then
 // files both ways, a file flicked up onto the computer's desktop, the shared
 // clipboard and a signature (Send). A row of labels names each beat and jumps to it, and the phone
 // can be tried: move over its screen and the laser or the pointer follows,
@@ -30,7 +30,7 @@ const WORDS = {
     mark: { ar: 'تظليل', en: 'Highlight' },
     pages: { ar: 'الصفحات', en: 'Pages' },
     mouse: { ar: 'الفأرة', en: 'Mouse' },
-    keys: { ar: 'لوحة المفاتيح', en: 'Keyboard' },
+    keys: { ar: 'اللصق', en: 'Paste' },
     slides: { ar: 'العروض والصوت', en: 'Slides and volume' },
     files: { ar: 'الملفات', en: 'Files' },
     flick: { ar: 'مرّر ملفًا', en: 'Flick a file' },
@@ -165,6 +165,7 @@ const AT = {
   next: [80, 74],
   tabs: [17, 50, 83].map((x) => [x, 92]),
   modes: [19.3, 50, 80.7].map((x) => [x, 14]),
+  paste: [38.5, 64],
   arrowR: [84.5, 73.25],
   volup: [61.5, 64],
   send: [50, 21.5],
@@ -222,7 +223,7 @@ export function remoteScene(t, escape, frame) {
   const shortcuts = t(WORDS.shortcuts)
     .map(
       (x, k) =>
-        `<span>${[ICONS.copy, ICONS.paste, ICONS.undo, ICONS.layers][k]}<small>${escape(x)}</small></span>`,
+        `<span data-k="sc${k}">${[ICONS.copy, ICONS.paste, ICONS.undo, ICONS.layers][k]}<small>${escape(x)}</small></span>`,
     )
     .join('');
   const keyRows = t(WORDS.keys)
@@ -434,25 +435,19 @@ function script(b, t, rtl, scene) {
     s.press = s.press || (inside(t, 0.72, 0.78) ? 'pad' : '');
     s.focus = t > 0.76 ? 'notes' : '';
   } else if (id === 'keys') {
-    s.kb = spring(span(t, 0.14, 0.3)) * (1 - span(t, 0.92, 1));
-    s.mode = inside(t, 0.13, 0.95) ? 1 : 0;
-    s.typed = span(t, 0.32, 0.86);
-    const letters = scene.querySelectorAll('.rm-ntext i').length || 1;
-    const k = Math.floor(s.typed * letters);
-    if (t < 0.3) {
-      s.touch = along(
-        [
-          [0, 40, 40],
-          [0.1, ...X(AT.modes[1])],
-        ],
-        t,
-      );
-      s.press = inside(t, 0.1, 0.16) ? 'mode1' : '';
-    } else if (t < 0.88) {
-      // A finger hopping over the keys, one hop a letter.
-      s.touch = [12 + ((k * 37) % 76), 70 + ((k * 7) % 3) * 7.5];
-      s.press = (s.typed * letters) % 1 < 0.5 ? 'key' : '';
-    }
+    // The Paste shortcut, sent as the computer's own keys: the words land in Notes.
+    s.typed = t > 0.38 ? 1 : 0;
+    s.touch =
+      t < 0.82
+        ? along(
+            [
+              [0, 40, 40],
+              [0.3, ...X(AT.paste)],
+            ],
+            t,
+          )
+        : null;
+    s.press = inside(t, 0.32, 0.4) ? 'sc1' : '';
   } else if (id === 'slides') {
     s.typed = 1;
     s.kb = 0;
