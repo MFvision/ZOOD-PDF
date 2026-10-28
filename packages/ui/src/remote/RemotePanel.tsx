@@ -44,6 +44,17 @@ export function RemotePanel() {
   }, [status?.running]);
   const expired = until !== null && now > until;
 
+  // Shown whether the remote is on or off: it is what turns it on at launch.
+  const keepReady = status ? (
+    <label className="remote-switch">
+      <input type="checkbox" role="switch" checked={status.keepReady} disabled={busy} onChange={(e) => void run(() => setKeepReady(e.target.checked))} />
+      <span>
+        <strong>{t('remote.keepReady')}</strong>
+        <span className="remote-switch-body">{t('remote.keepReadyBody')}</span>
+      </span>
+    </label>
+  ) : null;
+
   if (!status?.running) {
     return (
       <div className="remote-panel">
@@ -91,6 +102,7 @@ export function RemotePanel() {
         <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary remote-wide" disabled={busy} onClick={() => void run(startRemote)}>
           {t('remote.turnOn')}
         </button>
+        {keepReady}
         <TwinCard pairing={false} />
       </div>
     );
@@ -128,7 +140,7 @@ export function RemotePanel() {
         </div>
       ) : (
         <div className="remote-code">
-          <p className="remote-scan">{t(status.qr ? 'remote.codeExpired' : 'remote.codeUsed')}</p>
+          <p className="remote-scan">{t(status.qr ? 'remote.codeExpired' : status.codeUsed ? 'remote.codeUsed' : 'remote.noCode')}</p>
           <button type="button" className="icon-btn icon-btn-labeled" disabled={busy} onClick={() => void run(startRemote)}>
             {t('remote.newCode')}
           </button>
@@ -166,15 +178,7 @@ export function RemotePanel() {
         </label>
       )}
 
-      {status.remembered.length > 0 && (
-        <label className="remote-switch">
-          <input type="checkbox" role="switch" checked={status.keepReady} disabled={busy} onChange={(e) => void run(() => setKeepReady(e.target.checked))} />
-          <span>
-            <strong>{t('remote.keepReady')}</strong>
-            <span className="remote-switch-body">{t('remote.keepReadyBody')}</span>
-          </span>
-        </label>
-      )}
+      {keepReady}
 
       {status.phones.length > 0 && <GiveFiles />}
 

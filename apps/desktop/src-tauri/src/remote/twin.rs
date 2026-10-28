@@ -958,11 +958,11 @@ pub fn twin_forget(app: AppHandle<Wry>, state: State<'_, TwinState>) -> TwinStat
 const OFFER_FOR: Duration = Duration::from_secs(180);
 
 /// This computer ready to be used from another one: the remote on (no QR
-/// code) and on again at every launch, and for three minutes another
-/// computer may ask to pair.
+/// code), and for three minutes another computer may ask to pair. Once one
+/// has, the remote comes on at every launch (`start_if_ready`); "Keep the
+/// remote ready", the phones' switch, is left as the person set it.
 #[tauri::command]
 pub async fn twin_offer(app: AppHandle<Wry>) -> Result<super::Status, String> {
-    super::keep_ready_now(&app, true);
     let status = super::start(&app, false).await?;
     let state = app.state::<super::RemoteState>();
     if let Some(shared) = super::running(&state) {
