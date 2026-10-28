@@ -612,7 +612,7 @@ export function QuickPage() {
       )}
       {ring && (
         <Group title={t('prefs.ringGroup')}>
-          <Toggle label={t('quick.settings.ring')} hint={t('quick.settings.ringNote')} checked={ring.ring} onChange={(on) => changeRing({ ring: on })} />
+          <Toggle label={t('quick.settings.ring')} hint={t('quick.settings.ringNote', { key: t(dragKeyLabel(ring.dragKey ?? 'any')) })} checked={ring.ring} onChange={(on) => changeRing({ ring: on })} />
           <LayoutBoard<string>
             label={t('prefs.ringTools')}
             hint={t('prefs.ringToolsHint')}

@@ -1108,3 +1108,10 @@
 .about-features li:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
+
+.about-engine {
+  margin: 0;
+  font-size: var(--text-footnote);
+  color: var(--secondary-label);
+  text-align: center;
+}
