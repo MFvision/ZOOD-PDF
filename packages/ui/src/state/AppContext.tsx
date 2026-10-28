@@ -49,6 +49,7 @@ import type { TKey } from '../i18n/messages';
 import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readJson, readPreferences, writePreferences } from './preferences';
+import { changesUnderWay } from './underWay';
 import { getSettings } from './settings';
 import { fileKey, keepVersion, noteSaved } from '../history/versions';
 import { drawPages, mountSheet } from '../print/printPages';
@@ -432,6 +433,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // no picture of its first page until it is opened again (home/recentPicture.ts).
   const pictureBlocked = useRef(false);
   const documentRef = useRef<RemoteDocument | null>(null);
+  const changes = useRef(changesUnderWay()).current;
+  const underWay = changes.track;
   /** The file as it was last saved (or opened): what goes to its versions at the next save. */
   const savedBytesRef = useRef<ArrayBuffer | null>(null);
   // The EmbedPDF view's registry (ADR-0007): the document as it holds it —
@@ -1271,7 +1274,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * replay for it, so it goes on the undo stack as a picture or link change
    * does: the file as it was is kept, and Undo puts it back.
    */
-  const addText = useCallback(
+  const addTextNow = useCallback(
     async (page: number, x: number, y: number, size: number, text: string) => {
       const doc = documentRef.current;
       if (!doc || stateRef.current.edit.busy) return;
@@ -1292,18 +1295,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [rememberFileChange],
   );
+  const addText = useCallback(
+    (page: number, x: number, y: number, size: number, text: string) => underWay(addTextNow(page, x, y, size, text)),
+    [underWay, addTextNow],
+  );
 
   const commitParagraph = useCallback(
-    async (entry: EditEntry) => {
-      if (entry.after === entry.before) {
-        dispatch({ type: 'EDIT_CANCEL' });
-        return;
-      }
-      const applied = await replaceParagraph(entry.page, entry.paragraphIndex, entry.after);
-      if (applied === null) return;
-      dispatch({ type: 'EDIT_APPLIED', entry, ...applied });
-    },
-    [replaceParagraph],
+    (entry: EditEntry) =>
+      underWay(
+        (async () => {
+          if (entry.after === entry.before) {
+            dispatch({ type: 'EDIT_CANCEL' });
+            return;
+          }
+          const applied = await replaceParagraph(entry.page, entry.paragraphIndex, entry.after);
+          if (applied === null) return;
+          dispatch({ type: 'EDIT_APPLIED', entry, ...applied });
+        })(),
+      ),
+    [underWay, replaceParagraph],
   );
 
   /**
@@ -1352,8 +1362,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [replaceParagraph, restoreSnapshot],
   );
 
-  const undoEdit = useCallback(() => step(undoStack), [step]);
-  const redoEdit = useCallback(() => step(redoStack), [step]);
+  const undoEdit = useCallback(() => underWay(step(undoStack)), [underWay, step]);
+  const redoEdit = useCallback(() => underWay(step(redoStack)), [underWay, step]);
 
   /** The last ten states of the file before a page change, and the undone ones. */
   const ORGANIZE_HISTORY = 10;
@@ -1974,6 +1984,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     : embedShowing;
 
   const bytesForSave = useCallback(async (): Promise<Uint8Array<ArrayBuffer> | null> => {
+    // An edit still under way (an Arabic one finding its font) is part of the file.
+    await changes.settled();
     const doc = documentRef.current;
     if (!doc) return null;
     // Whichever view is current holds the latest file: EmbedPDF's carries its
@@ -1986,7 +1998,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : layerOwnRef.current
         ? new Uint8Array(await withOwnLayers(new Uint8Array(await doc.save()).slice().buffer))
         : doc.save();
-  }, [bytesFromEmbed, keepOwnBytes, withOwnLayers]);
+  }, [changes, bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const claimSave = useCallback((target: SaveTarget | null) => setSaveTarget(target), [setSaveTarget]);
 

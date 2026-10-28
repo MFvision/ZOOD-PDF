@@ -1608,3 +1608,31 @@ button svg {
     overflow-x: visible;
   }
 }
+
+/* An iPad on its side: the slide and its controls on one side, the timer and
+   speaker notes beside them, so presenting needs no scrolling. */
+@media (orientation: landscape) and (width >= 900px) and (height > 520px) {
+  .phone-present {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 32%);
+    align-items: start;
+    gap: 12px 18px;
+    padding-block-end: 12px;
+  }
+
+  .phone-present > * {
+    grid-column: 1;
+    min-inline-size: 0;
+  }
+
+  .phone-present > .phone-cards {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    max-block-size: calc(100dvh - 150px);
+    overflow-y: auto;
+  }
+
+  .phone-present .phone-stage {
+    max-block-size: 56dvh;
+  }
+}
