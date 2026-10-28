@@ -125,16 +125,27 @@ export function CreatePanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Files opened from elsewhere while the panel is open: made at once, as
+  // the files the panel opened with are.
+  const madeNow = async (files: readonly File[]) => {
+    const added = await read(await Promise.all(files.map(async (f) => ({ name: f.name, bytes: await f.arrayBuffer() }))));
+    setEntries(added);
+    await make(added, DEFAULT_CREATE_OPTIONS, false);
+  };
+
   // Files dropped on the window while the panel is open join the list.
   const takeDrop = useRef(add);
+  const makeNow = useRef(madeNow);
   useEffect(() => {
     takeDrop.current = add;
+    makeNow.current = madeNow;
   });
   useEffect(() => {
     services.claimDrops({
       label: 'drop.create',
       take: (files) =>
         void (async () => takeDrop.current(await Promise.all(files.map(async (f) => ({ name: f.name, bytes: await f.arrayBuffer() })))))(),
+      make: (files) => void makeNow.current(files),
     });
     return () => services.claimDrops(null);
     // Claimed once for as long as the panel is open.

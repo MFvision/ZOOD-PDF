@@ -544,6 +544,49 @@ pub fn erase_area(
     Ok(erase_area_keeping_fill(pdf, page_index, rect)?.0)
 }
 
+/// Paints `rect` (PDF user space: x, y of the bottom edge, width, height)
+/// in `rgb` (0 to 1) over what the page draws so far. For text that is part
+/// of a picture under its own text layer (a ministry's certificates draw
+/// the whole page as an image, then the same words as text on top):
+/// erasing the text leaves the picture's words, so they are covered in the
+/// picture's own background colour before the new text is drawn.
+pub fn cover_area(
+    pdf: &mut PdfDocument,
+    page_index: usize,
+    rect: (f32, f32, f32, f32),
+    rgb: [f32; 3],
+) -> Result<()> {
+    let page_id = pdf.page_id(page_index)?;
+    let (x, y, w, h) = rect;
+    if !(x.is_finite() && y.is_finite() && w.is_finite() && h.is_finite()) || w <= 0.0 || h <= 0.0 {
+        return Err(Error::Edit("the area to cover is empty".into()));
+    }
+    let mut ops = reset_state_ops(pdf, page_id);
+    ops.push(Operation::new("q", vec![]));
+    ops.push(Operation::new(
+        "rg",
+        rgb.iter()
+            .map(|v| Object::Real(v.clamp(0.0, 1.0)))
+            .collect(),
+    ));
+    ops.push(Operation::new(
+        "re",
+        [x, y, w, h].iter().map(|v| Object::Real(*v)).collect(),
+    ));
+    ops.push(Operation::new("f", vec![]));
+    ops.push(Operation::new("Q", vec![]));
+    let mut content = pdf.doc.get_page_content(page_id);
+    content.push(b'\n');
+    content.extend(
+        Content { operations: ops }
+            .encode()
+            .map_err(|e| Error::Edit(e.to_string()))?,
+    );
+    pdf.replace_page_content(page_id, content)?;
+    mark_page_objects(pdf, page_id);
+    Ok(())
+}
+
 /// [`erase_area`], and the colour the blanked text was painted in: the
 /// operators that set it (see [`crate::text_walk::ShowRun::fill`]), of the
 /// colour most of the blanked runs share, for whatever is drawn in their

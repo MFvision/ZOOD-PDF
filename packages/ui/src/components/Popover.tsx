@@ -97,6 +97,8 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (ref.current?.contains(target) || anchor?.contains(target)) return;
+      // Help's "Do this step" presses the control inside it for the person.
+      if (target instanceof Element && target.closest('.guide-layer')) return;
       onClose();
     };
     document.addEventListener('pointerdown', onPointerDown, true);
