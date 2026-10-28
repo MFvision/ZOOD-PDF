@@ -22,7 +22,7 @@ Help & Support chapter.
 ## The relay
 
 `website/api/support/` is a small PHP + MySQL relay. It runs on the existing
-Hostinger plan at `https://pdf.zood.sa/api/support/` and files each report
+Hostinger plan at `https://pdf.zoodrealty.com/api/support/` and files each report
 and idea as an issue in the private repository `MFvision/zood-support`. The
 setup steps are in [its README](../../website/api/support/README.md).
 
@@ -31,7 +31,7 @@ Until it is online, Send shows "could not be reached just now" and offers
 with the same text and a short log, so the person can still send it.
 
 The app may only reach the relay's own path. Both content security policies
-name `https://pdf.zood.sa/api/support/`, and `apps/web/src/csp.test.ts`
+name `https://pdf.zoodrealty.com/api/support/`, and `apps/web/src/csp.test.ts`
 holds them to it.
 
 ## Privacy
