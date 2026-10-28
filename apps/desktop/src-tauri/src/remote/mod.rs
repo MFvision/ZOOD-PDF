@@ -204,6 +204,9 @@ pub struct Shared<H: Host> {
     /// Until when another computer may ask to pair (`twin.rs`): only for a
     /// few minutes after the person here says so, like Bluetooth pairing.
     pc_pairing: Mutex<Option<Instant>>,
+    /// A phone paired with the last QR code (so the panel says so, rather
+    /// than "used" when no code was ever made, as at launch).
+    code_used: AtomicBool,
 }
 
 impl<H: Host> Shared<H> {
@@ -227,6 +230,7 @@ impl<H: Host> Shared<H> {
         if let Ok(mut code) = self.code.lock() {
             *code = None;
         }
+        self.code_used.store(true, Ordering::Relaxed);
     }
 
     fn new_code(&self) {
@@ -242,6 +246,7 @@ impl<H: Host> Shared<H> {
                 until_ms,
             });
         }
+        self.code_used.store(false, Ordering::Relaxed);
     }
 
     fn pc_control_on(&self) -> bool {
@@ -355,6 +360,8 @@ pub struct Status {
     pub waiting: usize,
     /// Another computer may pair now ("Let a computer pair", `twin.rs`).
     pub pc_pairing: bool,
+    /// A phone paired with the last code; without one no code was made yet.
+    pub code_used: bool,
 }
 
 fn phones_file<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
@@ -443,6 +450,7 @@ fn status_of<R: Runtime>(shared: Option<&Shared<AppHandle<R>>>, app: &AppHandle<
             keep_ready: ready_wanted(app),
             waiting: 0,
             pc_pairing: false,
+            code_used: false,
         };
     };
     shared.status()
@@ -509,6 +517,7 @@ impl<H: Host> Shared<H> {
             keep_ready: shared.keep_ready.load(Ordering::Relaxed),
             waiting: shared.waiting.lock().map(|w| w.len()).unwrap_or(0),
             pc_pairing: shared.pc_pairing_open(),
+            code_used: shared.code_used.load(Ordering::Relaxed),
         }
     }
 }
@@ -562,6 +571,7 @@ async fn start(app: &AppHandle<Wry>, code: bool) -> Result<Status, String> {
         announced: Mutex::new(None),
         waiting: Mutex::new(Vec::new()),
         pc_pairing: Mutex::new(None),
+        code_used: AtomicBool::new(false),
     });
     if code {
         shared.new_code();
@@ -609,15 +619,15 @@ fn ready_wanted<R: Runtime>(app: &AppHandle<R>) -> bool {
 
 /// At launch: with "Keep the remote ready" on and a phone paired before, the
 /// remote comes on by itself (no QR code), so that phone finds the PC
-/// without anyone pressing Phone remote first. Off by default.
+/// without anyone pressing Phone remote first. Off by default. A computer
+/// another one lends its mouse to (paired through "Let a computer pair")
+/// listens at launch too, whatever that switch says, until it is forgotten:
+/// otherwise the mouse could not come over after a restart.
 pub fn start_if_ready(app: &AppHandle<Wry>) {
-    if !ready_wanted(app) {
-        return;
-    }
-    let paired = phones_file(app)
-        .map(|f| !Phones::load(&f).list().is_empty())
-        .unwrap_or(false);
-    if !paired {
+    let phones = phones_file(app)
+        .map(|f| Phones::load(&f))
+        .unwrap_or_default();
+    if !wanted_at_launch(ready_wanted(app), &phones) {
         return;
     }
     let app = app.clone();
@@ -626,6 +636,13 @@ pub fn start_if_ready(app: &AppHandle<Wry>) {
             core_bridge_log(format!("remote: not ready at launch: {e}"));
         }
     });
+}
+
+/// Whether the remote comes on at launch: for phones paired before when the
+/// person keeps it ready, and always for a computer paired to lend its mouse.
+fn wanted_at_launch(keep_ready: bool, paired: &Phones) -> bool {
+    let list = paired.list();
+    list.iter().any(|p| p.pc) || (keep_ready && !list.is_empty())
 }
 
 /// Remembers "Keep the remote ready" for the next launch.
@@ -1126,6 +1143,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn comes_on_at_launch_for_kept_phones_and_always_for_a_paired_computer() {
+        let key: SealKey = [3u8; 32];
+        let mut phones = Phones::default();
+        assert!(!wanted_at_launch(true, &phones));
+        phones.add("phone".into(), "Phone", &key);
+        assert!(wanted_at_launch(true, &phones));
+        assert!(!wanted_at_launch(false, &phones));
+        phones.add_pc("pc".into(), "Desk PC", &key);
+        assert!(wanted_at_launch(false, &phones));
+    }
+
+    #[test]
     fn files_for_the_phone_are_typed_by_their_name() {
         assert_eq!(mime_of("Scan.PDF"), "application/pdf");
         assert_eq!(mime_of("photo.jpeg"), "image/jpeg");
@@ -1237,6 +1266,7 @@ mod tests {
             announced: Mutex::new(None),
             waiting: Mutex::new(Vec::new()),
             pc_pairing: Mutex::new(None),
+            code_used: AtomicBool::new(false),
         });
         shared.new_code();
         let url = shared.status().url.unwrap();

@@ -28,6 +28,8 @@ export interface RemoteStatus {
   waiting: number;
   /** Another computer may pair now ("Let a computer pair", `remote/twin.ts`). */
   pcPairing: boolean;
+  /** A phone paired with the last code; without, none was made yet (at launch, or for a computer). */
+  codeUsed: boolean;
 }
 
 export const STATUS_EVENT = 'warraq://remote-status';

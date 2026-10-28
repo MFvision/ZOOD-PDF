@@ -1192,6 +1192,7 @@
   "remote.newCode": "New code",
   "remote.codeUsed": "A phone used this code. Make a new one to pair another phone.",
   "remote.codeExpired": "This code ran out. Make a new one to pair a phone.",
+  "remote.noCode": "No code to scan yet. Make one to pair a new phone; phones you paired before connect without one.",
   "remote.pairedBefore": "A phone paired before can open",
   "remote.pcControl": "Control this computer from the phone",
   "remote.pcControlBody": "The phone moves the pointer, clicks, scrolls and types. It switches off when the phone remote does.",
