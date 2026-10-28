@@ -543,6 +543,8 @@ export const zoneAct = (id: number, act: string) => shelfCall('zone_act', { id, 
 export const zoneNote = (show: boolean) => shelfCall('zone_note', { show });
 export const zoneMade = (paths: readonly string[]) => shelfCall('zone_made', { paths });
 export const zoneShowMade = () => shelfCall('zone_show_made');
+/** Print: the PDF the Print tile made opens at the system's print dialog. */
+export const zonePrintMade = () => shelfCall('zone_print_made');
 export async function zoneUndoMade(): Promise<number> {
   return ((await invoke('zone_undo_made').catch(() => 0)) as number) ?? 0;
 }

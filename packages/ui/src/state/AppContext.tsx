@@ -421,6 +421,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [documentBytes]);
   const [documentPassword, setDocumentPassword] = useState<string | undefined>(undefined);
   const passwordRef = useRef<string | undefined>(undefined);
+  /** Print, for the drop zone's Print tile: set once `printFile` exists below. */
+  const printFileRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     passwordRef.current = documentPassword;
   }, [documentPassword]);
@@ -894,6 +896,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const tool = await takeStartupTool();
           await openFile(toFile(picked));
           if ((tool === 'fillSign' || tool === 'ai') && !cancelled) dispatch({ type: 'SET_ACTIVE_TOOL', tool });
+          // The drop zone's Print tile: the PDF it made, straight to the print dialog.
+          if (tool === 'print' && !cancelled) void printFileRef.current();
         })
         .catch(() => {});
     take();
@@ -1893,6 +1897,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'DOCUMENT_FAILED', error: forbidden ? 'print.forbidden' : 'print.failed' });
     }
   }, [currentFileBytes, printWay, printByPages]);
+  useEffect(() => {
+    printFileRef.current = printFile;
+  }, [printFile]);
 
   const viewCommand = useCallback(
     (command: ViewCommand) => {

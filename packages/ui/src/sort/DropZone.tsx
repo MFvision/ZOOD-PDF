@@ -56,6 +56,7 @@ import {
   zoneMade,
   zoneNote,
   zoneShowMade,
+  zonePrintMade,
   zoneAct,
   zoneTook,
   zoneUndoMade,
@@ -305,7 +306,8 @@ function Zone() {
         made = [...made, ...result.made];
         failed += result.failed;
       }
-      void zoneMade(made);
+      // Print prints: the PDF it made goes on to the print dialog.
+      void zoneMade(made).then(() => (target === 'tile:print' && made.length > 0 ? zonePrintMade() : undefined));
       showNote({ kind: 'tile', done: total, total, made: made.length, failed, end: true });
     })();
   });

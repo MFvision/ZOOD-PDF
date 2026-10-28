@@ -21,6 +21,9 @@ interface Note {
  * opened for reading, so neither disturbs the editor's own view; it is opened
  * again when the file changes, and only while something needs it.
  */
+/** Picture requests kept while the reading copy opens: a strip's worth and the page, several phones. */
+const MAX_WAITING = 64;
+
 export function useRemoteController(): { reading: RemoteDocument | null; page: number; turnTo: (page: number) => void; present: (on: boolean) => void } {
   const state = useAppState();
   const dispatch = useAppDispatch();
@@ -30,6 +33,8 @@ export function useRemoteController(): { reading: RemoteDocument | null; page: n
   const [reading, setReading] = useState<RemoteDocument | null>(null);
   const [notes, setNotes] = useState<Note[][]>([]);
   const pictures = useRef(new Map<string, string>());
+  /** Pictures the phone asked for before the reading copy was open. */
+  const waiting = useRef<{ peer: number; page: number; width: number }[]>([]);
 
   const phonesConnected = (view.status?.phones.length ?? 0) > 0;
   const needed = state.document !== null && (view.presenting || phonesConnected);
@@ -167,6 +172,34 @@ export function useRemoteController(): { reading: RemoteDocument | null; page: n
     [state.document],
   );
 
+  /** A page drawn for the phone at `width` pixels, from the cache when drawn before. */
+  const answerPicture = useCallback(async (from: RemoteDocument, peer: number, at: number, width: number) => {
+    if (at < 1 || at > from.pageCount) return;
+    const key = `${at}:${width}`;
+    let url = pictures.current.get(key);
+    if (!url) {
+      const [pageWidth] = from.pageSizes[at - 1] ?? [612, 792];
+      const drawn = await from.render_page(at - 1, Math.min(4, width / Math.max(1, pageWidth)));
+      url = jpegUrl(drawn);
+      if (pictures.current.size > 120) pictures.current.clear();
+      pictures.current.set(key, url);
+    }
+    sendToPhone({ t: 'picture', page: at, width, url }, peer);
+  }, []);
+
+  // Pictures asked for while the reading copy was opening: the page in view first.
+  useEffect(() => {
+    if (!reading || waiting.current.length === 0) return;
+    const asked = waiting.current.splice(0);
+    const current = remoteView().page ?? state.currentPage;
+    asked.sort((a, b) => Math.abs(a.page - current) - Math.abs(b.page - current) || b.width - a.width);
+    void (async () => {
+      for (const one of asked) await answerPicture(reading, one.peer, one.page, one.width).catch(() => undefined);
+    })();
+    // Only the copy opening drains the queue.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reading, answerPicture]);
+
   const handle = useCallback(
     async (peer: number, message: PhoneMessage | { t: 'joined' | 'left' }) => {
       switch (message.t) {
@@ -209,17 +242,14 @@ export function useRemoteController(): { reading: RemoteDocument | null; page: n
           updateRemote({ zoom: { scale: message.scale, at: message.at } });
           return;
         case 'picture': {
-          if (!reading || message.page < 1 || message.page > reading.pageCount) return;
-          const key = `${message.page}:${message.width}`;
-          let url = pictures.current.get(key);
-          if (!url) {
-            const [width] = reading.pageSizes[message.page - 1] ?? [612, 792];
-            const drawn = await reading.render_page(message.page - 1, Math.min(4, message.width / Math.max(1, width)));
-            url = jpegUrl(drawn);
-            if (pictures.current.size > 120) pictures.current.clear();
-            pictures.current.set(key, url);
+          // The phone asks for each picture once. Asked before the reading
+          // copy is open (just after Present, or a file opened), it waits
+          // here rather than being lost, which left the phone's pages blank.
+          if (!reading) {
+            if (waiting.current.length < MAX_WAITING) waiting.current.push({ peer, page: message.page, width: message.width });
+            return;
           }
-          sendToPhone({ t: 'picture', page: message.page, width: message.width, url }, peer);
+          await answerPicture(reading, peer, message.page, message.width);
           return;
         }
         case 'wantFile': {
@@ -255,7 +285,7 @@ export function useRemoteController(): { reading: RemoteDocument | null; page: n
         }
       }
     },
-    [present, turnTo, page, pageSize, placePicture, reading, services, state.document],
+    [present, turnTo, page, pageSize, placePicture, reading, answerPicture, services, state.document],
   );
 
   const handleRef = useRef(handle);
