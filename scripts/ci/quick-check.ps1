@@ -17,6 +17,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
+# A full path: Start-Process with arguments does not find a relative one.
+$App = (Resolve-Path $App).Path
 Add-Type -AssemblyName System.Drawing, System.Windows.Forms
 Add-Type @'
 using System;
@@ -66,40 +68,46 @@ Copy-Item $Sample (Join-Path $folder 'sample.pdf')
 [System.IO.File]::WriteAllText((Join-Path $folder 'broken.pdf'), 'this is not a PDF')
 
 $app = Start-Process -FilePath $App -ArgumentList '--background' -PassThru
-Start-Sleep -Seconds 10
-Check (-not $app.HasExited) 'the app keeps running in the background'
+try {
+  Start-Sleep -Seconds 10
+  Check (-not $app.HasExited) 'the app keeps running in the background'
 
-# 2. Right-click › Word, with the app in the tray.
-$pdf = Join-Path $folder 'sample.pdf'
-Start-Process -FilePath $App -ArgumentList @('--quick', '--tool=word', "`"$pdf`"") | Out-Null
-$made = WaitFor { Get-ChildItem $folder -Filter 'sample*.docx' } 30
-Shot 'word-after'
-Check $made 'right-click Word makes sample.docx beside the PDF'
-Check (WaitFor { (QuickWindow) -eq [IntPtr]::Zero } 8) 'the quick window closes by itself after Word'
-Check ((Log) -match 'second launch: a quick tool') 'ring.log: the second launch was handed to the running copy'
-Check ((Log) -match 'word: 1 done, 0 failed') 'ring.log: the window says Word went well'
+  # 2. Right-click › Word, with the app in the tray.
+  $pdf = Join-Path $folder 'sample.pdf'
+  Start-Process -FilePath $App -ArgumentList @('--quick', '--tool=word', "`"$pdf`"") | Out-Null
+  $made = WaitFor { Get-ChildItem $folder -Filter 'sample*.docx' } 30
+  Shot 'word-after'
+  Check $made 'right-click Word makes sample.docx beside the PDF'
+  Check (WaitFor { (QuickWindow) -eq [IntPtr]::Zero } 8) 'the quick window closes by itself after Word'
+  Check ((Log) -match 'second launch: a quick tool') 'ring.log: the second launch was handed to the running copy'
+  Check ((Log) -match 'word: 1 done, 0 failed') 'ring.log: the window says Word went well'
 
-# 3. Right-click › Compress.
-Start-Process -FilePath $App -ArgumentList @('--quick', '--tool=compress', "`"$pdf`"") | Out-Null
-$made = WaitFor { Get-ChildItem $folder -Filter 'sample*compressed*.pdf' } 30
-Check $made 'right-click Compress makes a compressed PDF'
-Check (WaitFor { (QuickWindow) -eq [IntPtr]::Zero } 8) 'the quick window closes by itself after Compress'
+  # 3. Right-click › Compress.
+  Start-Process -FilePath $App -ArgumentList @('--quick', '--tool=compress', "`"$pdf`"") | Out-Null
+  $made = WaitFor { Get-ChildItem $folder -Filter 'sample*compressed*.pdf' } 30
+  Check $made 'right-click Compress makes a compressed PDF'
+  Check (WaitFor { (QuickWindow) -eq [IntPtr]::Zero } 8) 'the quick window closes by itself after Compress'
 
-# 4. A file that fails: the window stays, with it marked.
-$broken = Join-Path $folder 'broken.pdf'
-Start-Process -FilePath $App -ArgumentList @('--quick', '--tool=word', "`"$broken`"") | Out-Null
-Check (WaitFor { (Log) -match 'word: 0 done, 1 failed' } 30) 'ring.log: the window says the broken file failed'
-Start-Sleep -Seconds 4
-Shot 'failed-stays'
-$window = QuickWindow
-Check ($window -ne [IntPtr]::Zero) 'the quick window stays open when a file fails'
-Check (-not (Get-ChildItem $folder -Filter 'broken*.docx')) 'nothing is made from the broken file'
-if ($window -ne [IntPtr]::Zero) { [Win]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null }
+  # 4. A file that fails: the window stays, with it marked.
+  $broken = Join-Path $folder 'broken.pdf'
+  Start-Process -FilePath $App -ArgumentList @('--quick', '--tool=word', "`"$broken`"") | Out-Null
+  Check (WaitFor { (Log) -match 'word: 0 done, 1 failed' } 30) 'ring.log: the window says the broken file failed'
+  Start-Sleep -Seconds 4
+  Shot 'failed-stays'
+  $window = QuickWindow
+  Check ($window -ne [IntPtr]::Zero) 'the quick window stays open when a file fails'
+  Check (-not (Get-ChildItem $folder -Filter 'broken*.docx')) 'nothing is made from the broken file'
+  if ($window -ne [IntPtr]::Zero) { [Win]::PostMessage($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null }
 
-Start-Sleep -Seconds 2
-Set-Content (Join-Path $Out 'ring.log') (Log)
-Get-ChildItem $folder | Format-Table Name, Length | Out-String | Set-Content (Join-Path $Out 'folder.txt')
-if (-not $app.HasExited) { Stop-Process -Id $app.Id -ErrorAction SilentlyContinue }
+  Start-Sleep -Seconds 2
+} catch {
+  Check $false "the check itself: $($_.Exception.Message)"
+} finally {
+  # What the app logged and what the folder holds, whatever happened.
+  Set-Content (Join-Path $Out 'ring.log') (Log)
+  Get-ChildItem $folder | Format-Table Name, Length | Out-String | Set-Content (Join-Path $Out 'folder.txt')
+  Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Where-Object { $_.Id -eq $app.Id } | Stop-Process -ErrorAction SilentlyContinue
+}
 
 if ($failures.Count -gt 0) { throw "quick check failed: $($failures -join '; ')" }
 Write-Host 'quick check passed'
