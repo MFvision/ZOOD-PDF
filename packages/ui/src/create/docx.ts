@@ -14,8 +14,15 @@ import { partText, pictureMime, readParts, relsPath, resolvePart } from './zip';
  * JPEG, GIF, BMP, WebP, TIFF) at their size; page breaks and sections of
  * another page size; and the header and footer, with page numbers.
  *
- * Not read: text boxes and shapes, footnotes, comments, columns, a first
- * page's own header, and fonts — the text is set in one of Warraq's faces.
+ * The font each paragraph is set in is named on its block (the one most of
+ * its letters use, theme fonts resolved), for the faces to be found by; a
+ * stretch of a right-to-left paragraph Word lays out left to right (a run
+ * not marked right to left: a date range, an invoice number) is isolated,
+ * so it reads as Word shows it; Wingdings and Symbol characters become the
+ * Unicode signs they draw (☐, ☑, ✓, •).
+ *
+ * Not read: text boxes and shapes, footnotes, comments, columns, and a first
+ * page's own header.
  * Tracked insertions are kept and deletions left out, as the document reads
  * now.
  */
@@ -48,6 +55,21 @@ interface Props {
   strike?: boolean;
   color?: string;
   hidden?: boolean;
+  /** `w:rFonts`: the Latin face, and the face for Arabic (complex script). */
+  font?: string;
+  fontCs?: string;
+  fontTheme?: string;
+  fontCsTheme?: string;
+  /** `w:rtl`: the run is right to left. */
+  rtl?: boolean;
+}
+
+/** The theme's fonts (`a:minorFont`, `a:majorFont`). */
+interface ThemeFonts {
+  minorLatin?: string;
+  minorCs?: string;
+  majorLatin?: string;
+  majorCs?: string;
 }
 
 interface Style {
@@ -78,6 +100,7 @@ interface Context {
   pictures: SourcePicture[];
   pictureIndex: Map<string, number>;
   leftOut: number;
+  theme: ThemeFonts;
 }
 
 const on = (element: XmlElement | null): boolean | undefined => {
@@ -170,7 +193,69 @@ function runProps(rPr: XmlElement | null): Props {
   if (strike !== undefined) props.strike = strike;
   props.color = hexColour(attr(firstChild(rPr, 'color'), 'val'));
   props.hidden = on(firstChild(rPr, 'vanish'));
+  const fonts = firstChild(rPr, 'rFonts');
+  if (fonts) {
+    props.font = attr(fonts, 'ascii') ?? attr(fonts, 'hAnsi');
+    props.fontCs = attr(fonts, 'cs');
+    props.fontTheme = attr(fonts, 'asciiTheme') ?? attr(fonts, 'hAnsiTheme');
+    props.fontCsTheme = attr(fonts, 'cstheme');
+    // A face named here replaces a theme font a style named: '' says so.
+    if (props.font && !props.fontTheme) props.fontTheme = '';
+    if (props.fontCs && !props.fontCsTheme) props.fontCsTheme = '';
+  }
+  props.rtl = on(firstChild(rPr, 'rtl'));
   return props;
+}
+
+/** The theme's fonts, from `word/theme/theme1.xml`. */
+export function readThemeFonts(xml: string | null): ThemeFonts {
+  const root = xml ? parseXml(xml) : null;
+  const scheme = descendants(root, 'fontScheme')[0] ?? null;
+  const face = (group: string, script: string) => {
+    const value = attr(firstChild(firstChild(scheme, group), script), 'typeface');
+    return value && value.trim() ? value.trim() : undefined;
+  };
+  return {
+    minorLatin: face('minorFont', 'latin'),
+    minorCs: face('minorFont', 'cs'),
+    majorLatin: face('majorFont', 'latin'),
+    majorCs: face('majorFont', 'cs'),
+  };
+}
+
+/** The family a run is set in: its own name, or the theme's (a theme reference wins, as in Word). */
+function familyOf(props: Props, complex: boolean, theme: ThemeFonts): string | undefined {
+  const reference = complex ? props.fontCsTheme : props.fontTheme;
+  if (reference) {
+    const major = reference.startsWith('major');
+    const cs = /bidi$/i.test(reference) || complex;
+    const fromTheme = major ? (cs ? theme.majorCs : theme.majorLatin) : cs ? theme.minorCs : theme.minorLatin;
+    if (fromTheme) return fromTheme;
+  }
+  const named = complex ? props.fontCs : props.font;
+  return named && named.trim() ? named.trim() : undefined;
+}
+
+/**
+ * Wingdings, Wingdings 2 and Symbol draw signs at letters' places: the sign
+ * each common one draws, as Unicode. One not known here is left out rather
+ * than drawn as a box.
+ */
+const SYMBOL_FONTS: Record<string, Record<number, string>> = {
+  wingdings: {
+    0x6f: '☐', 0xa8: '☐', 0x71: '❑', 0x6e: '■', 0xfe: '☑', 0xfd: '☒', 0xfc: '✓', 0xfb: '✗', 0x9f: '•', 0xa7: '▪', 0x9e: '·',
+    0xd8: '➢', 0xe0: '➔', 0xe8: '➔', 0x76: '❖', 0x75: '◆', 0x6c: '●', 0xa1: '○', 0x2a: '✉', 0x28: '☎', 0x29: '✆', 0x3a: '💻',
+  },
+  'wingdings 2': { 0x52: '☑', 0x54: '☒', 0xa3: '☐', 0x50: '✓', 0x4f: '✗', 0x51: '☒', 0x2a: '☐' },
+  symbol: { 0xb7: '•', 0xa7: '♣', 0xa8: '♦', 0xa9: '♥', 0xaa: '♠', 0xae: '→', 0xac: '←', 0xb0: '°', 0xb1: '±', 0xd7: '×' },
+};
+
+/** A character of a symbol font (`w:sym`, or a run in that font) as the sign it draws, or '' for none known. */
+export function symbolChar(font: string | undefined, code: number): string | null {
+  const table = font ? SYMBOL_FONTS[font.trim().toLowerCase()] : undefined;
+  if (!table) return null;
+  // Word stores them in the private area, F000 + the font's code.
+  return table[code >= 0xf000 && code <= 0xf0ff ? code - 0xf000 : code] ?? '';
 }
 
 /** `b` over `a`: what `b` says, and what it leaves unsaid from `a`. */
@@ -347,9 +432,55 @@ function marker(context: Context, numId: string, ilvl: number): { text: string; 
 
 const ARABIC_LETTER = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
 
-/** A run as read, with the size it was set at. */
+/** A run as read, with the size it was set at, its family and direction. */
 interface Run extends TextRun {
   size?: number;
+  font?: string;
+  rtl?: boolean;
+}
+
+/** UAX #9 isolates: a stretch set left to right inside a right-to-left line. */
+export const LTR_ISOLATE = '\u2066';
+export const POP_ISOLATE = '\u2069';
+
+/**
+ * In a right-to-left paragraph, runs Word does not mark right to left and
+ * that hold no Arabic letter are laid out left to right as a whole, numbers,
+ * slashes, dashes and brackets included: "(27/01/2026 - 27/01/2027)" reads
+ * as written, not with its dates swapped. Such a stretch of runs (with a
+ * digit or a Latin letter in it) is isolated, as Word shows it.
+ */
+export function isolateLtrRuns(runs: Run[]): void {
+  let k = 0;
+  while (k < runs.length) {
+    const ltr = (r: Run) => !r.rtl && !ARABIC_LETTER.test(r.text) && !r.text.includes('\n');
+    if (!ltr(runs[k]!)) {
+      k += 1;
+      continue;
+    }
+    let end = k;
+    while (end + 1 < runs.length && ltr(runs[end + 1]!)) end += 1;
+    const text = runs
+      .slice(k, end + 1)
+      .map((r) => r.text)
+      .join('');
+    if (/[0-9A-Za-z]/.test(text)) {
+      // The isolate holds what the reader sees, not the spaces around it.
+      let first = k;
+      while (first <= end && runs[first]!.text.trim() === '') first += 1;
+      let last = end;
+      while (last >= first && runs[last]!.text.trim() === '') last -= 1;
+      if (first <= last) {
+        const a = runs[first]!;
+        const lead = /^\s*/.exec(a.text)![0];
+        a.text = `${lead}${LTR_ISOLATE}${a.text.slice(lead.length)}`;
+        const b = runs[last]!;
+        const trail = /\s*$/.exec(b.text)![0];
+        b.text = `${b.text.slice(0, b.text.length - trail.length)}${POP_ISOLATE}${trail}`;
+      }
+    }
+    k = end + 1;
+  }
 }
 
 /** A paragraph's runs, in order; its pictures; and whether a page break comes after it. */
@@ -412,8 +543,21 @@ function readRuns(p: XmlElement, base: Props, context: Context): ReadParagraph {
   const fields: Field[] = [];
   const showing = () => fields.every((f) => f.result && !f.replaced);
   const push = (text: string, props: Props, link: string | undefined) => {
-    const complex = ARABIC_LETTER.test(text);
+    const complex = ARABIC_LETTER.test(text) || props.rtl === true;
+    const family = familyOf(props, complex, context.theme);
+    // Signs typed in a symbol font, as the signs they draw.
+    if (family && SYMBOL_FONTS[family.toLowerCase()]) {
+      text = [...text]
+        .map((c) => {
+          const code = c.codePointAt(0)!;
+          return code <= 0xff || (code >= 0xf000 && code <= 0xf0ff) ? (symbolChar(family, code) ?? c) : c;
+        })
+        .join('');
+      if (!text) return;
+    }
     const run: Run = { text, size: complex ? (props.sizeCs ?? props.size) : props.size };
+    if (family && !SYMBOL_FONTS[family.toLowerCase()]) run.font = family;
+    if (props.rtl) run.rtl = true;
     if (complex ? (props.boldCs ?? props.bold) : props.bold) run.bold = true;
     if (complex ? (props.italicCs ?? props.italic) : props.italic) run.italic = true;
     if (props.underline) run.underline = true;
@@ -483,6 +627,12 @@ function readRuns(p: XmlElement, base: Props, context: Context): ReadParagraph {
             case 'noBreakHyphen':
               text += '‑';
               break;
+            case 'sym': {
+              const code = parseInt(attr(child, 'char') ?? '', 16);
+              const sign = Number.isFinite(code) ? symbolChar(attr(child, 'font'), code) : null;
+              if (sign) text += sign;
+              break;
+            }
             case 'drawing':
             case 'pict':
             case 'object':
@@ -537,7 +687,18 @@ function readRuns(p: XmlElement, base: Props, context: Context): ReadParagraph {
         break;
     }
   }
+  if (base.bidi) isolateLtrRuns(out.runs);
   return out;
+}
+
+/** The family most of the runs' letters are set in. */
+function mainFamily(runs: readonly Run[]): string | undefined {
+  const weights = new Map<string, number>();
+  for (const r of runs) {
+    if (!r.font) continue;
+    weights.set(r.font, (weights.get(r.font) ?? 0) + r.text.replace(/\s/g, '').length);
+  }
+  return [...weights.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
 const HEADING_SIZES = [20, 16, 14, 13, 12, 11, 11, 11, 11];
@@ -580,7 +741,9 @@ function paragraph(p: XmlElement, context: Context): Block[] {
     shape.indent = Math.max(shape.indent ?? 0, (shape.size ?? 11) * 1.8);
   }
   if (text.length > 0 || read.pictures.length === 0) {
-    blocks.push(withRuns(shape, read.runs.map(({ size: _size, ...run }) => run)));
+    const family = mainFamily(read.runs);
+    if (family) shape.font = family;
+    blocks.push(withRuns(shape, read.runs.map(({ size: _size, font: _font, rtl: _rtl, ...run }) => run)));
   }
   read.pictures.forEach((index, k) => {
     const image: ImageBlock = { type: 'image', index, align: props.align === 'justify' ? 'center' : (props.align ?? 'center') };
@@ -602,12 +765,14 @@ function cellText(tc: XmlElement, context: Context): { cell: TableCell; size?: n
   let align: BlockAlign | undefined;
   let rtl: boolean | undefined;
   let size: number | undefined;
+  const all: Run[] = [];
   for (const p of paragraphs) {
     const pPr = firstChild(p, 'pPr');
     const style = styleProps(context, attr(firstChild(pPr, 'pStyle'), 'val'));
     const props = merge(merge(context.defaults, style.props), paragraphProps(pPr));
     const read = readRuns(p, props, context);
     pieces.push(read.runs.map((r) => r.text).join(''));
+    all.push(...read.runs);
     for (const r of read.runs) {
       const n = r.text.replace(/\s/g, '').length;
       letterCount += n;
@@ -621,6 +786,8 @@ function cellText(tc: XmlElement, context: Context): { cell: TableCell; size?: n
   if (letterCount > 0 && bold * 2 > letterCount) cell.bold = true;
   if (align) cell.align = align;
   if (rtl) cell.dir = 'rtl';
+  const family = mainFamily(all);
+  if (family) cell.font = family;
   const fill = hexColour(attr(firstChild(firstChild(tc, 'tcPr'), 'shd'), 'fill'));
   if (fill && fill !== '#ffffff') cell.fill = fill;
   return { cell, size };
@@ -744,6 +911,7 @@ export function readDocx(bytes: Uint8Array): ReadDocument {
       /^word\/(header|footer)\d*\.xml$/.test(name) ||
       /^word\/_rels\/[^/]+\.rels$/.test(name) ||
       name === 'docProps/core.xml' ||
+      name === 'word/theme/theme1.xml' ||
       name.startsWith('word/media/'),
   );
   const documentXml = partText(parts, 'word/document.xml');
@@ -766,6 +934,7 @@ export function readDocx(bytes: Uint8Array): ReadDocument {
     pictures: [],
     pictureIndex: new Map(),
     leftOut: 0,
+    theme: readThemeFonts(partText(parts, 'word/theme/theme1.xml')),
   };
   const sections = body(firstChild(root, 'body'), context).filter((s, k, all) => s.blocks.length > 0 || k === all.length - 1);
   const pages = sections.map((s) => sectionPage(s.section));

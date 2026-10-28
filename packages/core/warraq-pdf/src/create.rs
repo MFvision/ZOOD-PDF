@@ -742,9 +742,16 @@ impl<'a> Typesetter<'a> {
             .map(String::from)
             .collect();
         let covered = |f: &Face| letters.iter().filter(|c| f.shaper.covers(c)).count();
-        let best = (0..self.faces.len())
-            .max_by_key(|k| covered(&self.faces[*k]))
-            .unwrap_or(0);
+        // The first of the faces with the most: they are in the order the
+        // document prefers them.
+        let mut best = 0;
+        let mut most = 0;
+        for k in 0..self.faces.len() {
+            let n = covered(&self.faces[k]);
+            if n > most {
+                (best, most) = (k, n);
+            }
+        }
         self.report.missing_glyphs += letters
             .iter()
             .filter(|c| !self.faces.iter().any(|f| f.shaper.covers(c)))
@@ -979,12 +986,39 @@ impl<'a> Typesetter<'a> {
                 _ => {}
             }
         }
-        // A letter the face has no glyph for is left out rather than drawn
-        // as the empty box (.notdef); `face_for` counted it as missing.
-        glyphs.retain(|g| {
-            !g.text.chars().any(is_bidi_control) && !(g.gid == 0 && !g.text.trim().is_empty())
-        });
-        let groups: Vec<(std::ops::Range<usize>, String)> = isolates
+        // A letter the paragraph's face has no glyph for (a ☐ in an Arabic
+        // line) is drawn in the first face that has one; one that none has
+        // is left out rather than drawn as the empty box (.notdef), and
+        // `face_for` counted it as missing.
+        let mut placed: Vec<ShapedGlyph> = Vec::with_capacity(glyphs.len());
+        let mut glyph_face: Vec<usize> = Vec::with_capacity(glyphs.len());
+        for g in glyphs {
+            if g.text.chars().any(is_bidi_control) {
+                continue;
+            }
+            if g.gid != 0 || g.text.trim().is_empty() {
+                placed.push(g);
+                glyph_face.push(face);
+                continue;
+            }
+            let Some(other) =
+                (0..self.faces.len()).find(|k| *k != face && self.faces[*k].shaper.covers(&g.text))
+            else {
+                continue;
+            };
+            let run_dir = if rtl.iter().any(|r| r.contains(&g.offset)) {
+                Direction::Rtl
+            } else {
+                Direction::Ltr
+            };
+            for mut sub in self.faces[other].shaper.shape_run(&g.text, run_dir) {
+                sub.offset += g.offset;
+                placed.push(sub);
+                glyph_face.push(other);
+            }
+        }
+        let glyphs = placed;
+        let mut groups: Vec<(std::ops::Range<usize>, String)> = isolates
             .into_iter()
             .filter_map(|(bytes, said)| {
                 let first = glyphs.iter().position(|g| bytes.contains(&g.offset))?;
@@ -996,6 +1030,59 @@ impl<'a> Typesetter<'a> {
                 (!said.trim().is_empty()).then_some((first..end, said))
             })
             .collect();
+        // In a right-to-left line, a stretch without Arabic letters whose
+        // order on the page is not the order it is read in ("52.17 SR",
+        // shown "SR 52.17"; a date range shown with its dates swapped) reads
+        // as it was written; a reader could not tell the two apart.
+        if !rtl.is_empty() {
+            let strong_rtl = |c: char| {
+                c.is_alphabetic()
+                    && matches!(c, '\u{0590}'..='\u{08FF}' | '\u{FB1D}'..='\u{FDFF}' | '\u{FE70}'..='\u{FEFF}')
+            };
+            let mut segments: Vec<std::ops::Range<usize>> = Vec::new();
+            let mut from: Option<usize> = None;
+            for (b, c) in text
+                .char_indices()
+                .chain(std::iter::once((text.len(), '\u{05D0}')))
+            {
+                if strong_rtl(c) || c == LTR_ISOLATE || c == POP_ISOLATE {
+                    if let Some(a) = from.take() {
+                        segments.push(a..b);
+                    }
+                } else if from.is_none() {
+                    from = Some(b);
+                }
+            }
+            for seg in segments {
+                let said = text[seg.clone()].trim();
+                if said.is_empty() || !said.chars().any(char::is_alphanumeric) {
+                    continue;
+                }
+                let lead = text[seg.clone()].len() - text[seg.clone()].trim_start().len();
+                let bytes = seg.start + lead..seg.start + lead + said.len();
+                let inside: Vec<usize> = (0..glyphs.len())
+                    .filter(|k| bytes.contains(&glyphs[*k].offset))
+                    .collect();
+                let (Some(&first), Some(&last)) = (inside.first(), inside.last()) else {
+                    continue;
+                };
+                let mut end = last + 1;
+                while end < glyphs.len() && glyphs[end].text.is_empty() {
+                    end += 1;
+                }
+                // Only a stretch drawn in one piece, apart from any isolate.
+                if inside.len() != last - first + 1
+                    || groups.iter().any(|(r, _)| r.start < end && first < r.end)
+                {
+                    continue;
+                }
+                let shown: String = glyphs[first..end].iter().map(|g| g.text.as_str()).collect();
+                if shown != said {
+                    groups.push((first..end, said.to_string()));
+                }
+            }
+            groups.sort_by_key(|(r, _)| r.start);
+        }
         if glyphs.is_empty() {
             return;
         }
@@ -1034,8 +1121,9 @@ impl<'a> Typesetter<'a> {
         let mut k = 0;
         while k < glyphs.len() {
             let s = glyph_style[k];
+            let in_face = glyph_face[k];
             let (start, from) = (k, pen);
-            while k < glyphs.len() && glyph_style[k] == s {
+            while k < glyphs.len() && glyph_style[k] == s && glyph_face[k] == in_face {
                 let extra = if is_space(&glyphs[k]) { stretch } else { 0.0 };
                 pen += (glyphs[k].x_advance + extra) * scale;
                 k += 1;
@@ -1048,7 +1136,7 @@ impl<'a> Typesetter<'a> {
                 .map(|(r, t)| (r.start - start..r.end - start, t.clone()))
                 .collect();
             self.draw(Draw::Text {
-                face,
+                face: in_face,
                 groups: inside,
                 glyphs: glyphs[start..k].to_vec(),
                 x: x0,
@@ -1342,7 +1430,11 @@ impl<'a> Typesetter<'a> {
                     .fold(0.0f32, f32::max)
                     * size
                     / 1000.0
-                    * if c.bold || r < t.header_rows { 1.04 } else { 1.0 };
+                    * if c.bold || r < t.header_rows {
+                        1.04
+                    } else {
+                        1.0
+                    };
                 let cell_size = if longest > inner {
                     (size * inner / longest).max(size / 2.0).max(4.0)
                 } else {

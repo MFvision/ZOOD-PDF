@@ -76,7 +76,9 @@ pub(crate) fn spans(subset: &FontSubset, glyphs: &[ShapedGlyph]) -> Vec<Span> {
             for cluster in word.iter() {
                 let only_marks = glyphs[cluster.clone()].iter().all(|g| {
                     g.text.is_empty()
-                        || g.text.chars().all(warraq_text::normalize::is_mark_or_control)
+                        || g.text
+                            .chars()
+                            .all(warraq_text::normalize::is_mark_or_control)
                 });
                 marks.push(cluster.clone());
                 if !only_marks {
@@ -201,20 +203,28 @@ pub(crate) fn show_line(
         if range.start < done || range.end > line.glyphs.len() || range.is_empty() {
             continue;
         }
-        pieces.extend(spans(subset, &line.glyphs[done..range.start]).into_iter().map(|s| Span {
-            range: s.range.start + done..s.range.end + done,
-            actual_text: s.actual_text,
-        }));
+        pieces.extend(
+            spans(subset, &line.glyphs[done..range.start])
+                .into_iter()
+                .map(|s| Span {
+                    range: s.range.start + done..s.range.end + done,
+                    actual_text: s.actual_text,
+                }),
+        );
         pieces.push(Span {
             range: range.clone(),
             actual_text: Some(text.clone()),
         });
         done = range.end;
     }
-    pieces.extend(spans(subset, &line.glyphs[done..]).into_iter().map(|s| Span {
-        range: s.range.start + done..s.range.end + done,
-        actual_text: s.actual_text,
-    }));
+    pieces.extend(
+        spans(subset, &line.glyphs[done..])
+            .into_iter()
+            .map(|s| Span {
+                range: s.range.start + done..s.range.end + done,
+                actual_text: s.actual_text,
+            }),
+    );
     for span in pieces {
         if let Some(text) = &span.actual_text {
             flush(ops, &mut run, run_start);
@@ -282,7 +292,9 @@ mod tests {
             "kha and lam are two glyphs each: {spans:?}"
         );
         assert!(spans.contains(&(" ".into(), None)));
-        assert!(spans.iter().all(|s| s.1.as_deref().is_none_or(|t| t.chars().count() == 1)));
+        assert!(spans
+            .iter()
+            .all(|s| s.1.as_deref().is_none_or(|t| t.chars().count() == 1)));
     }
 
     #[test]

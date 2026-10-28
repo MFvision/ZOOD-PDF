@@ -783,3 +783,64 @@ fn a_fax_tiff_from_a_real_encoder_reads_black_on_white() {
     assert!(at(0.01, 0.5) > 200, "outside the frame is white");
     assert!(at(21.5 / 400.0, 0.5) < 80, "the frame is black");
 }
+
+/// From the owner's test of 28 Oct 2026: brackets came back mirrored
+/// (")FCFS("), Arabic words reversed in Poppler and Word ("ةكرش"), and a date
+/// range Word lays out left to right had its dates swapped. Each line reads
+/// back as it was written, and the stretch the source isolated keeps its order.
+#[test]
+fn right_to_left_lines_read_back_with_their_numbers_dates_and_brackets() {
+    let (pdf, report) = document(
+        json!([
+            { "type": "text", "text": "شركة الأفق العقارية" },
+            { "type": "text", "text": "الأولوية (FCFS) للحجز" },
+            { "type": "text", "text": "رقم الفاتورة INV-C01136/2026" },
+            { "type": "text", "text": "للفترة \u{2066}(27/01/2026 - 27/01/2027)\u{2069} فقط" },
+            { "type": "text", "text": "الإجمالي 52.17 SR" },
+            { "type": "text", "text": "ضريبة (15%) مضافة" },
+            { "type": "table", "rows": [[{ "text": "الفترة" }, { "text": "27/01/2026 - 27/01/2027" }]] },
+        ]),
+        vec![],
+    );
+    assert_eq!(report["missingGlyphs"], 0);
+    let text = text(&pdf).join("\n");
+    for line in [
+        "شركة الأفق العقارية",
+        "الأولوية (FCFS) للحجز",
+        "رقم الفاتورة INV-C01136/2026",
+        "للفترة (27/01/2026 - 27/01/2027) فقط",
+        "الإجمالي 52.17 SR",
+        "ضريبة (15%) مضافة",
+        "27/01/2026 - 27/01/2027",
+    ] {
+        assert!(text.contains(line), "{line:?} not in:\n{text}");
+    }
+    // The marks that set the stretch apart are not in the text.
+    assert!(!text.contains('\u{2066}') && !text.contains('\u{2069}'));
+}
+
+/// A sign the paragraph's face does not have (a ballot box in an Arabic
+/// line) is drawn in a face that does, and a letter no face has is left
+/// out, never drawn as an empty box.
+#[test]
+fn a_sign_the_paragraph_face_lacks_comes_from_another_face() {
+    const SYMBOLS: &[u8] = include_bytes!("../../../ui/public/fonts/NotoSansSymbols2-Subset.ttf");
+    let reply = call_static(
+        "create.document",
+        &json!({
+            "page": { "width": A4.0, "height": A4.1, "margins": [MARGIN, MARGIN, MARGIN, MARGIN] },
+            "blocks": [{ "type": "text", "text": "☐ الموافقة على العرض" }],
+            "fonts": [0, 1],
+            "fontNames": ["Amiri", "NotoSansSymbols2"],
+        })
+        .to_string(),
+        vec![AMIRI.to_vec(), SYMBOLS.to_vec()],
+    )
+    .unwrap();
+    assert_eq!(value(&reply)["missingGlyphs"], 0);
+    let text = text(&reply.blobs[0]).join("\n");
+    assert!(
+        text.contains('☐') && text.contains("الموافقة على العرض"),
+        "{text}"
+    );
+}
