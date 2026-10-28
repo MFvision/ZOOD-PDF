@@ -4,8 +4,8 @@ import { asciiDigits } from './draft';
  * The loose ends in the person's own documents: a payment due, a contract
  * or a licence about to end, a renewal — lines of their Library that say a
  * deadline word and hold a date from a week ago to a month ahead. Read on
- * this computer, from the Library's index, every time the home screen
- * opens; nothing is sent and nothing is decided for the person.
+ * this computer, from the Library's index, once a day or when the index
+ * changes; nothing is sent and nothing is decided for the person.
  *
  * Dates are read as people in Saudi Arabia write them: day first, in
  * English or Arabic month names (Gulf and Levantine), in Arabic-Indic or
@@ -260,4 +260,37 @@ export function looseEnds(lines: readonly Line[], now: Date = new Date(), most =
 /** An item's own id, to keep it hidden once the person dismissed it. */
 export function endId(end: Pick<LooseEnd, 'key' | 'date'>): string {
   return `${end.key}#${end.date.toISOString().slice(0, 10)}`;
+}
+
+/** Lines asked of the index for each deadline word. */
+const PER_WORD = 20;
+
+/** The last reading, so going back to the home screen does not search again. */
+let kept: { index: string; day: string; lines: Line[] } | null = null;
+
+/**
+ * The lines of the Library that say a deadline word, one search per word.
+ * `index` names the index as it is now (its size and file count): while it
+ * and the day stay the same, the lines read last time are given back with
+ * no search at all, so the home screen opening again costs nothing.
+ */
+export async function deadlineLines(
+  search: (query: string, limit: number) => Promise<readonly Line[]>,
+  index: string,
+  now: Date = new Date(),
+): Promise<Line[]> {
+  const day = now.toISOString().slice(0, 10);
+  if (kept && kept.index === index && kept.day === day) return kept.lines;
+  const lines: Line[] = [];
+  for (const word of DEADLINE_WORDS) {
+    const hits = await search(word, PER_WORD).catch(() => []);
+    lines.push(...hits.map((hit) => ({ key: hit.key, name: hit.name, page: hit.page, text: hit.text })));
+  }
+  kept = { index, day, lines };
+  return lines;
+}
+
+/** For tests: forget the last reading. */
+export function forgetDeadlineLines(): void {
+  kept = null;
 }

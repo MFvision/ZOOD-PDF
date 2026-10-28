@@ -362,7 +362,11 @@ try {
   [Input]::Key(0x11, $false)
   [Input]::Mouse($b[0], $b[1], 0); [Input]::Mouse($b[0], $b[1], 0x0002); [Input]::Mouse($b[0], $b[1], 0x0004)
   [Input]::Key(0x11, $true)
-  Start-Sleep -Milliseconds 500
+  # Longer than Windows' double-click time (500 ms by default): a press on
+  # the same shortcut sooner than that is a double-click, which opens it
+  # instead of starting the drag, and the zone then gets nothing.
+  Start-Sleep -Milliseconds 1500
+  [Input]::Mouse($b[0], $b[1], 0); Start-Sleep -Milliseconds 100
   [Input]::Mouse($b[0], $b[1], 0x0002); Start-Sleep -Milliseconds 200
   foreach ($step in 1..30) {
     [Input]::Mouse($b[0] + $step * ($zx - $b[0]) / 30, $b[1] + $step * ($zy - $b[1]) / 30, 0)

@@ -9,12 +9,12 @@ import { useI18n } from '../i18n/useT';
 import { fileForKey } from '../library/sources';
 import { useServices } from '../state/AppContext';
 import { readJson, writeJson } from '../state/preferences';
-import { DEADLINE_WORDS, endId, looseEnds } from './today';
+import { deadlineLines, endId, looseEnds } from './today';
 import type { LooseEnd } from './today';
 
 const DISMISSED_KEY = 'warraq.ask.today.dismissed';
-/** Lines asked of the index for each deadline word. */
-const PER_WORD = 20;
+/** How long after the home screen is ready the deadlines are looked for, so start-up comes first. */
+const AFTER_START_MS = 2500;
 
 function dismissed(): string[] {
   const raw = readJson<unknown>(DISMISSED_KEY, []);
@@ -37,23 +37,23 @@ export function TodayCard({ index }: { index: LibraryIndex }) {
   const ready = index.status === 'ready';
   const { search } = index;
 
+  // The index as it is now: the same index on the same day is not searched again.
+  const indexKey = `${index.bytes}:${index.stats?.documents ?? 0}`;
   useEffect(() => {
     if (!ready) return;
     let alive = true;
-    void (async () => {
-      const lines = [];
-      for (const word of DEADLINE_WORDS) {
-        const hits = await search(word, PER_WORD).catch(() => []);
-        lines.push(
-          ...hits.map((hit) => ({ key: hit.key, name: hit.name, page: hit.page, text: hit.text })),
-        );
-      }
-      if (alive) setEnds(looseEnds(lines, new Date(), 12));
-    })();
+    // Seventeen searches, one per deadline word: after start-up has settled,
+    // never in the way of the first paint or the first file opened.
+    const timer = setTimeout(() => {
+      void deadlineLines(search, indexKey).then((lines) => {
+        if (alive) setEnds(looseEnds(lines, new Date(), 12));
+      });
+    }, AFTER_START_MS);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
-  }, [ready, search]);
+  }, [ready, search, indexKey]);
 
   const shown = ends.filter((end) => !hidden.includes(endId(end))).slice(0, 5);
   if (shown.length === 0) return null;

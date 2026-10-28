@@ -89,6 +89,16 @@ jobs:
           workspaces: |
             apps/desktop/src-tauri
             packages/core
+      # ONNX Runtime, which ort downloads while building and checks against
+      # a hash: kept between runs, so one bad download (seen once, a hash
+      # mismatch) cannot fail a build that had it already.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/AppData/Local/ort.pyke.io
+            ~/Library/Caches/ort.pyke.io
+            ~/.cache/ort.pyke.io
+          key: ort-binaries-${{ runner.os }}-2.0.0-rc.12
 
       - run: pnpm install --frozen-lockfile
 
@@ -175,10 +185,24 @@ jobs:
           WIN_SIGN: ${{ steps.winsign.outputs.enabled }}
           CERTUM_EMAIL: ${{ secrets.CERTUM_EMAIL }}
           CERTUM_OTP: ${{ secrets.CERTUM_OTP }}
+          # Apple's notarization (docs/updates.md, "Mac notarization"): an
+          # Apple ID with an app-specific password. Without them the Mac app
+          # is signed but not notarized, and a downloaded copy is stopped by
+          # Gatekeeper on its first open.
+          NOTARY_APPLE_ID: ${{ secrets.APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ vars.APPLE_TEAM_ID || 'AWV883QWPU' }}
         run: |
           set -o pipefail
           VERSION="${VERSION#release/}"; VERSION="${VERSION#desktop-v}"
           if [ -n "${MAC_IDENTITY:-}" ]; then export APPLE_SIGNING_IDENTITY="$MAC_IDENTITY"; fi
+          # Tauri notarizes and staples when these are set, so they are set
+          # only when signed and the secrets are there: an empty one would
+          # make it try with no account and fail the build.
+          if [ -n "${MAC_IDENTITY:-}" ] && [ -n "${NOTARY_APPLE_ID:-}" ] && [ -n "${NOTARY_PASSWORD:-}" ]; then
+            export APPLE_ID="$NOTARY_APPLE_ID" APPLE_PASSWORD="$NOTARY_PASSWORD" APPLE_TEAM_ID="$NOTARY_TEAM_ID"
+            echo "the Mac app will be notarized"
+          fi
           windows=''
           if [ "${WIN_SIGN:-}" = true ]; then
             windows=',"windows":{"signCommand":{"cmd":"ssign","args":["%1"]}}'
@@ -207,6 +231,21 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign -d --entitlements - "$app" 2>/dev/null | grep -q audio-input
           codesign --verify --strict "$app/Contents/Resources/resources/pdfium/libpdfium.dylib"
+
+      - name: check the notarization
+        if: matrix.platform == 'darwin-aarch64' && steps.macsign.outputs.identity != ''
+        shell: bash
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.APPLE_ID }}
+        run: |
+          set -euo pipefail
+          app="$(ls -d apps/desktop/src-tauri/target/release/bundle/macos/*.app | head -n 1)"
+          if [ -z "${NOTARY_APPLE_ID:-}" ]; then
+            echo "::warning::not notarized (no APPLE_ID secret): Macs stop the downloaded app on its first open"
+            exit 0
+          fi
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=2 "$app"
 
       # The built app must start and stay up: 0.4.9 quit on every Mac launch
       # a few seconds in (a window lifted off the main thread), and nothing

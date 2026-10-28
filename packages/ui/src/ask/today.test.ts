@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endId, findDates, fromHijri, looseEnds } from './today';
+import { DEADLINE_WORDS, deadlineLines, endId, findDates, forgetDeadlineLines, fromHijri, looseEnds } from './today';
 
 const day = (text: string) => findDates(text).map((date) => date.toISOString().slice(0, 10));
 
@@ -60,5 +60,28 @@ describe('loose ends', () => {
       ['rent', 9],
     ]);
     expect(endId(ends[0]!)).toBe('licence#2026-10-18');
+  });
+});
+
+describe('looking for deadlines in the Library', () => {
+  it('searches once per word, then not again for the same index on the same day', async () => {
+    forgetDeadlineLines();
+    const asked: string[] = [];
+    const search = async (query: string) => {
+      asked.push(query);
+      return query === 'due' ? [{ key: 'a', name: 'a.pdf', page: 1, text: 'Payment due 30/10/2026' }] : [];
+    };
+    const now = new Date('2026-10-28T09:00:00Z');
+    const first = await deadlineLines(search, '100:3', now);
+    expect(asked).toHaveLength(DEADLINE_WORDS.length);
+    expect(first).toHaveLength(1);
+
+    expect(await deadlineLines(search, '100:3', now)).toEqual(first);
+    expect(asked).toHaveLength(DEADLINE_WORDS.length);
+
+    await deadlineLines(search, '120:4', now);
+    expect(asked).toHaveLength(DEADLINE_WORDS.length * 2);
+    await deadlineLines(search, '120:4', new Date('2026-10-29T09:00:00Z'));
+    expect(asked).toHaveLength(DEADLINE_WORDS.length * 3);
   });
 });

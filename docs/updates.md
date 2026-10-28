@@ -80,8 +80,25 @@ as before:
 
 The certificate goes into a keychain made for that run only. PDFium's library
 is signed first, because the hardened runtime refuses to load an unsigned
-library. Notarization is not part of the workflow yet: Apple has not enabled it
-for the team (`scripts/macos/sign.sh` sends builds by hand until it does).
+library.
+
+## Mac notarization
+
+A signed app that Apple has not notarized is still stopped the first time it
+is opened after a download ("Apple could not verify…"), so staff would need
+System Settings › Privacy & Security › Open Anyway. The release workflow
+notarizes and staples the Mac app when the repository also has:
+
+- `APPLE_ID`: the Apple ID of the developer account (secret).
+- `APPLE_APP_SPECIFIC_PASSWORD`: an app-specific password for it, made at
+  account.apple.com › Sign-In and Security › App-Specific Passwords (secret).
+- `APPLE_TEAM_ID` (Actions variable, optional): defaults to `AWV883QWPU`.
+
+Without them the build is signed but not notarized, and the run says so in a
+warning. With them, "check the notarization" runs `stapler validate` and
+`spctl` on the app before anything is published. Apple has not yet enabled
+notarization for the team; until it does, `scripts/macos/sign.sh` sends builds
+by hand, and adding the secrets would make the release fail at that step.
 
 ## Windows signing
 
