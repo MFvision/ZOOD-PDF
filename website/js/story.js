@@ -365,16 +365,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.16، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.16, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.22، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.22, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.16، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.16, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.22، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.22, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -403,8 +403,8 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.16/ZOOD-PDF-Setup-0.4.16.exe',
-    sha256: '23a47e0459328a104608b90451b850063af53e26a7013feb7ff550608c781ebc',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.22/ZOOD-PDF-Setup-0.4.22.exe',
+    sha256: '7e9fe1be7504b3b6a10abecd2caec869bf558ce3c6d70301b8a52421a002364c',
     steps: {
       ar: 'إن ظهر تنبيه ويندوز الأزرق، اختر «مزيد من المعلومات» ثم «تشغيل على أي حال». يظهر لأن التطبيق جديد وغير موقّع بعد.',
       en: 'If the blue Windows box appears, choose More info, then Run anyway. It shows because the app is new and not signed yet.',
@@ -413,8 +413,8 @@ export const DOWNLOADS = [
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.16/ZOOD-PDF-0.4.16-mac.dmg',
-    sha256: '6019623a4a60d618e624aabe5815c53f73dbf808e02a8895eea52b7af9835a9d',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.22/ZOOD-PDF-0.4.22-mac.dmg',
+    sha256: '64bbd08229faf4ddd30e0eb8ec78ea1980b9e47dcb2ebd8e5a30cd7f1e36c42f',
     steps: {
       ar: 'اسحب زود PDF إلى التطبيقات وافتحه. إن منعه ماك، افتح الإعدادات › الخصوصية والأمن واختر «فتح على أي حال» مرة واحدة.',
       en: 'Drag ZOOD PDF to Applications and open it. If your Mac stops it, open System Settings › Privacy & Security and choose Open Anyway, once.',
@@ -496,8 +496,8 @@ export const TOOLS = [
   {
     name: { ar: 'المحادثة', en: 'Chat' },
     text: {
-      ar: 'اسأل الذكاء أي شيء دون ملف مفتوح ودون إنترنت، أو اطلب منه أمرًا في التطبيق.',
-      en: 'Ask the AI anything with no file open and no internet, or tell it to do something in the app.',
+      ar: 'اسأل الذكاء أي شيء دون ملف مفتوح ودون إنترنت، أو اطلب منه أمرًا في التطبيق. وأسئلة «كيف أفعل» يجيبها من أدلة المساعدة.',
+      en: 'Ask the AI anything with no file open and no internet, or tell it to do something in the app. How-to questions are answered from Help.',
     },
     on: ON.desktop,
   },
@@ -538,6 +538,30 @@ export const TOOLS = [
     text: {
       ar: 'الدفعات والعقود والرخص التي تقترب مواعيدها في ملفات مكتبتك، بالهجري أيضًا.',
       en: 'Payments, contracts and licences coming due in your Library files, in Hijri dates too.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'جهازان بفأرة واحدة', en: 'Two computers, one mouse' },
+    text: {
+      ar: 'ادفع الفأرة خارج حافة الشاشة فتكمل على حاسوبك الآخر، ومعها لوحة المفاتيح وما نسخته. يبقى مغلقًا حتى تشغّله.',
+      en: 'Push the mouse past the edge of the screen and it carries on on your other computer, with the keyboard and what you copied. Off until you turn it on.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'حافظة مشتركة مع الجوال', en: 'Clipboard shared with your phone' },
+    text: {
+      ar: 'انسخ على أحدهما والصق على الآخر، نصًا وصورًا، وأرسل الملفات الكبيرة إلى الجوال من «إلى الجوال». لا يُرسل ما ينسخه مدير كلمات المرور أبدًا. يبقى مغلقًا حتى تشغّله.',
+      en: 'Copy on one and paste on the other, text and pictures, and send big files with To phone. What a password manager copies is never sent. Off until you turn it on.',
+    },
+    on: ON.desktop,
+  },
+  {
+    name: { ar: 'أصوات طبيعية', en: 'Natural voices' },
+    text: {
+      ar: 'القراءة بصوت عالٍ وإجابات «اسأل ZOOD» بأصوات طبيعية تعمل على حاسوبك دون إنترنت بعد تحميلها، بالعربية والإنجليزية. ولكل إجابة زرّا نسخ وقراءة.',
+      en: 'Read aloud and Ask ZOOD answer in natural voices that run on your computer, offline once downloaded, in Arabic and English. Every answer has Copy and Read.',
     },
     on: ON.desktop,
   },
