@@ -290,8 +290,8 @@ export const CHAPTERS = [
         en: 'Present: turn pages, point with a laser, highlight and write with the pen, and read your notes with a timer in view.',
       },
       {
-        ar: 'التحكم: لوحة لمس، ولوحة مفاتيح جوالك نفسها، واختصارات النسخ واللصق والتراجع، وتقليب أي عرض تقديمي وضبط الصوت، حين تفعّل ذلك من التطبيق.',
-        en: "Control: a trackpad, your phone's own keyboard, shortcuts for copy, paste and undo, any slideshow and the volume, once you switch that on in the app.",
+        ar: 'التحكم: لوحة لمس، واختصارات النسخ واللصق والتراجع، وتقليب أي عرض تقديمي وضبط الصوت، حين تفعّل ذلك من التطبيق.',
+        en: 'Control: a trackpad, shortcuts for copy, paste and undo, any slideshow and the volume, once you switch that on in the app.',
       },
       {
         ar: 'الإرسال: اسحب صورًا وملفات حتى 1 جيجابايت إلى سطح مكتب الحاسوب، وشارك الحافظة بلمسة حين تفعّلها، واحفظ الملف المفتوح أو صوّر صفحة أو وقّع بإصبعك.',
@@ -365,16 +365,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.23، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.23, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.24، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.24, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.23، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.23, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.24، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.24, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -403,8 +403,8 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.23/ZOOD-PDF-Setup-0.4.23.exe',
-    sha256: 'f20238d15865f2fe11e6cefbf5374dfd073babcf74f2bafad0bd83fb1d3514df',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.24/ZOOD-PDF-Setup-0.4.24.exe',
+    sha256: '58a0297b3ca1c4edba67bb8b3f35431c645cf8351059eca8d37334ee236dad5f',
     steps: {
       ar: 'إن ظهر تنبيه ويندوز الأزرق، اختر «مزيد من المعلومات» ثم «تشغيل على أي حال». يظهر لأن التطبيق جديد وغير موقّع بعد.',
       en: 'If the blue Windows box appears, choose More info, then Run anyway. It shows because the app is new and not signed yet.',
@@ -413,8 +413,8 @@ export const DOWNLOADS = [
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.23/ZOOD-PDF-0.4.23-mac.dmg',
-    sha256: 'd975e4022e89b7926ad9543769ddeb2220db4e73661b8599ee4da047a2facbaf',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.24/ZOOD-PDF-0.4.24-mac.dmg',
+    sha256: '6785c2d00ae27be412269d4bd196efb2fbc95c32bad58459bb14eda639017654',
     steps: {
       ar: 'اسحب زود PDF إلى التطبيقات وافتحه. إن منعه ماك، افتح الإعدادات › الخصوصية والأمن واختر «فتح على أي حال» مرة واحدة.',
       en: 'Drag ZOOD PDF to Applications and open it. If your Mac stops it, open System Settings › Privacy & Security and choose Open Anyway, once.',
