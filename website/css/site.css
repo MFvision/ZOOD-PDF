@@ -3376,6 +3376,7 @@ main {
 [dir='rtl'] .rm-nav,
 [dir='rtl'] .rm-p2,
 [dir='rtl'] .rm-modes,
+[dir='rtl'] .rm-short,
 [dir='rtl'] .rm-sheet,
 [dir='rtl'] .rm-tabs,
 [dir='rtl'] .rm-signed {
@@ -4137,9 +4138,6 @@ main {
 .rm-short {
   top: 61%;
   height: 6%;
-}
-.rm-short {
-  direction: inherit;
 }
 .rm-short span {
   flex-direction: column;
