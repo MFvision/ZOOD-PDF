@@ -432,6 +432,13 @@ export async function configureRing(settings: RingSettings): Promise<RingSetting
   return (await invoke('ring_configure', { ring: settings.ring, background: settings.background, scale: settings.scale, shortcut: settings.shortcut, dragKey: settings.dragKey, dropZone: settings.dropZone })) as RingSettings;
 }
 
+/** The ring as it came (`ring.rs`, `RingSettings::default`), keeping whether the app stays ready. */
+export async function resetRing(): Promise<RingSettings | null> {
+  const now = await ringSettings();
+  if (!now) return null;
+  return configureRing({ ...now, ring: true, scale: 1, shortcut: 'CommandOrControl+Alt+Z', dragKey: 'any', dropZone: true });
+}
+
 /* --------------------------------------------------------------------- sort */
 
 const hasParam = (name: string) => {

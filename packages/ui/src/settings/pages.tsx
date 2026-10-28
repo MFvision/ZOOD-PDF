@@ -10,6 +10,7 @@ import {
   isTauriHost,
   openDefaultApps,
   pickFolder,
+  resetRing,
   ringSettings,
   setShellMenu,
   shellMenuState,
@@ -122,7 +123,11 @@ export function GeneralPage() {
           action={t('prefs.reset')}
           onClick={() => {
             void confirm.ask({ title: t('prefs.resetAll'), body: t('prefs.resetAllConfirm'), action: t('prefs.reset'), icon: RotateCcw }).then((yes) => {
-              if (yes) resetSettings();
+              if (!yes) return;
+              resetSettings();
+              // The ring's own settings live with the desktop host; keeping the app ready
+              // (and starting it at sign-in) stays as the person set it.
+              if (desktop) void resetRing().catch(() => undefined);
             });
           }}
         />
@@ -612,7 +617,7 @@ export function QuickPage() {
       )}
       {ring && (
         <Group title={t('prefs.ringGroup')}>
-          <Toggle label={t('quick.settings.ring')} hint={t('quick.settings.ringNote')} checked={ring.ring} onChange={(on) => changeRing({ ring: on })} />
+          <Toggle label={t('quick.settings.ring')} hint={t('quick.settings.ringNote', { key: t(dragKeyLabel(ring.dragKey ?? 'any')) })} checked={ring.ring} onChange={(on) => changeRing({ ring: on })} />
           <LayoutBoard<string>
             label={t('prefs.ringTools')}
             hint={t('prefs.ringToolsHint')}

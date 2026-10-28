@@ -21,7 +21,6 @@ import { IconButton } from '../components/IconButton';
 import { Popover } from '../components/Popover';
 import { useToolbarKeyboard } from '../components/useToolbarKeyboard';
 import { canRedo, canUndo } from '../edit/editStack';
-import { withoutPdfium } from '../core/host-tauri';
 import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { hasUnsavedEdits } from '../state/appReducer';
@@ -227,8 +226,8 @@ export function Toolbar() {
 /**
  * The document's name and, under it, where you are and whether it is edited —
  * the window subtitle the system's viewer shows ("Page 2 of 9 — Edited"). The
- * core's version and engine are in About; a desktop core that could not load
- * PDFium is also said here, beside the name.
+ * core's version and engine are in About, which also says when the desktop
+ * draws pages with its built-in renderer (always so on Windows).
  */
 function DocumentTitle() {
   const state = useAppState();
@@ -254,11 +253,6 @@ function DocumentTitle() {
       {core?.kind === 'mock' && (
         <span className="badge badge-warning" title={t('status.mockCoreHint')}>
           {t('status.mockCore')}
-        </span>
-      )}
-      {withoutPdfium(core) && (
-        <span className="badge badge-warning" title={t('status.noPdfiumHint')}>
-          {t('status.noPdfium')}
         </span>
       )}
     </div>

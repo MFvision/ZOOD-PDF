@@ -4,7 +4,7 @@ import { Disc3, FolderOpen, PencilLine, Repeat2, ShieldCheck, Smartphone, Sparkl
 import type { LucideIcon } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { ABOUT } from '../settings/about';
-import { isTauriHost } from '../core/host-tauri';
+import { isTauriHost, withoutPdfium } from '../core/host-tauri';
 import { Dialog } from '../components/Dialog';
 import { APP_ICON } from '../components/appIcon';
 import { useI18n, useT } from '../i18n/useT';
@@ -230,7 +230,7 @@ const ABOUT_FEATURES: { icon: LucideIcon; title: TKey; line: TKey; desktop?: boo
 ];
 
 export function AboutDialog() {
-  const { dialog } = useAppState();
+  const { dialog, core } = useAppState();
   const dispatch = useAppDispatch();
   const { t, lang } = useI18n();
   const desktop = isTauriHost();
@@ -252,6 +252,7 @@ export function AboutDialog() {
           <p className="about-version" dir="auto">
             {desktop ? t('prefs.aboutVersion', { version: version ?? ABOUT.version }) : t('about.webEdition')}
           </p>
+          {withoutPdfium(core) && <p className="about-engine">{t('status.noPdfiumHint')}</p>}
         </div>
         <p className="about-lead">{t(desktop ? 'about.lead' : 'about.leadWeb')}</p>
         <ul className="about-features">
