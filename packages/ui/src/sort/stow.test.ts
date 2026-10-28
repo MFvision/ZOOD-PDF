@@ -100,6 +100,17 @@ describe('the panel as the person laid it out', () => {
     const fits = new Set<DropItem>(['tile:web', 'format:pdf', 'more:ask', 'more:tools']);
     expect(panelRows({ ...layout, auto: true }, fits, { 'more:tools': 2 })).toEqual({ big: ['more:tools', 'tile:web'], small: ['format:pdf', 'more:ask'], pills: [] });
   });
+  it('with Auto, keeps To phone in the big row while the most used swap in beside it', () => {
+    const rows = { big: ['tile:web', 'tile:send', 'tile:print', 'more:phone'] as DropItem[], small: ['format:pdf'] as DropItem[], pills: ['more:ask', 'more:organize', 'more:tools'] as DropItem[] };
+    expect(autoRows(rows, { 'more:organize': 3, 'tile:web': 1 })).toEqual({
+      big: ['more:organize', 'tile:web', 'tile:send', 'more:phone'],
+      small: ['format:pdf'],
+      pills: ['more:ask', 'tile:print', 'more:tools'],
+    });
+    // Put in the bottom row by the person, it stays one of the bottom row's.
+    const mine = { big: ['tile:web', 'tile:send'] as DropItem[], small: [] as DropItem[], pills: ['more:phone', 'more:organize'] as DropItem[] };
+    expect(autoRows(mine, { 'more:organize': 3 }).pills).toContain('more:phone');
+  });
   it('moves nothing when the big row is empty', () => {
     expect(autoRows({ big: [], small: ['format:pdf'], pills: [] }, { 'format:pdf': 4 })).toEqual({ big: [], small: ['format:pdf'], pills: [] });
   });

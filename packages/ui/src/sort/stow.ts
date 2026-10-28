@@ -194,23 +194,31 @@ export interface PanelLayout extends PanelRows {
 /**
  * Auto: the most used move up into the big row, each swapping places with
  * the big one it pushes out, so the rest stays where the person put it.
- * Never used, or used alike, everything stays as laid out.
+ * Never used, or used alike, everything stays as laid out. To phone, once
+ * in the big row, stays there: it is not about the file's kind, so counts
+ * of the formats would push it out before anyone had tried it.
  */
 export function autoRows(rows: PanelRows, use: Readonly<Record<string, number>>): PanelRows {
-  const all = DROP_ROWS.flatMap((row) => rows[row]);
+  const kept = rows.big.filter((id) => STAYS_BIG.has(id));
+  const all = DROP_ROWS.flatMap((row) => rows[row]).filter((id) => !kept.includes(id));
   const ranked = all
     .map((id, at) => ({ id, at, uses: use[id] ?? 0 }))
     .sort((a, b) => b.uses - a.uses || a.at - b.at)
-    .slice(0, rows.big.length)
+    .slice(0, rows.big.length - kept.length)
     .map((one) => one.id);
   const up = ranked.filter((id) => !rows.big.includes(id));
-  const down = rows.big.filter((id) => !ranked.includes(id));
+  const down = rows.big.filter((id) => !kept.includes(id) && !ranked.includes(id));
   const swap = (id: DropItem) => {
     const at = up.indexOf(id);
     return at < 0 ? id : down[at]!;
   };
-  return { big: ranked, small: rows.small.map(swap), pills: rows.pills.map(swap) };
+  let next = 0;
+  const big = rows.big.map((id) => (kept.includes(id) ? id : ranked[next++]!));
+  return { big, small: rows.small.map(swap), pills: rows.pills.map(swap) };
 }
+
+/** Targets Auto leaves in the big row when the person (or the first layout) put them there. */
+const STAYS_BIG: ReadonlySet<DropItem> = new Set<DropItem>(['more:phone']);
 
 /**
  * The panel for the files in hand: each row as laid out, keeping only the
