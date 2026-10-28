@@ -10,6 +10,7 @@ import {
   isTauriHost,
   openDefaultApps,
   pickFolder,
+  resetRing,
   ringSettings,
   setShellMenu,
   shellMenuState,
@@ -122,7 +123,11 @@ export function GeneralPage() {
           action={t('prefs.reset')}
           onClick={() => {
             void confirm.ask({ title: t('prefs.resetAll'), body: t('prefs.resetAllConfirm'), action: t('prefs.reset'), icon: RotateCcw }).then((yes) => {
-              if (yes) resetSettings();
+              if (!yes) return;
+              resetSettings();
+              // The ring's own settings live with the desktop host; keeping the app ready
+              // (and starting it at sign-in) stays as the person set it.
+              if (desktop) void resetRing().catch(() => undefined);
             });
           }}
         />

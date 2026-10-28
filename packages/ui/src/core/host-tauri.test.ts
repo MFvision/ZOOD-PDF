@@ -41,6 +41,7 @@ import {
   stopLibraryWatch,
   takeStartupFile,
   withoutPdfium,
+  resetRing,
 } from './host-tauri';
 import type { LibraryScanEvent, LibraryWatchEvent } from './host-tauri';
 import type { ResultMap } from './protocol';
@@ -643,5 +644,15 @@ describe('the Library on the desktop host', () => {
   it('does nothing at all in a browser, where there is no host to ask', () => {
     expect(onLibraryScan(() => {})).toBeInstanceOf(Function);
     expect(onLibraryWatch(() => {})).toBeInstanceOf(Function);
+  });
+});
+
+describe('resetting the ring', () => {
+  it('puts the drag key, size, shortcut and drop zone back, and keeps the app ready as it was', async () => {
+    const now = { ring: false, background: true, scale: 1.2, shortcut: 'CommandOrControl+Shift+K', dragKey: 'shift', dropZone: false };
+    const calls = fakeHost({ ring_settings: now, ring_configure: now });
+    await resetRing();
+    const sent = calls.find((call) => call.cmd === 'ring_configure');
+    expect(sent?.args).toEqual({ ring: true, background: true, scale: 1, shortcut: 'CommandOrControl+Alt+Z', dragKey: 'any', dropZone: true });
   });
 });
