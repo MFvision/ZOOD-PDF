@@ -44,6 +44,8 @@ export interface NumberFormat {
   percent: boolean;
   /** A currency written with it ("$12,000", "1,250.50 ر.س"), and on which side. */
   currency?: { symbol: string; before: boolean };
+  /** A unit written after it ("1.00 Units", "3 قطعة"): shown after the number, as it was. */
+  unit?: string;
   /** A date: Excel's own code for it, as it was written ("dd/mm/yyyy"). */
   date?: string;
 }
@@ -51,6 +53,9 @@ export interface NumberFormat {
 /** Currency signs a number may carry before or after it, and the riyal's abbreviation. */
 const CURRENCY =
   /^(\$|€|£|¥|﷼|ر\.س\.?|ريال|SAR|SR|USD|EUR|GBP|AED|د\.إ\.?|KWD|QAR|BHD|OMR|EGP)\s*(.+)$|^(.+?)\s*(\$|€|£|¥|﷼|ر\.س\.?|ريال|SAR|SR|USD|EUR|GBP|AED|د\.إ\.?|KWD|QAR|BHD|OMR|EGP)$/u;
+
+/** Units of count, weight, length, area and time a quantity may carry after it. */
+const UNIT = /^(.+?)\s+(units?|pcs|pc|ea|each|nos?\.?|kg|g|m|m2|m²|km|sqm|hrs?|hours?|days?|months?|وحدة|وحدات|حبة|قطعة|كجم|كغ|متر|م²|م2|ساعة|ساعات|يوم|أيام|شهر|أشهر)$/iu;
 
 export type SheetValue = { kind: 'number'; value: number; format: NumberFormat; text: string } | { kind: 'text'; text: string };
 
@@ -117,6 +122,12 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
     currency = money[1] ? { symbol: money[1], before: true } : { symbol: money[4]!, before: false };
     text = `${minus ? '-' : ''}${(money[2] ?? money[3]!).trim()}`;
   }
+  let unit: string | undefined;
+  const counted = currency ? null : UNIT.exec(text);
+  if (counted) {
+    unit = counted[2]!;
+    text = counted[1]!.trim();
+  }
   let percent = false;
   if (text.endsWith('%') || text.startsWith('%')) {
     percent = true;
@@ -142,7 +153,13 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
   if (percent) value = Number((value / 100).toPrecision(15));
   return {
     value,
-    format: { decimals: Math.min(m[2]?.length ?? 0, 10), grouped: whole.includes(','), percent, ...(currency && !percent ? { currency } : {}) },
+    format: {
+      decimals: Math.min(m[2]?.length ?? 0, 10),
+      grouped: whole.includes(','),
+      percent,
+      ...(currency && !percent ? { currency } : {}),
+      ...(unit && !percent ? { unit } : {}),
+    },
   };
 }
 

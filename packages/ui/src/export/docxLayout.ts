@@ -101,6 +101,43 @@ export function wordFamily(family: string): string {
   return out;
 }
 
+/** Word's kind of a family, from its name: what it sets instead when the family is not installed. */
+export function fontKind(family: string): { family: 'roman' | 'swiss' | 'modern'; alt: string } {
+  const name = family.toLowerCase();
+  if (/mono|courier|consolas|menlo|code/.test(name)) return { family: 'modern', alt: 'Courier New' };
+  if (/sans|grotesk|gothic/.test(name)) return { family: 'swiss', alt: 'Arial' };
+  if (/serif|times|roman|georgia|garamond|cambria|antiqua|palatino|minion|baskerville|caslon|bodoni|didot|book|amiri|naskh|traditional|majalla|lotus|mitra|badr|scheherazade/.test(name)) {
+    return { family: 'roman', alt: 'Times New Roman' };
+  }
+  return { family: 'swiss', alt: 'Arial' };
+}
+
+/**
+ * `word/fontTable.xml`: each family the document sets, with its kind and a
+ * face to stand in for it. Without it Word sets a family it does not have
+ * in a serif, whatever the family looked like.
+ */
+export function fontTableXml(families: Iterable<string>): string {
+  const fonts = [...new Set([DOCX_FONT, ...families])]
+    .map((name) => {
+      const kind = fontKind(name);
+      const alt = kind.alt !== name ? `<w:altName w:val="${xmlAttribute(kind.alt)}"/>` : '';
+      return `<w:font w:name="${xmlAttribute(name)}">${alt}<w:charset w:val="00"/><w:family w:val="${kind.family}"/><w:pitch w:val="${kind.family === 'modern' ? 'fixed' : 'variable'}"/></w:font>`;
+    })
+    .join('');
+  return `${DECLARATION}<w:fonts xmlns:w="${W}">${fonts}</w:fonts>`;
+}
+
+/** The families the pages set, their own names as Word knows them. */
+function familiesOf(pages: readonly Slide[]): string[] {
+  const out = new Set<string>();
+  for (const page of pages) {
+    for (const text of page.texts) out.add(faceOf(text));
+    for (const table of page.tables ?? []) out.add(faceOf(table));
+  }
+  return [...out];
+}
+
 /** The face a box is set in: the file's own family when it names one. */
 function faceOf(text: Pick<SlideText, 'font'>): string {
   const family = text.font ? wordFamily(text.font.family) : '';
@@ -115,8 +152,12 @@ interface RunLook {
   direction: SlideText['direction'];
 }
 
-/** A run's properties, in the schema's order (rFonts, b, bCs, i, iCs, color, sz, szCs, rtl, then w14). */
-function runProperties(text: RunLook, scale: number, hidden: boolean): string {
+/**
+ * A run's properties, in the schema's order (rFonts, b, bCs, i, iCs, color,
+ * sz, szCs, fitText, rtl, then w14). `fit`: twips the run's text is set
+ * into exactly, as wide as the page had it.
+ */
+function runProperties(text: RunLook, scale: number, hidden: boolean, fit?: { width: number; id: number }): string {
   const face = xmlAttribute(faceOf(text));
   const bold = (text.font?.weight ?? 400) >= 600;
   const italic = text.font?.italic ?? false;
@@ -129,6 +170,7 @@ function runProperties(text: RunLook, scale: number, hidden: boolean): string {
     (italic ? '<w:i/><w:iCs/>' : '') +
     `<w:color w:val="${colour}"/>` +
     `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>` +
+    (fit ? `<w:fitText w:val="${fit.width}" w:id="${fit.id}"/>` : '') +
     (text.direction === 'rtl' ? '<w:rtl/>' : '') +
     // A scan's text: there to find and copy, not to see.
     (hidden ? '<w14:textFill><w14:noFill/></w14:textFill>' : '') +
@@ -273,6 +315,8 @@ const CELL_JC = { start: '', center: '<w:jc w:val="center"/>', end: '<w:jc w:val
  * without borders (the picture behind draws the page's own), each cell's
  * text in its colour, place and direction.
  */
+let fitIds = 0;
+
 export function layoutTableXml(table: LayoutTable, scale: number, hidden: boolean, links?: DocxLinks): string {
   const rtl = table.direction === 'rtl';
   const columns = (rtl ? [...table.widths].reverse() : table.widths).map((w) => Math.max(1, twips(w * scale)));
@@ -288,9 +332,21 @@ export function layoutTableXml(table: LayoutTable, scale: number, hidden: boolea
       const look = table.looks[r]?.[table.rows[r]!.indexOf(cell.cell)] ?? null;
       const text = cleanText(cell.cell.text).replace(/[\t\n\r]+/g, ' ').trim();
       const cellRtl = readsRtl(text) ?? rtl;
-      const rPr = runProperties({ font: table.font, size: table.size, color: look?.color ?? '000000', direction: cellRtl ? 'rtl' : 'ltr' }, scale, hidden || look?.hidden === true);
+      // One line that nearly fills its cell on the page would wrap in a face
+      // a little wider, and its row grow, and the table slide off the rules
+      // and fills the picture behind draws: set it as wide as the page had it.
+      const box = cell.cell.box;
+      const room = w / 20 / scale - 2 * Math.max(0, table.margin);
+      const fits = box && box[3] < table.size * 1.8 && box[2] >= room * 0.75 && box[2] <= room * 1.05 && text.length > 1;
+      const fit = fits ? { width: Math.max(1, twips(box[2] * scale)), id: (fitIds += 1) } : undefined;
+      const rPr = runProperties(
+        { font: table.font, size: table.size, color: look?.color ?? '000000', direction: cellRtl ? 'rtl' : 'ltr' },
+        scale,
+        hidden || look?.hidden === true,
+        fit,
+      );
       const properties = rPr.slice('<w:rPr>'.length, -'</w:rPr>'.length);
-      const runs = linkedRuns(text, text === cell.cell.text ? cell.cell.links : undefined, properties, links, runText, false);
+      const runs = linkedRuns(text, text === cell.cell.text && !fit ? cell.cell.links : undefined, properties, links, runText, false);
       const valign = look?.place.valign === 'top' ? '' : `<w:vAlign w:val="${look?.place.valign ?? 'center'}"/>`;
       const merge = cell.rows > 1 ? '<w:vMerge w:val="restart"/>' : '';
       const paragraph =
@@ -327,6 +383,7 @@ export function layoutDocumentXml(
   const pictures: { relId: string; target: string; bytes: Uint8Array }[] = [];
   const body: string[] = [];
   let id = 1;
+  fitIds = 0;
   pages.forEach((page, index) => {
     const size = wordPage(page);
     const runs: string[] = [];
@@ -383,6 +440,7 @@ function contentTypesXml(): string {
     '<Default Extension="png" ContentType="image/png"/>' +
     '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
     '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+    '<Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>' +
     '</Types>'
   );
 }
@@ -399,6 +457,7 @@ function documentRelsXml(pictures: readonly { relId: string; target: string }[],
   return (
     `${DECLARATION}<Relationships xmlns="${PACKAGE_REL}">` +
     `<Relationship Id="rId1" Type="${R}/styles" Target="styles.xml"/>` +
+    `<Relationship Id="rIdFonts" Type="${R}/fontTable" Target="fontTable.xml"/>` +
     pictures.map((p) => `<Relationship Id="${p.relId}" Type="${R}/image" Target="${p.target}"/>`).join('') +
     links.relationships() +
     '</Relationships>'
@@ -414,6 +473,7 @@ export function buildLayoutDocx(pages: readonly Slide[]): Uint8Array<ArrayBuffer
     '_rels/.rels': strToU8(packageRelsXml()),
     'word/document.xml': strToU8(xml),
     'word/styles.xml': strToU8(stylesXml()),
+    'word/fontTable.xml': strToU8(fontTableXml(familiesOf(pages))),
     'word/_rels/document.xml.rels': strToU8(documentRelsXml(pictures, links)),
   };
   for (const picture of pictures) files[`word/${picture.target}`] = [picture.bytes, { level: 0 }];

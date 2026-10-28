@@ -209,6 +209,9 @@ describe('a sheet you can add up', () => {
     expect(formatCode(parseNumber('12,500.00 SR')!.format)).toBe('#,##0.00 "SR"');
     for (const id of ['505257674', '1098765432', '0551234567']) expect(parseNumber(id), id).toBeNull();
     expect(parseNumber('1,234,567')?.value).toBe(1234567);
+    expect(parseNumber('1.00 Units')).toEqual({ value: 1, format: { decimals: 2, grouped: false, percent: false, unit: 'Units' } });
+    expect(formatCode(parseNumber('3 قطعة')!.format)).toBe('0 "قطعة"');
+    expect(parseNumber('15 Sep')).toBeNull();
   });
 
   it('reads dates as dates, written back as they were', () => {

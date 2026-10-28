@@ -69,8 +69,9 @@ export function formatCode(format: NumberFormat): string {
   const whole = format.grouped ? '#,##0' : '0';
   const decimals = format.decimals > 0 ? `.${'0'.repeat(format.decimals)}` : '';
   const number = `${whole}${decimals}${format.percent ? '%' : ''}`;
+  const counted = format.unit ? `${number} "${format.unit.replace(/"/g, '')}"` : number;
   const currency = format.currency;
-  if (!currency) return number;
+  if (!currency) return counted;
   // In quotes, so a sign of letters reads as itself and not as a code.
   const symbol = `"${currency.symbol.replace(/"/g, '')}"`;
   return currency.before ? `${symbol}${number}` : `${number} ${symbol}`;

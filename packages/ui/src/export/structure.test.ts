@@ -226,6 +226,13 @@ describe('tables from the core', () => {
     expect(outsideTables([...lines, line('بعد', 500)], tables).map((l) => l.text)).toEqual(['بعد']);
   });
 
+  it('keeps a line inside a table that none of its cells holds, so nothing is lost', () => {
+    const table: ExportTable = { direction: 'ltr', ruled: true, left: 0, top: 0, widths: [100, 100], heights: [20, 20], rows: [[{ text: 'Seller', rows: 1, columns: 1 }, { text: 'Buyer', rows: 1, columns: 1 }], [{ text: 'Riyadh', rows: 1, columns: 1 }, null]] };
+    const inBox = (text: string, y: number) => line(text, y, { x: 10, width: 40, height: 10 });
+    const kept = outsideTables([inBox('Seller Buyer', 5), inBox('Riyadh', 25), inBox('King Fahd Road 1234', 30)], [table]);
+    expect(kept.map((l) => l.text)).toEqual(['King Fahd Road 1234']);
+  });
+
   it("knows each cell's box, merges and right to left included, and how its text sits", () => {
     const boxes = cellBoxes({ ...TIMETABLE, rows: [[cell('x', 1, 2), null], ...TIMETABLE.rows.slice(1)] });
     expect(boxes[0]![0]).toEqual({ x: 100, y: 200, width: 200, height: 20 });
