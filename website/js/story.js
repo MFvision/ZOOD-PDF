@@ -286,16 +286,16 @@ export const CHAPTERS = [
     },
     points: [
       {
-        ar: 'اعرض من هاتفك: قلّب الصفحات، وأشِر بالليزر، وظلّل واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
-        en: 'Present from your phone: turn pages, point with a laser, highlight and write with the pen, and read your notes with a timer in view.',
+        ar: 'العرض: قلّب الصفحات، وأشِر بالليزر، وظلّل واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
+        en: 'Present: turn pages, point with a laser, highlight and write with the pen, and read your notes with a timer in view.',
       },
       {
-        ar: 'اجعله فأرة الحاسوب ولوحة مفاتيحه، وقلّب به أي عرض تقديمي وارفع الصوت، حين تفعّل ذلك من التطبيق.',
-        en: "Use it as the computer's mouse and keyboard, move through any slideshow and set the volume, once you switch that on in the app.",
+        ar: 'التحكم: لوحة لمس، ولوحة مفاتيح جوالك نفسها، واختصارات النسخ واللصق والتراجع، وتقليب أي عرض تقديمي وضبط الصوت، حين تفعّل ذلك من التطبيق.',
+        en: "Control: a trackpad, your phone's own keyboard, shortcuts for copy, paste and undo, any slideshow and the volume, once you switch that on in the app.",
       },
       {
-        ar: 'أرسل الملف إلى هاتفك، أو صوّر صفحة فتصل ملفًا، أو مرّر ملفًا من هاتفك للأعلى فيصل إلى سطح مكتب الحاسوب، أو وقّع على الهاتف فيظهر توقيعك في الملف.',
-        en: "Send the file to your phone, photograph a page and it arrives as a PDF, flick a file up off your phone onto the computer's desktop, or sign on the phone and the signature lands in the file.",
+        ar: 'الإرسال: اسحب صورًا وملفات حتى 1 جيجابايت إلى سطح مكتب الحاسوب، وشارك الحافظة بلمسة حين تفعّلها، واحفظ الملف المفتوح أو صوّر صفحة أو وقّع بإصبعك.',
+        en: "Send: swipe photos and files up to 1 GB onto the computer's desktop, share the clipboard in one tap once you turn it on, and save the open PDF, scan a page or sign with your finger.",
       },
     ],
     note: {

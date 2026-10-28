@@ -1,8 +1,9 @@
 // The remote room: a computer and a phone side by side, and the phone runs the
 // computer, one ability per scroll beat, quick to read at a glance: the laser,
-// the highlighter and turning pages while presenting; then the computer's own
-// mouse, keyboard, any slideshow and the volume; then files both ways, a file
-// flicked up onto the computer's desktop, and a signature. A row of labels names each beat and jumps to it, and the phone
+// the highlighter and turning pages while presenting (Present); then the
+// computer's own mouse, keyboard, any slideshow and the volume (Control); then
+// files both ways, a file flicked up onto the computer's desktop, the shared
+// clipboard and a signature (Send). A row of labels names each beat and jumps to it, and the phone
 // can be tried: move over its screen and the laser or the pointer follows,
 // press its buttons and they work. A drawing of the desktop app's phone
 // remote (packages/ui/src/remote/phone), not a recording.
@@ -11,14 +12,15 @@ import { clamp, ease, mix, setter, span, spring } from './motion.js';
 // The beats, in scroll order: where each starts and ends, which tab the phone
 // shows, what the computer shows, and which point of the words it belongs to.
 const BEATS = [
-  { id: 'laser', s: 0.02, e: 0.14, tab: 0, screen: 'show', point: 0 },
-  { id: 'mark', s: 0.14, e: 0.25, tab: 0, screen: 'show', point: 0 },
-  { id: 'pages', s: 0.25, e: 0.33, tab: 0, screen: 'show', point: 0 },
-  { id: 'mouse', s: 0.33, e: 0.45, tab: 1, screen: 'desk', point: 1 },
-  { id: 'keys', s: 0.45, e: 0.56, tab: 1, screen: 'desk', point: 1 },
-  { id: 'slides', s: 0.56, e: 0.68, tab: 1, screen: 'desk', point: 1 },
-  { id: 'files', s: 0.68, e: 0.78, tab: 2, screen: 'edit', point: 2 },
-  { id: 'flick', s: 0.78, e: 0.89, tab: 2, screen: 'desk', point: 2 },
+  { id: 'laser', s: 0.02, e: 0.13, tab: 0, screen: 'show', point: 0 },
+  { id: 'mark', s: 0.13, e: 0.23, tab: 0, screen: 'show', point: 0 },
+  { id: 'pages', s: 0.23, e: 0.3, tab: 0, screen: 'show', point: 0 },
+  { id: 'mouse', s: 0.3, e: 0.41, tab: 1, screen: 'desk', point: 1 },
+  { id: 'keys', s: 0.41, e: 0.51, tab: 1, screen: 'desk', point: 1 },
+  { id: 'slides', s: 0.51, e: 0.62, tab: 1, screen: 'desk', point: 1 },
+  { id: 'files', s: 0.62, e: 0.71, tab: 2, screen: 'edit', point: 2 },
+  { id: 'flick', s: 0.71, e: 0.8, tab: 2, screen: 'desk', point: 2 },
+  { id: 'clip', s: 0.8, e: 0.89, tab: 2, screen: 'desk', point: 2 },
   { id: 'sign', s: 0.89, e: 1, tab: 2, screen: 'edit', point: 2 },
 ];
 
@@ -32,11 +34,28 @@ const WORDS = {
     slides: { ar: 'العروض والصوت', en: 'Slides and volume' },
     files: { ar: 'الملفات', en: 'Files' },
     flick: { ar: 'مرّر ملفًا', en: 'Flick a file' },
+    clip: { ar: 'الحافظة', en: 'Clipboard' },
     sign: { ar: 'التوقيع', en: 'Signature' },
   },
   show: { ar: 'اعرض كل ميزة', en: 'Show each feature' },
   connected: { ar: 'متصل بحاسوب المكتب', en: 'Connected to Office PC' },
-  tabs: { ar: ['العرض', 'لوحة اللمس', 'الملفات'], en: ['Present', 'Trackpad', 'Files'] },
+  tabs: { ar: ['العرض', 'التحكم', 'الإرسال'], en: ['Present', 'Control', 'Send'] },
+  modes: { ar: ['لوحة اللمس', 'لوحة المفاتيح', 'الوسائط'], en: ['Trackpad', 'Keyboard', 'Media'] },
+  shortcuts: { ar: ['نسخ', 'لصق', 'تراجع', 'تبديل'], en: ['Copy', 'Paste', 'Undo', 'Switch app'] },
+  sendTitle: { ar: 'أرسل إلى حاسوب المكتب', en: 'Send to Office PC' },
+  sendBody: {
+    ar: 'اختر صورًا أو ملفات ثم اسحبها للأعلى. حتى 1 جيجابايت.',
+    en: 'Pick photos or files, then swipe each one up. Up to 1 GB.',
+  },
+  clipFromPc: { ar: 'نُسخ على الحاسوب', en: 'Copied on the computer' },
+  clipNone: { ar: 'انسخ شيئًا على الحاسوب', en: 'Copy something on the computer' },
+  clipText: { ar: 'اجتماع الأحد ١٠ صباحًا', en: 'Meeting Sunday 10am' },
+  copy: { ar: 'نسخ', en: 'Copy' },
+  copied: { ar: 'نُسخ', en: 'Copied' },
+  clipPaste: { ar: 'الصق على الحاسوب', en: 'Paste on the computer' },
+  clipPasteBody: { ar: 'ما نسخته على الجوال', en: 'What you copied here' },
+  pcCopied: { ar: 'نُسخ', en: 'Copied' },
+  docTitle: { ar: 'هذا المستند', en: 'This document' },
   tools: { ar: ['ليزر', 'قلم', 'تظليل'], en: ['Laser', 'Pen', 'Highlighter'] },
   notes: { ar: 'الملاحظات', en: 'Notes' },
   note: { ar: 'اذكر نمو الربع الثالث.', en: 'Mention third-quarter growth.' },
@@ -109,6 +128,17 @@ const ICONS = {
   play: icon('<path d="M7 5v14l11-7z"/>'),
   sign: icon('<path d="M3 17c3-6 5-9 7-9s-1 8 1 8 3-5 5-5 1 4 3 4 2-1 2-1"/>'),
   check: icon('<path d="m5 12.5 4.5 4.5L19 7.5"/>', ' stroke-width="3"'),
+  send: icon('<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>'),
+  upload: icon('<path d="M12 16V4M6 10l6-6 6 6M4 20h16"/>'),
+  copy: icon(
+    '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  ),
+  paste: icon('<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/>'),
+  undo: icon('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
+  layers: icon('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>'),
+  music: icon(
+    '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  ),
   speaker: icon(
     '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/>',
   ),
@@ -128,16 +158,18 @@ const barTop = (k) => [15 + k * 14, 32 + 54 * (1 - BARS[k]) - 3];
 // Where things sit on the phone's screen, in % of its width and height (the
 // row layouts in the CSS place them there).
 const STAGE = { x: 6, y: 12, w: 88, h: 25.5 };
-const PAD = { x: 5, y: 12, w: 90, h: 48 };
+const PAD = { x: 5, y: 19, w: 90, h: 39 };
 const AT = {
   tools: [22, 50, 78].map((x) => [x, 44]),
   prev: [20, 74],
   next: [80, 74],
   tabs: [17, 50, 83].map((x) => [x, 92]),
-  kbd: [14, 66.5],
-  arrowR: [86, 66.5],
-  volup: [62.5, 75.5],
-  rows: [18.5, 31.5, 44.5].map((y) => [50, y]),
+  modes: [19.3, 50, 80.7].map((x) => [x, 14]),
+  arrowR: [84.5, 73.25],
+  volup: [61.5, 64],
+  send: [50, 21.5],
+  copy: [27.5, 46],
+  rows: [59.25, 68.75, 78.25].map((y) => [50, y]),
   signBtn: [50, 79],
 };
 
@@ -166,7 +198,7 @@ export function remoteScene(t, escape, frame) {
   const tabs = t(WORDS.tabs)
     .map(
       (x, k) =>
-        `<span class="rm-tab" data-k="tab${k}">${[ICONS.present, ICONS.pointer, ICONS.file][k]}${escape(x)}</span>`,
+        `<span class="rm-tab" data-k="tab${k}">${[ICONS.present, ICONS.pointer, ICONS.send][k]}${escape(x)}</span>`,
     )
     .join('');
   const tools = t(WORDS.tools)
@@ -179,6 +211,18 @@ export function remoteScene(t, escape, frame) {
     .map(
       ([a, b], k) =>
         `<span class="rm-row" data-k="row${k}"><i>${[ICONS.file, ICONS.camera, ICONS.sign][k]}</i><b>${escape(a)}</b><small>${escape(b)}</small></span>`,
+    )
+    .join('');
+  const modes = t(WORDS.modes)
+    .map(
+      (x, k) =>
+        `<span class="rm-mode m${k}" data-k="mode${k}">${[ICONS.pointer, ICONS.kbd, ICONS.music][k]}${escape(x)}</span>`,
+    )
+    .join('');
+  const shortcuts = t(WORDS.shortcuts)
+    .map(
+      (x, k) =>
+        `<span>${[ICONS.copy, ICONS.paste, ICONS.undo, ICONS.layers][k]}<small>${escape(x)}</small></span>`,
     )
     .join('');
   const keyRows = t(WORDS.keys)
@@ -194,7 +238,7 @@ export function remoteScene(t, escape, frame) {
     <div class="rm-mon"><div class="rm-screen">
       <div class="rm-layer rm-l-show">${deck()}</div>
       <div class="rm-layer rm-l-desk">
-        <div class="rm-wapp rm-notes"><p class="rm-wbar">${e(WORDS.notesApp)}</p><p class="rm-ntext">${typed}<u></u></p></div>
+        <div class="rm-wapp rm-notes"><p class="rm-wbar">${e(WORDS.notesApp)}</p><p class="rm-ntext">${typed}<u></u></p><span class="rm-pcopied">${ICONS.check}${e(WORDS.pcCopied)}</span></div>
         <div class="rm-wapp rm-deck"><p class="rm-wbar">${e(WORDS.deck)}</p><div class="rm-dview">${deckSlides}</div></div>
         <div class="rm-dock"><i></i><i></i><i></i><i></i><i></i></div>
         <div class="rm-hud"><span>${ICONS.speaker}</span><b><i></i></b></div>
@@ -218,11 +262,19 @@ export function remoteScene(t, escape, frame) {
         <div class="rm-nav"><span class="rm-big" data-k="prev">${ICONS.left}</span><span class="rm-pg">${pages}</span><span class="rm-big rm-next" data-k="next">${ICONS.right}</span></div>
       </div>
       <div class="rm-panel rm-p1">
+        <div class="rm-modes">${modes}</div>
         <div class="rm-pad"><div class="rm-dots"></div><div class="rm-dots rm-lit"></div></div>
-        <div class="rm-keys"><span data-k="kbd">${ICONS.kbd}</span><span data-k="arrowL">${ICONS.left}</span><span data-k="arrowU">${ICONS.up}</span><span data-k="arrowD">${ICONS.down}</span><span data-k="arrowR">${ICONS.right}</span></div>
+        <div class="rm-keys rm-short">${shortcuts}</div>
         <div class="rm-keys rm-media"><span data-k="voldown">${ICONS.voldown}</span><span data-k="mute">${ICONS.mute}</span><span data-k="volup">${ICONS.volup}</span><span data-k="play">${ICONS.play}</span></div>
+        <div class="rm-keys rm-arrows"><span data-k="arrowL">${ICONS.left}</span><span data-k="arrowU">${ICONS.up}</span><span data-k="arrowD">${ICONS.down}</span><span data-k="arrowR">${ICONS.right}</span></div>
       </div>
-      <div class="rm-panel rm-p2">${rows}
+      <div class="rm-panel rm-p2">
+        <div class="rm-send" data-k="send"><i>${ICONS.upload}</i><b>${e(WORDS.sendTitle)}</b><small>${e(WORDS.sendBody)}</small></div>
+        <div class="rm-clip">
+          <div class="rm-cfrom"><small>${ICONS.copy}${e(WORDS.clipFromPc)}</small><p><span class="rm-cnone">${e(WORDS.clipNone)}</span><span class="rm-ctext">${e(WORDS.clipText)}</span></p><span class="rm-cbtn" data-k="copy"><span class="rm-cb0">${e(WORDS.copy)}</span><span class="rm-cb1">${ICONS.check}${e(WORDS.copied)}</span></span></div>
+          <div class="rm-cto"><small>${ICONS.paste}${e(WORDS.clipPaste)}</small><p>${e(WORDS.clipPasteBody)}</p></div>
+        </div>
+        <p class="rm-dtitle">${e(WORDS.docTitle)}</p>${rows}
         <p class="rm-toast">${ICONS.check}${e(WORDS.saved)}</p>
         <div class="rm-signpad"><small>${e(WORDS.drawSig)}</small>${sig('rm-sig-phone')}<span class="rm-signbtn" data-k="signBtn">${e(WORDS.signPage)}</span></div>
       </div>
@@ -293,6 +345,11 @@ function script(b, t, rtl, scene) {
     fwave: 0,
     fland: 0,
     fcatch: 0,
+    mode: 0,
+    pcsel: 0,
+    pccopied: 0,
+    clip: 0,
+    copied: 0,
   };
   const id = BEATS[b].id;
   const tops = BARS.map((_, k) => barTop(k));
@@ -303,6 +360,8 @@ function script(b, t, rtl, scene) {
   if (b >= 5) s.typed = 1;
   if (b >= 6) [s.deck, s.ptr, s.focus, s.level] = [2, [70, 42], 'deck', 0.6];
   if (b >= 7) [s.saved, s.newp] = [0, 1];
+  if (b >= 8) s.fland = 1;
+  if (b >= 9) [s.clip, s.copied, s.pcsel] = [1, 1, 1];
 
   if (id === 'laser') {
     const path = [[0.08, 30, 92], ...tops.map(([u, v], k) => [0.14 + k * 0.13, u, v])];
@@ -376,6 +435,7 @@ function script(b, t, rtl, scene) {
     s.focus = t > 0.76 ? 'notes' : '';
   } else if (id === 'keys') {
     s.kb = spring(span(t, 0.14, 0.3)) * (1 - span(t, 0.92, 1));
+    s.mode = inside(t, 0.13, 0.95) ? 1 : 0;
     s.typed = span(t, 0.32, 0.86);
     const letters = scene.querySelectorAll('.rm-ntext i').length || 1;
     const k = Math.floor(s.typed * letters);
@@ -383,11 +443,11 @@ function script(b, t, rtl, scene) {
       s.touch = along(
         [
           [0, 40, 40],
-          [0.1, ...AT.kbd],
+          [0.1, ...X(AT.modes[1])],
         ],
         t,
       );
-      s.press = inside(t, 0.1, 0.16) ? 'kbd' : '';
+      s.press = inside(t, 0.1, 0.16) ? 'mode1' : '';
     } else if (t < 0.88) {
       // A finger hopping over the keys, one hop a letter.
       s.touch = [12 + ((k * 37) % 76), 70 + ((k * 7) % 3) * 7.5];
@@ -403,8 +463,9 @@ function script(b, t, rtl, scene) {
         [0.3, 70, 30],
         [0.42, 70, 30],
         [0.5, ...AT.arrowR],
-        [0.7, ...AT.arrowR],
-        [0.78, ...AT.volup],
+        [0.66, ...AT.arrowR],
+        [0.72, ...X(AT.modes[2])],
+        [0.8, ...AT.volup],
       ],
       t,
     );
@@ -420,14 +481,17 @@ function script(b, t, rtl, scene) {
     s.focus = t > 0.36 ? 'deck' : 'notes';
     s.press = inside(t, 0.32, 0.38)
       ? 'pad'
-      : inside(t, 0.52, 0.57) || inside(t, 0.63, 0.68)
+      : inside(t, 0.52, 0.57) || inside(t, 0.6, 0.65)
         ? 'arrowR'
-        : inside(t, 0.8, 0.86)
-          ? 'volup'
-          : '';
-    s.deck = t < 0.55 ? 0 : t < 0.66 ? 1 : 2;
-    s.hud = spring(span(t, 0.82, 0.9));
-    s.level = mix(0.45, 0.6, span(t, 0.82, 0.88));
+        : inside(t, 0.72, 0.77)
+          ? 'mode2'
+          : inside(t, 0.82, 0.88)
+            ? 'volup'
+            : '';
+    s.mode = t < 0.74 ? 0 : 2;
+    s.deck = t < 0.55 ? 0 : t < 0.63 ? 1 : 2;
+    s.hud = spring(span(t, 0.84, 0.92));
+    s.level = mix(0.45, 0.6, span(t, 0.84, 0.9));
   } else if (id === 'files') {
     s.tab = t < 0.13 ? 1 : 2;
     s.screen = t < 0.13 ? 'desk' : 'edit';
@@ -488,6 +552,23 @@ function script(b, t, rtl, scene) {
     s.fland = spring(span(t, 0.36, 0.5));
     s.fcatch = spring(span(t, 0.54, 0.7));
     s.press = inside(t, 0.8, 0.86) ? 'fsave' : '';
+  } else if (id === 'clip') {
+    // Copied on the computer, it is on the phone at once: one tap copies it there.
+    s.focus = 'notes';
+    s.pcsel = ease(span(t, 0.04, 0.18));
+    s.pccopied = spring(span(t, 0.18, 0.26)) * (1 - span(t, 0.56, 0.62));
+    s.clip = spring(span(t, 0.26, 0.38));
+    s.copied = t > 0.52 ? 1 : 0;
+    s.touch = inside(t, 0.3, 0.84)
+      ? along(
+          [
+            [0.3, 60, 70],
+            [0.46, ...X(AT.copy)],
+          ],
+          t,
+        )
+      : null;
+    s.press = inside(t, 0.47, 0.53) ? 'copy' : '';
   } else if (id === 'sign') {
     s.pad = spring(span(t, 0.12, 0.22)) * (1 - span(t, 0.72, 0.8));
     s.sigd = span(t, 0.25, 0.55);
@@ -630,6 +711,8 @@ export function remoteFrame(el, p, reduced) {
   scene.dataset.page = s.page;
   scene.dataset.deck = s.deck;
   scene.dataset.focus = s.focus;
+  scene.dataset.mode = s.mode;
+  scene.classList.toggle('rm-copied', s.copied > 0);
   scene.classList.toggle('rm-back', s.back);
   scene.querySelectorAll('.rm-chips button').forEach((c, k) => c.classList.toggle('on', k === b));
   el.querySelectorAll('.ring-words .points li').forEach((li, k) =>
@@ -687,4 +770,7 @@ export function remoteFrame(el, p, reduced) {
   set('--fwave', s.fwave);
   set('--fland', s.fland);
   set('--fcatch', s.fcatch);
+  set('--pcsel', s.pcsel);
+  set('--pccopied', s.pccopied);
+  set('--clip', s.clip);
 }
