@@ -788,6 +788,25 @@ pub fn zone_show_made() -> Result<(), String> {
     crate::shelf::reveal(&first)
 }
 
+/// Print: the PDF the Print tile just made opens in the editor, straight at
+/// the system's print dialog. It used to stop at the PDF, so "Print" seemed
+/// to make a PDF and do nothing more (his PC, 2026-10-28).
+#[tauri::command(async)]
+pub fn zone_print_made<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let first = TILE_MADE
+        .lock()
+        .ok()
+        .and_then(|last| {
+            last.iter()
+                .find(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")))
+                .cloned()
+        })
+        .ok_or_else(|| "E_SCOPE: no PDF made".to_string())?;
+    log("print tile: opening the print dialog");
+    crate::open_in_editor_at(&app, Some(first), Some("print"));
+    Ok(())
+}
+
 /// Put away moved files: the zone says so, with Undo and Show.
 pub fn tell_put_away<R: Runtime>(app: &AppHandle<R>, batch: &crate::putaway::Batch) {
     // Not over a drag or the open shelf.

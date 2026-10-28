@@ -129,6 +129,9 @@ impl Incoming {
         }
         let path = transfer::free_path(&self.folder, &self.name);
         std::fs::rename(&self.part_path, &path).map_err(|e| format!("E_IO: {e}"))?;
+        // A rename keeps the part file's hidden mark: the file arrived but
+        // could not be seen on the Desktop (his PC, 2026-10-28).
+        show(&path);
         transfer::mark_downloaded(&path);
         Ok(path)
     }
@@ -157,6 +160,51 @@ fn hide(path: &Path) {
 
 #[cfg(not(target_os = "windows"))]
 fn hide(_path: &Path) {}
+
+/// The landed file loses the part file's hidden mark, keeping its others.
+#[cfg(target_os = "windows")]
+fn show(path: &Path) {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileAttributesW, SetFileAttributesW, FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL,
+        INVALID_FILE_ATTRIBUTES,
+    };
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    // SAFETY: `wide` is NUL-terminated and lives across both calls.
+    unsafe {
+        let now = GetFileAttributesW(wide.as_ptr());
+        if now == INVALID_FILE_ATTRIBUTES || now & FILE_ATTRIBUTE_HIDDEN == 0 {
+            return;
+        }
+        let rest = now & !FILE_ATTRIBUTE_HIDDEN;
+        SetFileAttributesW(
+            wide.as_ptr(),
+            if rest == 0 {
+                FILE_ATTRIBUTE_NORMAL
+            } else {
+                rest
+            },
+        );
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn show(_path: &Path) {}
+
+/// Whether Windows marks the file hidden (always false elsewhere).
+#[cfg(all(test, target_os = "windows"))]
+fn is_hidden(path: &Path) -> bool {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{GetFileAttributesW, FILE_ATTRIBUTE_HIDDEN};
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    // SAFETY: `wide` is NUL-terminated and lives across the call.
+    unsafe { GetFileAttributesW(wide.as_ptr()) & FILE_ATTRIBUTE_HIDDEN != 0 }
+}
+
+#[cfg(all(test, not(target_os = "windows")))]
+fn is_hidden(_path: &Path) -> bool {
+    false
+}
 
 /// The transfers going on now, by phone and id.
 #[derive(Default)]
@@ -324,11 +372,13 @@ mod tests {
             data.len() as u64,
         )
         .unwrap();
+        assert!(is_hidden(&dir.join(".zood-abc.part")) == cfg!(target_os = "windows"));
         for (n, chunk) in data.chunks(PART).enumerate() {
             incoming.part(n as u64, &b64(chunk)).unwrap();
         }
         let path = incoming.finish().unwrap();
         assert_eq!(path.file_name().unwrap(), "Scan (2).pdf");
+        assert!(!is_hidden(&path), "the landed file shows on the Desktop");
         assert_eq!(std::fs::read(&path).unwrap(), data);
         assert_eq!(
             std::fs::read(dir.join("Scan.pdf")).unwrap(),

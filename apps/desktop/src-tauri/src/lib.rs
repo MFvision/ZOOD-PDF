@@ -559,6 +559,7 @@ pub fn run() {
             sort::zone_made,
             sort::zone_undo_made,
             sort::zone_show_made,
+            sort::zone_print_made,
             putaway::putaway_get,
             putaway::putaway_set,
             putaway::putaway_places,
