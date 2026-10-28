@@ -48,6 +48,14 @@ export function fitPageZoom(viewport: Viewport, page: PageDimensions): number {
   return clampZoom(Math.min(fitWidthZoom(viewport, page), byHeight));
 }
 
+/**
+ * Whether a newly fitted zoom is worth applying. A change under half a
+ * percent is a scrollbar or a pixel of rounding, and chasing it can loop.
+ */
+export function fitMoved(before: number | null, after: number): boolean {
+  return before === null || Math.abs(after - before) / before >= 0.005;
+}
+
 export function formatZoom(zoom: number): string {
   return `${Math.round(zoom * 100)}%`;
 }
