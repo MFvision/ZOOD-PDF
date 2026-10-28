@@ -50,6 +50,16 @@ jobs:
           workspaces: |
             apps/desktop/src-tauri
             packages/core
+      # ONNX Runtime, which ort downloads while building and checks against
+      # a hash: kept between runs, so one bad download (seen once, a hash
+      # mismatch) cannot fail a build that had it already.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/AppData/Local/ort.pyke.io
+            ~/Library/Caches/ort.pyke.io
+            ~/.cache/ort.pyke.io
+          key: ort-binaries-${{ runner.os }}-2.0.0-rc.12
 
       - run: pnpm install --frozen-lockfile
 

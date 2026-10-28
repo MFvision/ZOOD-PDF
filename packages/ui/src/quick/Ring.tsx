@@ -330,7 +330,7 @@ function RingWindow() {
   const circumference = 2 * Math.PI * band;
   return (
     <main className={['ring', visible ? 'ring-visible' : '', work ? 'ring-working' : ''].filter(Boolean).join(' ')} aria-label={t('quick.title')} aria-hidden={!visible}>
-      <svg viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`} role="img" aria-label={t('quick.title')}>
+      <svg viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`} role="group" aria-label={t('quick.title')}>
         <defs>
           {/* Liquid glass: light from the top left, a sheen on the upper half, a bright rim. */}
           <radialGradient id="ring-glass" cx="32%" cy="22%" r="90%">
@@ -357,8 +357,10 @@ function RingWindow() {
                   key={member.id}
                   className={k === sub ? 'ring-sub ring-sub-over' : 'ring-sub'}
                   style={{ '--i': k, transformOrigin: `${center}px ${center}px` } as CSSProperties}
-                  role={holding ? 'button' : undefined}
-                  aria-label={holding ? t(member.labelKey) : undefined}
+                  // Named while a file is dragged over it too, so screen readers and
+                  // UI automation can tell the slots apart; a button only when it can be clicked.
+                  role={holding ? 'button' : 'img'}
+                  aria-label={t(member.labelKey)}
                   onPointerEnter={holding ? () => setSub(k) : undefined}
                   onPointerLeave={holding ? () => setSub(null) : undefined}
                   onClick={holding ? () => pickTool(member.id) : undefined}
@@ -382,8 +384,8 @@ function RingWindow() {
               key={tool.id}
               className={['ring-segment', index === over || popped ? 'ring-segment-over' : '', tool.members ? 'ring-segment-group' : ''].filter(Boolean).join(' ')}
               style={shift ? { transform: `translate(${shift.x}px, ${shift.y}px)` } : undefined}
-              role={holding ? 'button' : undefined}
-              aria-label={holding ? nameOf(tool.id) : undefined}
+              role={holding ? 'button' : 'img'}
+              aria-label={nameOf(tool.id)}
               aria-expanded={holding && tool.members ? popped : undefined}
               onPointerEnter={
                 holding

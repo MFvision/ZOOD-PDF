@@ -680,6 +680,24 @@ const BATCH: usize = 512;
 /// llama.cpp's backend: started once for the whole app and kept, so the
 /// engine thread and Ask ZOOD's quick decider (`decide.rs`) can each hold a
 /// model of their own at the same time.
+/// llama.cpp is built for x86 with AVX2, FMA and F16C (ggml's own baseline
+/// when it is not built for the build machine), so on a processor without
+/// them its first instruction would end the whole app. Such a processor
+/// (older Celerons and Pentiums) is told the AI cannot run, and the rest of
+/// the app goes on.
+fn processor_can_run_models() -> Result<(), String> {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if !(std::arch::is_x86_feature_detected!("avx2")
+            && std::arch::is_x86_feature_detected!("fma")
+            && std::arch::is_x86_feature_detected!("f16c"))
+        {
+            return Err("E_AI_CPU: this computer's processor is too old for the AI on this device (it needs AVX2)".into());
+        }
+    }
+    Ok(())
+}
+
 pub fn backend() -> Result<&'static LlamaBackend, String> {
     static BACKEND: OnceLock<LlamaBackend> = OnceLock::new();
     if let Some(backend) = BACKEND.get() {
@@ -690,6 +708,7 @@ pub fn backend() -> Result<&'static LlamaBackend, String> {
     if let Some(backend) = BACKEND.get() {
         return Ok(backend);
     }
+    processor_can_run_models()?;
     let mut backend = LlamaBackend::init().map_err(|e| format!("E_AI: {e}"))?;
     backend.void_logs();
     Ok(BACKEND.get_or_init(|| backend))

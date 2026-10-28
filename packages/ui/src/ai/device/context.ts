@@ -8,14 +8,20 @@
  * 1,350–1,385 MiB at 8,192 — the wider window costs under 100 MiB — so 8,192
  * is what a computer with 8 GB or more gets; a smaller
  * one, and every browser (the model runs in WebAssembly there, on the CPU,
- * inside the tab's memory), keeps 4,096.
+ * inside the tab's memory), keeps 4,096. A computer with 16 GB or more gets
+ * 16,384 (the host's ceiling): the 4B model's cache at that size is about
+ * 2.4 GB, and a 12-page document is then read in one request instead of
+ * three plus the rounds that join them: two answers written instead of
+ * five, where each costs most of a minute on a PC's processor.
  */
 export const SMALL_CONTEXT = 4096;
 export const LARGE_CONTEXT = 8192;
+export const WIDE_CONTEXT = 16_384;
 
 export function contextTokensFor(memoryGiB: number | null, inBrowser: boolean): number {
   if (inBrowser) return SMALL_CONTEXT;
   if (memoryGiB === null || memoryGiB < 7.5) return SMALL_CONTEXT;
+  if (memoryGiB >= 15.5) return WIDE_CONTEXT;
   return LARGE_CONTEXT;
 }
 

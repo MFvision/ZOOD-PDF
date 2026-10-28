@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { budgetFor, takeWithinBudget } from '../budget';
 import type { PageText } from '../budget';
-import { LARGE_CONTEXT, SMALL_CONTEXT, contextTokensFor, estimateTokens, materialTokensFor, replyTokensFor, turnTokensFor } from '../device/context';
+import { LARGE_CONTEXT, SMALL_CONTEXT, WIDE_CONTEXT, contextTokensFor, estimateTokens, materialTokensFor, replyTokensFor, turnTokensFor } from '../device/context';
 import type { ChatMessage, DeviceEngine, Generated, GenerateOptions } from '../device/engine';
 import { deviceBudget, generateOnDevice } from '../device/generate';
 import { deviceModel, shortModelName } from '../device/models';
@@ -151,9 +151,11 @@ describe('the on-device window is counted in tokens', () => {
 });
 
 describe('the window and the model, by the machine', () => {
-  it('8,192 tokens on a computer with 8 GB or more, 4,096 below that and in every browser', () => {
+  it('16,384 tokens with 16 GB or more, 8,192 with 8 GB or more, 4,096 below that and in every browser', () => {
     expect(contextTokensFor(8, false)).toBe(LARGE_CONTEXT);
-    expect(contextTokensFor(16, false)).toBe(8192);
+    expect(contextTokensFor(12, false)).toBe(8192);
+    expect(contextTokensFor(16, false)).toBe(WIDE_CONTEXT);
+    expect(contextTokensFor(15.6, false)).toBe(16_384);
     expect(contextTokensFor(4, false)).toBe(SMALL_CONTEXT);
     // A machine that does not say is given the smaller.
     expect(contextTokensFor(null, false)).toBe(4096);

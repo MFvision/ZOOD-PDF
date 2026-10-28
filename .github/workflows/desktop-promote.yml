@@ -70,4 +70,10 @@ jobs:
       - name: mark the release as released
         run: |
           VERSION="${VERSION#release/}"; VERSION="${VERSION#stable-v}"
-          gh release edit "desktop-v$VERSION" --prerelease=false --latest --title "ZOOD PDF $VERSION"
+          # The testing note ("Not on the update channel yet…") goes: staff
+          # who open this page see what to download instead.
+          body="$(gh release view "desktop-v$VERSION" --json body --jq .body | sed '/Not on the update channel yet/d')"
+          body="$body
+
+          Windows: ZOOD-PDF-Setup-$VERSION.exe. Mac: ZOOD-PDF-$VERSION-mac.dmg. ZOOD PDF already installed updates itself."
+          gh release edit "desktop-v$VERSION" --prerelease=false --latest --title "ZOOD PDF $VERSION" --notes "$body"
