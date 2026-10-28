@@ -57,6 +57,9 @@ pub struct Metadata {
     pub engine: &'static str,
 }
 
+/// x, y, width, height in points.
+type Rect = (f32, f32, f32, f32);
+
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct ParagraphReplacement {
     pub lines_drawn: usize,
@@ -493,6 +496,12 @@ impl Document {
         let (x, y_top, w, h) = para.bbox;
         let first = &lines[para.lines[0]];
         let size = (first.height / 1.2).max(1.0);
+        // Words that are also part of a picture under the text stay on the
+        // page when their text is erased: covered first, in the picture's
+        // own colour around them.
+        if let Some((rgb, cover)) = self.picture_words_under(index, (x, y_top, w, h), size) {
+            warraq_pdf::ops::cover_area(self.pdf_mut(), index, cover, rgb)?;
+        }
         if font.is_empty() {
             let edit = warraq_pdf::ownfont::OwnFontEdit {
                 rect: (x, page_height - (y_top + h), w, h),
@@ -656,6 +665,109 @@ impl Document {
         let (render, hidden) = cached.as_ref().expect("made above");
         let bitmap = render.render(index, scale.clamp(0.05, 8.0))?;
         Ok((bitmap, hidden.get(index).copied().unwrap_or(false)))
+    }
+
+    /// Whether a paragraph's words (box in UI points from the top-left, and
+    /// its text size) are also drawn by a picture under them, as on pages
+    /// that are one image with their words again as text on top; and if so,
+    /// the colour around them (0 to 1) and the box to cover, in PDF space.
+    /// Only where the surround is one colour: over a photo nothing is
+    /// covered, rather than paint a box on it.
+    fn picture_words_under(
+        &self,
+        index: usize,
+        (x, y_top, w, h): (f32, f32, f32, f32),
+        size: f32,
+    ) -> Option<([f32; 3], Rect)> {
+        let (page_width, page_height) = self.page_size(index).ok()?;
+        if !(page_width > 0.0 && page_height > 0.0 && w > 0.0 && h > 0.0) {
+            return None;
+        }
+        let scale = (2400.0 / page_width.max(page_height)).clamp(0.5, 2.0);
+        let (bitmap, _) = self.render_without_text(index, scale).ok()?;
+        let (bw, bh) = (bitmap.width as i64, bitmap.height as i64);
+        if bitmap.rgba.len() < (bw * bh * 4) as usize {
+            return None;
+        }
+        let px = bw as f32 / page_width;
+        let pixel = |cx: i64, cy: i64| -> [f32; 3] {
+            let i = ((cy.clamp(0, bh - 1) * bw + cx.clamp(0, bw - 1)) * 4) as usize;
+            let a = f32::from(bitmap.rgba[i + 3]) / 255.0;
+            // Over white, as the page is shown.
+            [0, 1, 2].map(|c| f32::from(bitmap.rgba[i + c]) * a + 255.0 * (1.0 - a))
+        };
+        let distance = |p: [f32; 3], q: [f32; 3]| (0..3).map(|c| (p[c] - q[c]).abs()).sum::<f32>();
+        let pad = (0.3 * size).max(2.0);
+        let (left, top) = (((x - pad) * px) as i64, ((y_top - pad) * px) as i64);
+        let (right, bottom) = (((x + w + pad) * px) as i64, ((y_top + h + pad) * px) as i64);
+        if right - left < 4 || bottom - top < 4 {
+            return None;
+        }
+        // The ring just outside the box: the colour the words sit on.
+        let mut ring = Vec::new();
+        for cx in (left..=right).step_by(2) {
+            ring.push(pixel(cx, top));
+            ring.push(pixel(cx, bottom));
+        }
+        for cy in (top..=bottom).step_by(2) {
+            ring.push(pixel(left, cy));
+            ring.push(pixel(right, cy));
+        }
+        let mut buckets: std::collections::HashMap<[u8; 3], (usize, [f32; 3])> = Default::default();
+        for p in &ring {
+            let key = p.map(|v| (v as u8) >> 4);
+            let entry = buckets.entry(key).or_insert((0, [0.0; 3]));
+            entry.0 += 1;
+            for (sum, v) in entry.1.iter_mut().zip(p) {
+                *sum += v;
+            }
+        }
+        let (count, sum) = buckets.values().max_by_key(|(n, _)| *n)?;
+        let around = sum.map(|v| v / *count as f32);
+        let even = ring
+            .iter()
+            .filter(|p| distance(**p, around) <= 48.0)
+            .count();
+        if even * 4 < ring.len() * 3 {
+            return None;
+        }
+        // Ink inside: the words in the picture. Most of what the page shows
+        // there must be in the picture too, so an underline or a rule under
+        // ordinary text is not taken for words.
+        let shown = self.render_page(index, scale).ok()?;
+        if shown.width != bitmap.width || shown.rgba.len() < bitmap.rgba.len() {
+            return None;
+        }
+        let shown_pixel = |cx: i64, cy: i64| -> [f32; 3] {
+            let i = ((cy.clamp(0, bh - 1) * bw + cx.clamp(0, bw - 1)) * 4) as usize;
+            let a = f32::from(shown.rgba[i + 3]) / 255.0;
+            [0, 1, 2].map(|c| f32::from(shown.rgba[i + c]) * a + 255.0 * (1.0 - a))
+        };
+        let (mut ink, mut ink_shown, mut seen) = (0usize, 0usize, 0usize);
+        for cy in (y_top * px) as i64..=((y_top + h) * px) as i64 {
+            for cx in (x * px) as i64..=((x + w) * px) as i64 {
+                seen += 1;
+                if distance(pixel(cx, cy), around) > 96.0 {
+                    ink += 1;
+                }
+                if distance(shown_pixel(cx, cy), around) > 96.0 {
+                    ink_shown += 1;
+                }
+            }
+        }
+        if ink < 12 || ink * 50 < seen || ink * 2 < ink_shown {
+            return None;
+        }
+        let rgb = around.map(|v| v / 255.0);
+        Some((
+            rgb,
+            (
+                x - pad,
+                page_height - (y_top + h + pad),
+                w + 2.0 * pad,
+                h + 2.0 * pad,
+            ),
+        ))
     }
 
     /// Rebuild the rasterizer from the edited document.

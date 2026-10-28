@@ -117,6 +117,8 @@ export type DropIntent = 'combine' | 'open';
 export interface DropTarget {
   label: TKey;
   take: (files: File[]) => void;
+  /** Files opened from elsewhere while the claim holds, made at once rather than listed. */
+  make?: (files: File[]) => void;
 }
 
 /** What became of inserting another file's pages. */
@@ -567,11 +569,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const dropTarget = useRef<DropTarget | null>(null);
   const createFiles = useRef<File[]>([]);
-  const startCreate = useCallback((files: readonly File[]) => {
+  const startCreate = useCallback((files: readonly File[], now = false) => {
     if (files.length === 0) return;
-    // An open Create panel has claimed the window's drops: the files join its list.
+    // An open Create panel has claimed the window's drops: the files join its
+    // list. One opened from elsewhere (Open with ZOOD, Folders) is made and
+    // opened at once, as it is when the panel is closed: listed, it sat
+    // there with nothing on screen saying so (0.4.22, ZOOD already running).
     if (dropTarget.current && stateRef.current.rightPane.activeTool === 'create') {
-      dropTarget.current.take([...files]);
+      if (now && dropTarget.current.make) dropTarget.current.make([...files]);
+      else dropTarget.current.take([...files]);
       return;
     }
     createFiles.current = [...files];
@@ -584,7 +590,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!(await isPdf(file))) {
         // A Word, Excel or other file Create can make a PDF of goes there,
         // wherever it was opened from (Folders, the Library, Starred, search).
-        if (namedForCreate(file)) startCreate([file]);
+        if (namedForCreate(file)) startCreate([file], true);
         else dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
         return;
       }

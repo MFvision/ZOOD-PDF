@@ -116,3 +116,89 @@ fn an_edit_reaches_a_simple_helvetica_page() {
         &repo("tests/fonts/Inter-Variable.ttf"),
     );
 }
+
+/// The register's other half: the whole page is a picture, its words in
+/// the picture too, with the same words again as text on top. Erasing the
+/// text left the picture's words, and the new line was drawn over them.
+/// Here the picture is white with dark bars where the line's letters are.
+fn words_in_the_picture_too() -> Vec<u8> {
+    let (w, h) = (612usize, 792usize);
+    let mut rgb = vec![255u8; w * h * 3];
+    // The line runs from x 72 to about 350, baseline 720 (PDF space): rows 60..76 from the top.
+    for row in 60..76 {
+        for col in 72..340 {
+            if (col / 3) % 2 == 0 {
+                let i = (row * w + col) * 3;
+                rgb[i..i + 3].copy_from_slice(&[20, 20, 20]);
+            }
+        }
+    }
+    let mut doc = Lopdf::with_version("1.7");
+    let pages = doc.new_object_id();
+    let font = doc.add_object(dictionary! {
+        "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica",
+    });
+    let image = doc.add_object(Stream::new(
+        dictionary! {
+            "Type" => "XObject", "Subtype" => "Image", "Width" => w as i64, "Height" => h as i64,
+            "ColorSpace" => "DeviceRGB", "BitsPerComponent" => 8,
+        },
+        rgb,
+    ));
+    let content = doc.add_object(Stream::new(
+        dictionary! {},
+        b"q 612 0 0 792 0 0 cm /Im0 Do Q BT /F1 20 Tf 72 720 Td (National Number : 7053514423) Tj ET"
+            .to_vec(),
+    ));
+    let page = doc.add_object(dictionary! {
+        "Type" => "Page", "Parent" => pages, "Contents" => content,
+        "Resources" => dictionary! {
+            "Font" => dictionary! { "F1" => font },
+            "XObject" => dictionary! { "Im0" => image },
+        },
+    });
+    doc.objects.insert(
+        pages,
+        Object::Dictionary(dictionary! {
+            "Type" => "Pages", "Kids" => vec![page.into()], "Count" => 1,
+            "MediaBox" => vec![0.into(), 0.into(), 612.into(), 792.into()],
+        }),
+    );
+    let catalog = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages });
+    doc.trailer.set("Root", catalog);
+    let mut out = Vec::new();
+    doc.save_to(&mut out).unwrap();
+    out
+}
+
+/// Dark pixels in a box of the page drawn at 1 px per point (top-left origin).
+fn dark_in(doc: &Document, (x0, y0, x1, y1): (usize, usize, usize, usize)) -> usize {
+    let bitmap = doc.render_page(0, 1.0).unwrap();
+    let mut dark = 0;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = (y * bitmap.width as usize + x) * 4;
+            if bitmap.rgba[i] < 128 {
+                dark += 1;
+            }
+        }
+    }
+    dark
+}
+
+#[test]
+fn words_that_are_also_in_the_picture_are_covered() {
+    let mut doc = Document::open(words_in_the_picture_too(), None).unwrap();
+    // The far end of the line, where the short new text does not reach.
+    let tail = (250, 58, 340, 78);
+    assert!(dark_in(&doc, tail) > 300, "the stand-in draws its words");
+    doc.replace_paragraph(0, 0, "No 1", &repo("tests/fonts/Inter-Variable.ttf"))
+        .unwrap();
+    let again = Document::open(doc.save().unwrap(), None).unwrap();
+    assert!(again.extract_text(0).unwrap().contains("No 1"));
+    let left = dark_in(&again, tail);
+    assert!(
+        left < 20,
+        "{left} dark pixels of the old words are still there"
+    );
+}

@@ -113,6 +113,10 @@ export function locate(target: Target, t: (key: never) => string, root: ParentNo
     const pane = [...root.querySelectorAll('.pane-end')].find(visible);
     if (pane) return { element: pane, final: true };
   }
+  // The tool list's own entry for it, by its command rather than its words,
+  // which a gallery entry shares with its description.
+  const entry = [...root.querySelectorAll<HTMLElement>(`.tool-gallery-item[data-command="tool-${tool.id}"]`)].find(visible);
+  if (entry) return { element: entry, final: true };
   for (const selector of ['.tool-gallery-item', '.tool-card']) {
     const element = [...root.querySelectorAll<HTMLElement>(selector)].find((one) => visible(one) && nameOf(one) === name);
     if (element) return { element, final: true };
