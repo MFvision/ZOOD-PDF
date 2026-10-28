@@ -17,7 +17,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
-# A full path: Start-Process with arguments does not find a relative one.
+# A full path, and the running app kept apart from it: PowerShell names are
+# not case-sensitive, so `$app` would be `$App`.
 $App = (Resolve-Path $App).Path
 Add-Type -AssemblyName System.Drawing, System.Windows.Forms
 Add-Type @'
@@ -67,10 +68,10 @@ New-Item -ItemType Directory -Force -Path $folder | Out-Null
 Copy-Item $Sample (Join-Path $folder 'sample.pdf')
 [System.IO.File]::WriteAllText((Join-Path $folder 'broken.pdf'), 'this is not a PDF')
 
-$app = Start-Process -FilePath $App -ArgumentList '--background' -PassThru
+$running = Start-Process -FilePath $App -ArgumentList '--background' -PassThru
 try {
   Start-Sleep -Seconds 10
-  Check (-not $app.HasExited) 'the app keeps running in the background'
+  Check (-not $running.HasExited) 'the app keeps running in the background'
 
   # 2. Right-click › Word, with the app in the tray.
   $pdf = Join-Path $folder 'sample.pdf'
@@ -106,7 +107,7 @@ try {
   # What the app logged and what the folder holds, whatever happened.
   Set-Content (Join-Path $Out 'ring.log') (Log)
   Get-ChildItem $folder | Format-Table Name, Length | Out-String | Set-Content (Join-Path $Out 'folder.txt')
-  Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Where-Object { $_.Id -eq $app.Id } | Stop-Process -ErrorAction SilentlyContinue
+  Get-Process -Name warraq-desktop -ErrorAction SilentlyContinue | Where-Object { $_.Id -eq $running.Id } | Stop-Process -ErrorAction SilentlyContinue
 }
 
 if ($failures.Count -gt 0) { throw "quick check failed: $($failures -join '; ')" }
