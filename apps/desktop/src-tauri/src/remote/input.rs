@@ -473,14 +473,70 @@ mod system {
                             enigo = Enigo::new(&Settings::default()).ok();
                         }
                         let Some(e) = enigo.as_mut() else { continue };
-                        if let Err(error) = run_held(e, &mut held, act) {
+                        let typing = match &act {
+                            Act::Text(text) => Some(format!("{} letters", text.chars().count())),
+                            Act::Key(named) => Some(format!("key {named:?}")),
+                            _ => None,
+                        };
+                        let result = run_held(e, &mut held, act);
+                        if let Err(error) = &result {
                             crate::core_bridge::debug_log(format!("remote input: {error}"));
+                        }
+                        if let Some(what) = typing {
+                            note_typing(&what, result.as_ref().err().map(|e| e.to_string()));
                         }
                     }
                 })
                 .expect("the remote's input thread");
             Mutex::new(tx)
         })
+    }
+
+    /// Typing from a phone, in `ring.log`: how much, the kind of window in
+    /// front (its class, never its title or what was typed) and any error.
+    /// The phone's keyboard typed nothing on a real PC while its media
+    /// keys worked (2026-10-28); this says where the letters went. At most
+    /// one line a second unless something failed.
+    fn note_typing(what: &str, error: Option<String>) {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static LAST: AtomicU64 = AtomicU64::new(0);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        if error.is_none() && LAST.swap(now, Ordering::Relaxed) == now {
+            return;
+        }
+        let failed = error.map(|e| format!(", failed: {e}")).unwrap_or_default();
+        crate::ring::log(&format!(
+            "remote typed {what} into {}{failed}",
+            front_window_kind()
+        ));
+    }
+
+    /// The class of the window that takes the keys, or a word for none.
+    fn front_window_kind() -> String {
+        #[cfg(target_os = "windows")]
+        {
+            use windows_sys::Win32::UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow};
+            // SAFETY: plain queries; the buffer outlives the call and its length is given.
+            unsafe {
+                let front = GetForegroundWindow();
+                if front.is_null() {
+                    return "no window".into();
+                }
+                let mut name = [0u16; 128];
+                let length = GetClassNameW(front, name.as_mut_ptr(), name.len() as i32);
+                if length <= 0 {
+                    return "a window".into();
+                }
+                String::from_utf16_lossy(&name[..length as usize])
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            "the window in front".into()
+        }
     }
 
     pub fn perform(act: Act) {
