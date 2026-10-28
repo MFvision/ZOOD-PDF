@@ -846,7 +846,9 @@ mod windows {
                             let class = class_at(point);
                             from_files = holds_files(&class);
                             if held {
-                                log(&format!("press with the key held, over a window of class \"{class}\""));
+                                log(&format!(
+                                    "press with the key held, over a window of class \"{class}\""
+                                ));
                             }
                         }
                     }
