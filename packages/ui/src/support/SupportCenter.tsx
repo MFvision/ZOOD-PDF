@@ -37,6 +37,7 @@ import { openTourAt } from '../tour/openAt';
 import { openRemoteSheet } from '../remote/store';
 import { openExternalUrl } from '../core/host-tauri';
 import { readSettings } from '../ai/store';
+import { appVersion } from '../updates/updates';
 import { useDeviceModel } from '../ai/device/useDeviceModel';
 import { deviceEngine } from '../ai/device/engine';
 import { useReducedMotion } from '../components/useReducedMotion';
@@ -573,9 +574,19 @@ function ReportPage() {
   const [last, setLast] = useState<Ticket | null>(null);
   const [checking, setChecking] = useState(() => readTickets().some((one) => one.via === 'relay' && one.token));
   const [checkFailed, setCheckFailed] = useState(false);
-  const facts = useMemo(() => systemFacts(lang), [lang]);
+  const [installed, setInstalled] = useState<string | null>(null);
+  const facts = useMemo(() => systemFacts(lang, installed ?? undefined), [lang, installed]);
   const fileInput = useRef<HTMLInputElement>(null);
   const logLines = recentLog().length;
+
+  // The installed app's version, not the interface package's.
+  useEffect(() => {
+    let live = true;
+    void appVersion().then((version) => live && setInstalled(version));
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Looking at the list is asking how the reports stand: only then, and only with reports filed.
   useEffect(() => {
