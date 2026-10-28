@@ -53,7 +53,9 @@ test.describe('Help & Support', () => {
     const [ringBox, cardBox] = [await ring.boundingBox(), await card.boundingBox()];
     expect(Math.abs(ringBox!.x + 6 - cardBox!.x)).toBeLessThan(3);
     expect(Math.abs(ringBox!.y + 6 - cardBox!.y)).toBeLessThan(3);
-    await expect(page.getByRole('status').filter({ hasText: 'Step 1 of 1' })).toBeVisible();
+    // A one-step guide says what to press with no "Step 1 of 1" over it.
+    await expect(page.locator('.guide-card')).toBeVisible();
+    await expect(page.locator('.guide-card-count')).toHaveCount(0);
     await page.waitForTimeout(800);
     await expect(page.locator('.toolbar-tool-picker')).not.toHaveText('Compress');
 

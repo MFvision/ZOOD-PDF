@@ -59,7 +59,7 @@ export function GuideLayer() {
       <div className="guide-card" role="status" aria-live="polite" dir={dir} style={{ top: cardTop, left: cardLeft, width: cardWidth }}>
         <p className="guide-card-head">
           <span>{view.mode === 'do' ? t('support.guide.doing') : t('support.guide.showing')}</span>
-          {view.phase !== 'done' && view.phase !== 'lost' && <span className="guide-card-count">{t('support.guide.step', { n: view.index + 1, of: view.total })}</span>}
+          {view.total > 1 && view.phase !== 'done' && view.phase !== 'lost' && <span className="guide-card-count">{t('support.guide.step', { n: view.index + 1, of: view.total })}</span>}
         </p>
         <p className="guide-card-say" dir="auto">
           {view.say[lang]}
