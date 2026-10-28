@@ -473,7 +473,33 @@ fn reorder_units(units: Vec<Unit>) -> (Vec<(char, usize)>, Direction) {
             }
         }
     }
+    unswap_brackets(&mut out);
     (out, base)
+}
+
+/// Brackets the wrong way round after reordering: ")FCFS(" for "(FCFS)".
+/// Some writers map a mirrored bracket glyph to the character it shows and
+/// some to the one it stands for, so mirroring can come out backwards.
+/// When every bracket of a kind on the line alternates closing then opening,
+/// each pair is turned back round; a line whose brackets already pair is
+/// left as it is.
+fn unswap_brackets(line: &mut [(char, usize)]) {
+    for (open, close) in [('(', ')'), ('[', ']'), ('{', '}')] {
+        let at: Vec<usize> = (0..line.len())
+            .filter(|&k| line[k].0 == open || line[k].0 == close)
+            .collect();
+        let backwards = !at.is_empty()
+            && at.len().is_multiple_of(2)
+            && at
+                .iter()
+                .enumerate()
+                .all(|(n, &k)| line[k].0 == if n.is_multiple_of(2) { close } else { open });
+        if backwards {
+            for k in at {
+                line[k].0 = if line[k].0 == open { close } else { open };
+            }
+        }
+    }
 }
 
 /// Skia and Word often map the shared yeh/kaf glyphs of Arabic fonts to the Persian code points
@@ -1114,6 +1140,19 @@ pub fn reconstruct_lines(glyphs: &[PositionedGlyph]) -> Vec<TextLine> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn brackets_come_out_facing_each_other_whichever_way_the_writer_mapped_them() {
+        for visual in ["(FCFS) ينف معد", ")FCFS( ينف معد"] {
+            let clusters: Vec<String> = visual.chars().map(|c| c.to_string()).collect();
+            let (text, _) = super::clusters_to_logical(&clusters);
+            assert!(text.contains("(FCFS)"), "{visual:?} read as {text:?}");
+        }
+        // Brackets that already pair are left alone, a lone one too.
+        let (text, _) =
+            super::clusters_to_logical(&["1".into(), ")".into(), " ".into(), "a".into()]);
+        assert_eq!(text, "1) a");
+    }
+
     use super::*;
     use crate::bidi::to_visual;
 

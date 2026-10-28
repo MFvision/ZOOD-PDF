@@ -1,6 +1,7 @@
 import { dominantDirection } from './blocks';
 import type { Block, ReadDocument, SourcePicture } from './blocks';
 import { readCsv } from './csv';
+import { documentFaces } from './faces';
 import { isDocx, readDocx } from './docx';
 import { readHtml } from './html';
 import { readMarkdown } from './markdown';
@@ -138,6 +139,12 @@ export interface CreateEnvironment {
   callStatic<T>(op: string, args: unknown, blobs: ArrayBuffer[]): Promise<{ result: T; blobs: ArrayBuffer[] }>;
   /** Amiri, then the faces for what it lacks, with their names. */
   fonts(): Promise<{ name: string; bytes: ArrayBuffer }[]>;
+  /**
+   * An installed face of `family` that has every letter of `text` and may be
+   * embedded, as a font file; null where there is none (or no such thing to
+   * ask, as in a browser).
+   */
+  installedFont?(family: string, text: string): Promise<ArrayBuffer | null>;
   /** A picture the core cannot read, as a PNG, if this browser can draw it. */
   decodePicture?(bytes: Uint8Array, mime: string): Promise<Uint8Array | null>;
   now?: Date;
@@ -195,9 +202,10 @@ async function createDocument(
   options: CreateOptions,
   env: CreateEnvironment,
 ): Promise<{ bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'> }> {
-  const fonts = await env.fonts();
   const { bytes: pictures, leftOut } = await readablePictures(read.pictures, env);
   const missing = new Set(pictures.flatMap((p, k) => (p ? [] : [k])));
+  const faces = await documentFaces(env, dropMissing(read.blocks, missing), read.header ?? [], read.footer ?? []);
+  const fonts = faces.fonts;
   // The document's own page, or the paper asked for, turned as asked.
   const own = read.page;
   let [width, height] = options.paper === 'auto' ? [own?.width ?? PAPER.a4[0], own?.height ?? PAPER.a4[1]] : PAPER[options.paper];
@@ -214,9 +222,9 @@ async function createDocument(
     'create.document',
     {
       page: { width, height, margins, header: own?.header ?? 36, footer: own?.footer ?? 36 },
-      blocks: dropMissing(read.blocks, missing),
-      header: read.header ?? [],
-      footer: read.footer ?? [],
+      blocks: faces.blocks,
+      header: faces.header,
+      footer: faces.footer,
       fonts: fonts.map((_, k) => k),
       fontNames: fonts.map((f) => f.name),
       pictures: pictures.map((_, k) => fonts.length + k),

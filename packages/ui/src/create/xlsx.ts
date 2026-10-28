@@ -11,15 +11,22 @@ import { partText, readParts, relsPath, resolvePart } from './zip';
  * with a formula. Merged cells across a row stay merged; a right-to-left
  * sheet is a right-to-left table.
  *
- * Not read: charts, pictures, conditional formats, fonts and colours of
- * cells, and anything past the first 2,000 rows or 60 columns of a sheet
- * (the document says it was cut).
+ * Each cell keeps its fill, its text's colour and weight and its font (theme
+ * and indexed colours resolved, tints applied); a sheet wider than the page
+ * is scaled to fit it as Excel's "fit to width" prints it, and a word is
+ * never broken inside a cell (the core sets a cell smaller instead).
+ *
+ * Not read: charts, pictures, conditional formats, and anything past the
+ * first 2,000 rows or 60 columns of a sheet (the document says it was cut).
  */
 
 const MAX_ROWS = 2_000;
 const MAX_COLUMNS = 60;
-/** Excel's column width is in characters of about this many points. */
-const CHARACTER = 5.6;
+/** Excel's column width is in characters of the default font's "0" (7 px at Calibri 11) plus 5 px of padding. */
+const CHARACTER = 5.25;
+const PADDING = 3.75;
+/** Text smaller than this is not made to fit a sheet onto the page. */
+const MIN_SIZE = 6;
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 36;
 
@@ -50,6 +57,46 @@ interface NumberShape {
   grouped: boolean;
   /** Dates: with a time of day, or only one. */
   time?: 'with' | 'only';
+  /** Text the format puts before and after the number: a currency ("SR", "€"), a unit. */
+  prefix?: string;
+  suffix?: string;
+}
+
+/** The literal text a number format's section shows around its number. */
+export function literalsOf(section: string): { prefix: string; suffix: string } {
+  const parts: { literal: string; number: boolean }[] = [];
+  for (let k = 0; k < section.length; k += 1) {
+    const c = section[k]!;
+    if (c === '"') {
+      const end = section.indexOf('"', k + 1);
+      parts.push({ literal: section.slice(k + 1, end < 0 ? section.length : end), number: false });
+      k = end < 0 ? section.length : end;
+    } else if (c === '\\') {
+      parts.push({ literal: section[k + 1] ?? '', number: false });
+      k += 1;
+    } else if (c === '[') {
+      const end = section.indexOf(']', k + 1);
+      const inner = section.slice(k + 1, end < 0 ? section.length : end);
+      // [$SR-401]: a currency's symbol; [Red], [>=100]: nothing shown.
+      if (inner.startsWith('$')) parts.push({ literal: inner.slice(1).split('-')[0] ?? '', number: false });
+      k = end < 0 ? section.length : end;
+    } else if (c === '_' || c === '*') {
+      k += 1;
+    } else if ('0#?.,'.includes(c) || ((c === 'E' || c === 'e') && /[+-]/.test(section[k + 1] ?? ''))) {
+      parts.push({ literal: '', number: true });
+      if (c === 'E' || c === 'e') k += 1;
+    } else if (c !== '%' && c !== '@') {
+      parts.push({ literal: c, number: false });
+    }
+  }
+  const first = parts.findIndex((p) => p.number);
+  if (first < 0) return { prefix: '', suffix: '' };
+  let last = first;
+  parts.forEach((p, k) => {
+    if (p.number) last = k;
+  });
+  const join = (list: typeof parts) => list.map((p) => p.literal).join('');
+  return { prefix: join(parts.slice(0, first)), suffix: join(parts.slice(last + 1)) };
 }
 
 const BUILT_IN: Record<number, string> = {
@@ -96,7 +143,14 @@ export function shapeOf(code: string | undefined): NumberShape {
   }
   const decimals = (/\.([0#?]+)/.exec(bare)?.[1] ?? '').length;
   const grouped = /[0#?],[0#?]/.test(bare);
-  return { kind: bare.includes('%') ? 'percent' : 'number', decimals, grouped };
+  const { prefix, suffix } = literalsOf(first);
+  return {
+    kind: bare.includes('%') ? 'percent' : 'number',
+    decimals,
+    grouped,
+    ...(prefix.trim() ? { prefix } : {}),
+    ...(suffix.trim() ? { suffix } : {}),
+  };
 }
 
 /** A serial day number (Excel's, 1900 or 1904 based) as an ISO date and time. */
@@ -120,13 +174,15 @@ export function showNumber(value: number, shape: NumberShape, from1904 = false):
     case 'date':
       return excelDate(value, from1904, shape.time);
     case 'percent':
-      return `${showNumber(value * 100, { ...shape, kind: 'number' })}%`;
-    case 'number':
-      return value.toLocaleString('en-US', {
+      return `${showNumber(value * 100, { ...shape, kind: 'number', prefix: undefined, suffix: undefined })}%`;
+    case 'number': {
+      const shown = value.toLocaleString('en-US', {
         minimumFractionDigits: shape.decimals,
         maximumFractionDigits: shape.decimals,
         useGrouping: shape.grouped,
       });
+      return `${shape.prefix ?? ''}${shown}${shape.suffix ?? ''}`.trim();
+    }
     default: {
       // General: at most eleven significant digits, as Excel shows in a cell.
       if (Number.isInteger(value) && Math.abs(value) < 1e11) return String(value);
@@ -137,11 +193,77 @@ export function showNumber(value: number, shape: NumberShape, from1904 = false):
 }
 
 interface Styles {
-  /** Per cell style index: its number format's shape, and its horizontal alignment. */
-  cells: { shape: NumberShape; align?: string; bold: boolean }[];
+  /** Per cell style index: its number format's shape, alignment, weight, fill, text colour and font. */
+  cells: { shape: NumberShape; align?: string; bold: boolean; fill?: string; color?: string; font?: string }[];
+  /** The workbook's default font size and family. */
+  size: number;
+  font?: string;
 }
 
-function readStyles(xml: string | null): Styles {
+/** Excel's legacy indexed colours (0–63). */
+const INDEXED = [
+  '000000', 'ffffff', 'ff0000', '00ff00', '0000ff', 'ffff00', 'ff00ff', '00ffff',
+  '000000', 'ffffff', 'ff0000', '00ff00', '0000ff', 'ffff00', 'ff00ff', '00ffff',
+  '800000', '008000', '000080', '808000', '800080', '008080', 'c0c0c0', '808080',
+  '9999ff', '993366', 'ffffcc', 'ccffff', '660066', 'ff8080', '0066cc', 'ccccff',
+  '000080', 'ff00ff', 'ffff00', '00ffff', '800080', '800000', '008080', '0000ff',
+  '00ccff', 'ccffff', 'ccffcc', 'ffff99', '99ccff', 'ff99cc', 'cc99ff', 'ffcc99',
+  '3366ff', '33cccc', '99cc00', 'ffcc00', 'ff9900', 'ff6600', '666699', '969696',
+  '003366', '339966', '003300', '333300', '993300', '993366', '333399', '333333',
+];
+
+/** The theme's colours in the order Excel numbers them: lt1, dk1, lt2, dk2, accent1–6, hlink, folHlink. */
+export function readThemeColours(xml: string | null): string[] {
+  const root = xml ? parseXml(xml) : null;
+  const scheme = firstChild(firstChild(root, 'themeElements'), 'clrScheme');
+  const colour = (name: string) => {
+    const slot = firstChild(scheme, name);
+    const srgb = attr(firstChild(slot, 'srgbClr'), 'val');
+    const sys = attr(firstChild(slot, 'sysClr'), 'lastClr');
+    return (srgb ?? sys ?? '').toLowerCase();
+  };
+  return ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'].map(colour);
+}
+
+/** `rrggbb` lightened (tint > 0) or darkened (tint < 0) as Excel does, on its HSL lightness. */
+export function tinted(hex: string, tint: number): string {
+  if (!tint) return hex;
+  const [r, g, b] = [0, 2, 4].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255) as [number, number, number];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let l = (max + min) / 2;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  l = tint < 0 ? l * (1 + tint) : l * (1 - tint) + tint;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [r1, g1, b1].map((v) => Math.round(Math.min(1, Math.max(0, v + m)) * 255).toString(16).padStart(2, '0')).join('');
+}
+
+/** A `<color>`/`<fgColor>` element as `#rrggbb`, or undefined for automatic. */
+export function excelColour(element: XmlElement | null, theme: readonly string[]): string | undefined {
+  if (!element) return undefined;
+  const tint = Number(attr(element, 'tint') ?? 0) || 0;
+  const rgb = attr(element, 'rgb');
+  let hex: string | undefined;
+  if (rgb && /^[0-9a-f]{6,8}$/i.test(rgb)) hex = rgb.slice(-6).toLowerCase();
+  else if (attr(element, 'theme') !== undefined) hex = theme[Number(attr(element, 'theme'))] || undefined;
+  else if (attr(element, 'indexed') !== undefined) hex = INDEXED[Number(attr(element, 'indexed'))];
+  if (!hex || !/^[0-9a-f]{6}$/.test(hex)) return undefined;
+  return `#${tinted(hex, tint)}`;
+}
+
+function readStyles(xml: string | null, theme: readonly string[] = []): Styles {
   const root = xml ? parseXml(xml) : null;
   const codes = new Map<number, string>();
   for (const f of childElements(firstChild(root, 'numFmts'), 'numFmt')) {
@@ -151,18 +273,34 @@ function readStyles(xml: string | null): Styles {
   }
   const fonts = childElements(firstChild(root, 'fonts'), 'font').map((font) => {
     const b = firstChild(font, 'b');
-    return b !== null && attr(b, 'val') !== '0' && attr(b, 'val') !== 'false';
+    const color = excelColour(firstChild(font, 'color'), theme);
+    return {
+      bold: b !== null && attr(b, 'val') !== '0' && attr(b, 'val') !== 'false',
+      color: color === '#000000' ? undefined : color,
+      size: Number(attr(firstChild(font, 'sz'), 'val')) || undefined,
+      name: attr(firstChild(font, 'name'), 'val'),
+    };
+  });
+  const fills = childElements(firstChild(root, 'fills'), 'fill').map((fill) => {
+    const pattern = firstChild(fill, 'patternFill');
+    if (!pattern || (attr(pattern, 'patternType') ?? 'none') === 'none') return undefined;
+    const colour = excelColour(firstChild(pattern, 'fgColor'), theme) ?? excelColour(firstChild(pattern, 'bgColor'), theme);
+    return colour === '#ffffff' ? undefined : colour;
   });
   const cells = childElements(firstChild(root, 'cellXfs'), 'xf').map((xf) => {
     const id = Number(attr(xf, 'numFmtId') ?? 0);
     const code = codes.get(id) ?? BUILT_IN[id];
+    const font = fonts[Number(attr(xf, 'fontId') ?? 0)];
     return {
       shape: shapeOf(code),
       align: attr(firstChild(xf, 'alignment'), 'horizontal'),
-      bold: fonts[Number(attr(xf, 'fontId') ?? 0)] ?? false,
+      bold: font?.bold ?? false,
+      fill: fills[Number(attr(xf, 'fillId') ?? 0)],
+      color: font?.color,
+      font: font?.name,
     };
   });
-  return { cells };
+  return { cells, size: fonts[0]?.size ?? 11, font: fonts[0]?.name };
 }
 
 /** The text of a shared or inline string: its runs, one after another. */
@@ -179,6 +317,9 @@ interface SheetCell {
   numeric: boolean;
   bold: boolean;
   align?: string;
+  fill?: string;
+  color?: string;
+  font?: string;
 }
 
 /** One sheet as blocks: its name, then its used cells as a table. */
@@ -227,8 +368,12 @@ function sheetBlocks(
         numeric = style?.shape.kind !== 'date' && style?.shape.kind !== 'text';
         text = Number.isFinite(value) ? showNumber(value, style?.shape ?? shapeOf(undefined), from1904) : v;
       }
+      // An empty cell with a fill still shows its colour (a banded header).
+      if (text === '' && !style?.fill) continue;
+      cells.set(ri * MAX_COLUMNS + ci, { text, numeric, bold: style?.bold ?? false, align: style?.align, fill: style?.fill, color: style?.color, font: style?.font });
+      // Only cells with something in them make the table larger: a whole row
+      // coloured to the sheet's edge does not.
       if (text === '') continue;
-      cells.set(ri * MAX_COLUMNS + ci, { text, numeric, bold: style?.bold ?? false, align: style?.align });
       lastRow = Math.max(lastRow, ri);
       lastColumn = Math.max(lastColumn, ci);
     }
@@ -279,6 +424,9 @@ function sheetBlocks(
         i += span - 1;
       }
       if (cell?.bold) out.bold = true;
+      if (cell?.fill) out.fill = cell.fill;
+      if (cell?.color) out.color = cell.color;
+      if (cell?.font && cell.font !== styles.font) out.font = cell.font;
       if (cell?.align === 'center' || cell?.align === 'centerContinuous') out.align = 'center';
       else if (cell?.numeric || cell?.align === 'right') out.align = 'end';
       if (cell && !cell.numeric && /[\u0600-\u06FF]/.test(cell.text)) out.dir = 'rtl';
@@ -286,12 +434,19 @@ function sheetBlocks(
     }
     rows.push(row);
   }
-  const relative = columns.map((k) => widths[k] ?? 8.43);
-  const natural = relative.reduce((sum, w) => sum + w * CHARACTER, 0);
+  const relative = columns.map((k) => (widths[k] ?? 8.43) * CHARACTER + PADDING);
+  const natural = relative.reduce((sum, w) => sum + w, 0);
+  // Wider than a landscape page: everything scaled down together, as
+  // Excel's "fit all columns on one page" prints it.
+  const room = A4[1] - 2 * MARGIN;
+  const scale = natural > room ? room / natural : 1;
+  const size = Math.max(MIN_SIZE, Math.round(styles.size * 0.9 * scale * 10) / 10);
+  const table: Block = { type: 'table', rows, widths: relative, dir: rtl ? 'rtl' : 'ltr', size };
+  if (styles.font) table.font = styles.font;
   return {
     blocks: [
-      { type: 'text', text: name, size: 14, bold: true, keepWithNext: true, spaceAfter: 8, dir: rtl ? 'rtl' : 'auto' },
-      { type: 'table', rows, widths: relative, dir: rtl ? 'rtl' : 'ltr', size: 9 },
+      { type: 'text', text: name, size: 14, bold: true, keepWithNext: true, spaceAfter: 8, dir: rtl ? 'rtl' : 'auto', ...(styles.font ? { font: styles.font } : {}) },
+      table,
     ],
     rtl,
     width: natural,
@@ -317,6 +472,7 @@ export function readXlsx(bytes: Uint8Array): ReadDocument {
       name === 'xl/_rels/workbook.xml.rels' ||
       name === 'xl/sharedStrings.xml' ||
       name === 'xl/styles.xml' ||
+      name === 'xl/theme/theme1.xml' ||
       name === 'docProps/core.xml' ||
       /^xl\/worksheets\/[^/]+\.xml$/.test(name),
   );
@@ -330,7 +486,7 @@ export function readXlsx(bytes: Uint8Array): ReadDocument {
     if (id && target) rels.set(id, resolvePart('xl/workbook.xml', target));
   }
   const strings = childElements(parseXml(partText(parts, 'xl/sharedStrings.xml') ?? ''), 'si').map(stringOf);
-  const styles = readStyles(partText(parts, 'xl/styles.xml'));
+  const styles = readStyles(partText(parts, 'xl/styles.xml'), readThemeColours(partText(parts, 'xl/theme/theme1.xml')));
   const blocks: Block[] = [];
   let page: SourcePage | undefined;
   let truncated = false;

@@ -47,6 +47,10 @@ export interface TextBlock {
   shade?: string;
   /** Spaces and line breaks exactly as written. */
   preserve?: boolean;
+  /** The family the source sets it in ("Arial"), for its face to be found. */
+  font?: string;
+  /** Into the document's faces: set by `createPdf` from `font`. */
+  face?: number;
 }
 
 export interface TableCell {
@@ -57,6 +61,10 @@ export interface TableCell {
   span?: number;
   /** `#rrggbb` behind the cell. */
   fill?: string;
+  /** `#rrggbb` of its text. */
+  color?: string;
+  font?: string;
+  face?: number;
 }
 
 export interface TableBlock {
@@ -69,6 +77,8 @@ export interface TableBlock {
   size?: number;
   spaceBefore?: number;
   spaceAfter?: number;
+  font?: string;
+  face?: number;
 }
 
 export interface ImageBlock {

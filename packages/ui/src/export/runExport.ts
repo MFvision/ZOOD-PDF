@@ -10,7 +10,7 @@ import { paragraphsOf, trimLine } from './paragraphs';
 import { encodePng, zipImages } from './png';
 import { buildPptx } from './pptx';
 import type { Slide, SlideText } from './pptx';
-import { compactTable, linkSheets, pageSheet, sheetHasText, tableSheets } from './tables';
+import { compactTable, fillCells, joinWrapped, linkSheets, pageSheets, sheetHasText, tableSheets } from './tables';
 import type { PageItem, Sheet, SheetMode } from './tables';
 import { cellBoxes, cellPlace, linesIn, outsideTables, pageTables, tableBox } from './structure';
 import type { LayoutTable } from './structure';
@@ -133,8 +133,22 @@ async function exportSheets(doc: ExportableDocument, request: ExportRequest): Pr
       doc.call<{ items: PageItem[] }>('export.tables', { page: index }),
       doc.call<{ lines: TextLineData[] }>('export.lines', { page: index, reading: true }),
     ]);
-    // Tables without their empty columns and rows; one with nothing in it is no table.
-    pages.push(result.items.flatMap((item): PageItem[] => (item.kind !== 'table' ? [item] : [compactTable(item)].filter((table) => table.rows.length > 0))));
+    // Tables without their empty columns and rows, their cells' wrapped lines
+    // joined; one with nothing in it is no table.
+    const items = result.items.flatMap((item): PageItem[] =>
+      item.kind !== 'table' ? [item] : [joinWrapped(compactTable(item))].filter((table) => table.rows.length > 0),
+    );
+    // The colours behind the cells, from the page drawn without its text.
+    if (items.some((item) => item.kind === 'table')) {
+      const [width, height] = doc.pageSizes[index] ?? [612, 792];
+      const scale = Math.min(1, Math.sqrt(MAX_PAGE_PIXELS / Math.max(1, width * height)));
+      const { result: picture, blobs } = await doc.call<{ width: number; height: number }>('export.picture', { page: index, scale });
+      const rgba = new Uint8Array(blobs[0] ?? new ArrayBuffer(0));
+      if (rgba.length >= picture.width * picture.height * 4) {
+        for (const item of items) if (item.kind === 'table') fillCells(item, rgba, picture.width, picture.height, picture.width / width);
+      }
+    }
+    pages.push(items);
     for (const line of read.lines) {
       const own = trimLine(line);
       for (const link of own.links) linked.push({ text: own.text.slice(link.from, link.to), uri: link.uri });
@@ -142,7 +156,7 @@ async function exportSheets(doc: ExportableDocument, request: ExportRequest): Pr
     request.onProgress?.(index + 1, doc.pageCount);
   }
   let sheets: Sheet[] = request.sheets === 'table' ? tableSheets(pages, (k) => request.tableLabel?.(k) ?? `Table ${k}`) : [];
-  if (sheets.length === 0) sheets = pages.map((items, index) => pageSheet(items, request.pageLabel(index + 1)));
+  if (sheets.length === 0) sheets = pageSheets(pages, request.pageLabel);
   if (!sheets.some(sheetHasText)) return null;
   linkSheets(sheets, linked);
   return { bytes: buildXlsx(sheets), fileName: exportFileName(request.name, 'xlsx'), kind: FILE_KINDS.xlsx, reduced: false };

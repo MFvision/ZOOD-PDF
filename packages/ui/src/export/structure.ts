@@ -120,11 +120,26 @@ export function pageTables(items: readonly PageItem[], lines: readonly TextLineD
   });
 }
 
-/** The lines outside every table: the ones inside are its cells, and go with it. */
-export function outsideTables<L extends Pick<TextLineData, 'x' | 'y' | 'width' | 'height'>>(lines: readonly L[], tables: readonly ExportTable[]): L[] {
+/**
+ * The lines outside every table: the ones inside are its cells, and go with
+ * it. A line inside a table's box that none of its cells holds (text the
+ * grid missed, such as a second line beside a merged cell) stays a line of
+ * its own, so nothing on the page is lost.
+ */
+export function outsideTables<L extends Pick<TextLineData, 'x' | 'y' | 'width' | 'height'> & { text?: string }>(lines: readonly L[], tables: readonly ExportTable[]): L[] {
   if (tables.length === 0) return [...lines];
   const boxes = tables.map(tableBox);
-  return lines.filter((line) => !boxes.some((box) => inside(line, box)));
+  const squeeze = (text: string) => cleanText(text).replace(/\s+/g, '');
+  // Row by row, so a line read across several cells of a row is found too.
+  const held = tables.map((table) => table.rows.map((row) => row.map((cell) => (cell ? squeeze(cell.text) : '')).join('')).join('\u0000'));
+  return lines.filter((line) =>
+    boxes.every((box, k) => {
+      if (!inside(line, box)) return true;
+      if (line.text === undefined) return false;
+      const own = squeeze(line.text);
+      return own.length > 0 && !held[k]!.includes(own);
+    }),
+  );
 }
 
 /**

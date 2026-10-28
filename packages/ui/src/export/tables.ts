@@ -8,6 +8,8 @@ export interface FoundCell {
   columns: number;
   /** Where its text is on the page, `[x, y, width, height]` in points; absent when it has none. */
   box?: [number, number, number, number];
+  /** The colour the page paints behind it, `RRGGBB`, when not white (read from the page's picture). */
+  fill?: string;
 }
 
 /** A table the core found: its grid left to right as drawn; `null` where a merged cell covers. */
@@ -42,15 +44,28 @@ export interface NumberFormat {
   percent: boolean;
   /** A currency written with it ("$12,000", "1,250.50 ر.س"), and on which side. */
   currency?: { symbol: string; before: boolean };
+  /** A unit written after it ("1.00 Units", "3 قطعة"): shown after the number, as it was. */
+  unit?: string;
+  /** A date: Excel's own code for it, as it was written ("dd/mm/yyyy"). */
+  date?: string;
 }
 
 /** Currency signs a number may carry before or after it, and the riyal's abbreviation. */
-const CURRENCY = /^(\$|€|£|¥|﷼|ر\.س\.?|SAR|USD|EUR)\s*(.+)$|^(.+?)\s*(\$|€|£|¥|﷼|ر\.س\.?|SAR|USD|EUR)$/u;
+const CURRENCY =
+  /^(\$|€|£|¥|﷼|ر\.س\.?|ريال|SAR|SR|USD|EUR|GBP|AED|د\.إ\.?|KWD|QAR|BHD|OMR|EGP)\s*(.+)$|^(.+?)\s*(\$|€|£|¥|﷼|ر\.س\.?|ريال|SAR|SR|USD|EUR|GBP|AED|د\.إ\.?|KWD|QAR|BHD|OMR|EGP)$/u;
+
+/** Units of count, weight, length, area and time a quantity may carry after it. */
+const UNIT = /^(.+?)\s+(units?|pcs|pc|ea|each|nos?\.?|kg|g|m|m2|m²|km|sqm|hrs?|hours?|days?|months?|وحدة|وحدات|حبة|قطعة|كجم|كغ|متر|م²|م2|ساعة|ساعات|يوم|أيام|شهر|أشهر)$/iu;
 
 export type SheetValue = { kind: 'number'; value: number; format: NumberFormat; text: string } | { kind: 'text'; text: string };
 
 export interface SheetCell {
   value: SheetValue;
+  /** The cell's fill and its text's colour, `RRGGBB`. */
+  fill?: string;
+  color?: string;
+  /** A thin border all round: the table was drawn with rules. */
+  border?: boolean;
   /** A web or mail address the cell's text links to. */
   link?: string;
   /** How many rows and columns it covers when it is merged. */
@@ -107,6 +122,12 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
     currency = money[1] ? { symbol: money[1], before: true } : { symbol: money[4]!, before: false };
     text = `${minus ? '-' : ''}${(money[2] ?? money[3]!).trim()}`;
   }
+  let unit: string | undefined;
+  const counted = currency ? null : UNIT.exec(text);
+  if (counted) {
+    unit = counted[2]!;
+    text = counted[1]!.trim();
+  }
   let percent = false;
   if (text.endsWith('%') || text.startsWith('%')) {
     percent = true;
@@ -122,6 +143,8 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
   const whole = m[1]!;
   // "007" is a code, not seven; "0.5" and "0" are numbers.
   if (/^0\d/.test(whole)) return null;
+  // A long run of digits, not grouped, is an ID, an account or a phone number: text, as written.
+  if (!whole.includes(',') && whole.length >= 8 && !m[2]) return null;
   if (whole.replace(/,/g, '').length + (m[2]?.length ?? 0) > 15) return null;
   let value = Number(`${whole.replace(/,/g, '')}${m[2] ? `.${m[2]}` : ''}`);
   if (!Number.isFinite(value)) return null;
@@ -130,14 +153,65 @@ export function parseNumber(raw: string): { value: number; format: NumberFormat 
   if (percent) value = Number((value / 100).toPrecision(15));
   return {
     value,
-    format: { decimals: Math.min(m[2]?.length ?? 0, 10), grouped: whole.includes(','), percent, ...(currency && !percent ? { currency } : {}) },
+    format: {
+      decimals: Math.min(m[2]?.length ?? 0, 10),
+      grouped: whole.includes(','),
+      percent,
+      ...(currency && !percent ? { currency } : {}),
+      ...(unit && !percent ? { unit } : {}),
+    },
   };
+}
+
+/**
+ * A date, if `text` is nothing but one: day/month/year as Saudi papers
+ * write it (month/day only when the day cannot be the first), or year-month-day,
+ * with `/`, `-` or `.`, digits Western or Arabic-Indic. Its value is Excel's
+ * day number, and its format writes it back exactly as it was.
+ */
+export function parseDate(raw: string): { value: number; format: NumberFormat } | null {
+  const text = raw
+    .replace(MARKS, '')
+    .replace(ARABIC_INDIC, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(PERSIAN, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .trim();
+  let day: number, month: number, year: number, code: string;
+  const dmy = /^(\d{1,2})([/.-])(\d{1,2})\2(\d{4})$/.exec(text);
+  const ymd = /^(\d{4})([/.-])(\d{1,2})\2(\d{1,2})$/.exec(text);
+  const part = (digits: string, letter: string) => letter.repeat(digits.length);
+  if (dmy) {
+    const [, a, sep, b, y] = dmy as unknown as [string, string, string, string, string];
+    const monthFirst = Number(b) > 12 && Number(a) <= 12;
+    day = Number(monthFirst ? b : a);
+    month = Number(monthFirst ? a : b);
+    year = Number(y);
+    code = monthFirst ? `${part(a, 'm')}${sep}${part(b, 'd')}${sep}yyyy` : `${part(a, 'd')}${sep}${part(b, 'm')}${sep}yyyy`;
+  } else if (ymd) {
+    const [, y, sep, a, b] = ymd as unknown as [string, string, string, string, string];
+    year = Number(y);
+    month = Number(a);
+    day = Number(b);
+    code = `yyyy${sep}${part(a, 'm')}${sep}${part(b, 'd')}`;
+  } else return null;
+  if (year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1) return null;
+  const time = Date.UTC(year, month - 1, day);
+  if (new Date(time).getUTCDate() !== day) return null;
+  // Excel counts days from 30 December 1899.
+  const value = Math.round(time / 86_400_000) + 25_569;
+  return { value, format: { decimals: 0, grouped: false, percent: false, date: code.replace(/\./g, '\\.') } };
 }
 
 export function valueOf(raw: string): SheetValue {
   const text = cleanText(raw).replace(/\s+/g, ' ').trim();
-  const number = parseNumber(text);
+  const number = parseNumber(text) ?? parseDate(text);
   return number ? { kind: 'number', ...number, text } : { kind: 'text', text };
+}
+
+/** Text that reads on a fill: white on a dark one, else the default. */
+function textOn(fill: string | undefined): string | undefined {
+  if (!fill) return undefined;
+  const [r, g, b] = [0, 2, 4].map((k) => parseInt(fill.slice(k, k + 2), 16) / 255) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.45 ? 'FFFFFF' : undefined;
 }
 
 /** Points to Excel's characters (the width of a digit of its default face, 7 pixels). */
@@ -159,6 +233,10 @@ function tableRows(table: TableItem, rtl: boolean): { rows: (SheetCell | null)[]
       const at = rtl ? columns - c - span : c;
       if (at < 0 || at >= columns) return;
       const out_: SheetCell = { value: valueOf(cell.text) };
+      if (cell.fill) out_.fill = cell.fill;
+      const color = textOn(cell.fill);
+      if (color) out_.color = color;
+      if (table.ruled) out_.border = true;
       if (cell.rows > 1) out_.rows = cell.rows;
       if (span > 1) out_.columns = span;
       out[at] = out_;
@@ -214,10 +292,11 @@ export function pageSheet(items: readonly PageItem[], name: string): Sheet {
   return { name, rtl, rows: trim(rows), widths };
 }
 
-/** Each table of the document as a sheet of its own. */
+/** Each table of the document as a sheet of its own; one that runs on over pages, one sheet. */
 export function tableSheets(pages: readonly (readonly PageItem[])[], name: (table: number) => string): Sheet[] {
   const out: Sheet[] = [];
-  for (const items of pages) {
+  const copies = pages.map((items) => items.map((item) => (item.kind === 'table' ? { ...item, rows: item.rows.map((row) => [...row]) } : item)));
+  for (const { items } of joinAcrossPages(copies)) {
     for (const item of items) {
       if (item.kind !== 'table') continue;
       const rtl = item.direction === 'rtl';
@@ -302,4 +381,177 @@ export function compactTable(table: TableItem): TableItem {
     widths: fold(table.widths, keepColumn),
     ...(table.heights ? { heights: fold(table.heights, keepRow) } : {}),
   };
+}
+
+/**
+ * A table read from columns of text, with the lines a cell wrapped onto
+ * joined back into it: a row that fills fewer columns than the one above,
+ * only columns that row fills, with no number in it, and that starts within
+ * a line's height of it, is the rest of that row's cells. Ruled tables
+ * already hold each cell's lines together.
+ */
+export function joinWrapped(table: TableItem): TableItem {
+  if (table.ruled || table.rows.length < 2) return table;
+  const filled = (cell: FoundCell | null | undefined): cell is FoundCell => !!cell && cell.text.trim().length > 0;
+  const rows: (FoundCell | null)[][] = [];
+  const heights: number[] = [];
+  let joined = false;
+  table.rows.forEach((row, r) => {
+    const above = rows[rows.length - 1];
+    const own = row.map((cell, c) => (filled(cell) ? c : -1)).filter((c) => c >= 0);
+    const theirs = above ? above.map((cell, c) => (filled(cell) ? c : -1)).filter((c) => c >= 0) : [];
+    const close = () => {
+      const bottom = Math.max(...theirs.map((c) => (above![c]!.box ? above![c]!.box![1] + above![c]!.box![3] : NaN)));
+      const top = Math.min(...own.map((c) => row[c]!.box?.[1] ?? NaN));
+      const line = Math.max(...own.map((c) => row[c]!.box?.[3] ?? 0));
+      return Number.isFinite(bottom) && Number.isFinite(top) && line > 0 && top - bottom < line * 0.8;
+    };
+    const rest =
+      above !== undefined &&
+      own.length > 0 &&
+      theirs.length >= 2 &&
+      own.length < theirs.length &&
+      own.every((c) => theirs.includes(c) && row[c]!.columns === above[c]!.columns && parseNumber(row[c]!.text.trim()) === null) &&
+      close();
+    if (!rest) {
+      rows.push(row.map((cell) => (cell ? { ...cell } : null)));
+      heights.push(table.heights?.[r] ?? 0);
+      return;
+    }
+    joined = true;
+    for (const c of own) {
+      const top = above[c]!;
+      const more = row[c]!;
+      top.text = `${top.text.trim()} ${more.text.trim()}`;
+      if (top.box && more.box) {
+        const [x0, y0] = [Math.min(top.box[0], more.box[0]), top.box[1]];
+        const x1 = Math.max(top.box[0] + top.box[2], more.box[0] + more.box[2]);
+        top.box = [x0, y0, x1 - x0, more.box[1] + more.box[3] - y0];
+      }
+    }
+    heights[heights.length - 1]! += table.heights?.[r] ?? 0;
+  });
+  if (!joined) return table;
+  return { ...table, rows, ...(table.heights ? { heights } : {}) };
+}
+
+/** Whether `next` goes on from `table`: as many columns, each as wide within a few points. */
+function continues(table: TableItem, next: TableItem): boolean {
+  return (
+    table.widths.length > 1 &&
+    table.widths.length === next.widths.length &&
+    table.direction === next.direction &&
+    table.widths.every((w, k) => Math.abs(w - next.widths[k]!) <= 6)
+  );
+}
+
+const sameRow = (a: readonly (FoundCell | null)[], b: readonly (FoundCell | null)[]) =>
+  a.length === b.length && a.every((cell, k) => (cell?.text.trim() ?? '') === (b[k]?.text.trim() ?? ''));
+
+/**
+ * Tables that run on over pages, joined: a page's first table that goes on
+ * from the last table of the page before becomes more of its rows (its
+ * header, when the page repeats it, left out). Each page's items, with
+ * `joined` true where the page's first table went on from before.
+ */
+export function joinAcrossPages(pages: readonly (readonly PageItem[])[]): { items: PageItem[]; joined: boolean }[] {
+  const out: { items: PageItem[]; joined: boolean }[] = [];
+  let last: TableItem | null = null;
+  for (const items of pages) {
+    const tables = items.filter((item): item is TableItem => item.kind === 'table');
+    const first = tables[0];
+    if (last && first && continues(last, first)) {
+      const header = last.rows[0];
+      const rows = header && first.rows[0] && sameRow(header, first.rows[0]) ? first.rows.slice(1) : first.rows;
+      last.rows.push(...rows);
+      if (last.heights && first.heights) last.heights.push(...first.heights.slice(first.rows.length - rows.length));
+      out.push({ items: items.filter((item) => item !== first), joined: true });
+    } else {
+      out.push({ items: [...items], joined: false });
+    }
+    const end = (out[out.length - 1]!.joined ? tables.slice(1) : tables).at(-1);
+    if (end) last = end;
+    else if (!out[out.length - 1]!.joined) last = null;
+  }
+  return out;
+}
+
+/**
+ * One sheet for each page, but a page whose table goes on from the page
+ * before carries on that page's sheet: its rows, then the page's other
+ * lines (those the pages repeat, such as a header or "Page 2 of 3", left out).
+ */
+export function pageSheets(pages: readonly (readonly PageItem[])[], name: (page: number) => string): Sheet[] {
+  const copies = pages.map((items) => items.map((item) => (item.kind === 'table' ? { ...item, rows: item.rows.map((row) => [...row]), ...(item.heights ? { heights: [...item.heights] } : {}) } : item)));
+  const joined = joinAcrossPages(copies);
+  const words = (item: PageItem) => (item.kind === 'line' ? item.text.replace(/[\d٠-٩]+/g, '#').trim() : '');
+  const groups: { first: number; items: PageItem[] }[] = [];
+  joined.forEach(({ items, joined: goesOn }, index) => {
+    const group = groups[groups.length - 1];
+    if (goesOn && group) {
+      const before = new Set(pages[index - 1]!.map(words).filter(Boolean));
+      group.items.push(...items.filter((item) => item.kind !== 'line' || !before.has(words(item))));
+    } else groups.push({ first: index, items });
+  });
+  return groups.map((group) => pageSheet(group.items, name(group.first + 1)));
+}
+
+/**
+ * Gives each cell of `table` the colour the page paints behind it, read
+ * from the page drawn without its text (`rgba`, `width` × `height` pixels at
+ * `scale` pixels a point): the colour most of the cell is, when it is most
+ * of it and not white.
+ */
+export function fillCells(table: TableItem, rgba: Uint8Array, width: number, height: number, scale: number): void {
+  if (table.left === undefined || table.top === undefined || !table.heights || table.heights.length !== table.rows.length) return;
+  const xs = [table.left];
+  for (const w of table.widths) xs.push(xs[xs.length - 1]! + w);
+  const ys = [table.top];
+  for (const h of table.heights) ys.push(ys[ys.length - 1]! + h);
+  table.rows.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      if (!cell) return;
+      const x0 = xs[c];
+      const x1 = xs[Math.min(xs.length - 1, c + Math.max(1, cell.columns))];
+      const y0 = ys[r];
+      const y1 = ys[Math.min(ys.length - 1, r + Math.max(1, cell.rows))];
+      if (x0 === undefined || x1 === undefined || y0 === undefined || y1 === undefined) return;
+      const fill = mostColour(rgba, width, height, x0 * scale + 2, y0 * scale + 2, x1 * scale - 2, y1 * scale - 2);
+      if (fill) cell.fill = fill;
+    });
+  });
+}
+
+/** The colour most of a box of the picture is, `RRGGBB`, if it is 60% of it and not white. */
+function mostColour(rgba: Uint8Array, width: number, height: number, x0: number, y0: number, x1: number, y1: number): string | null {
+  const [left, top] = [Math.max(0, Math.floor(x0)), Math.max(0, Math.floor(y0))];
+  const [right, bottom] = [Math.min(width, Math.ceil(x1)), Math.min(height, Math.ceil(y1))];
+  if (right - left < 2 || bottom - top < 2) return null;
+  // At most about 400 samples a cell, however big.
+  const step = Math.max(1, Math.floor(Math.sqrt(((right - left) * (bottom - top)) / 400)));
+  // Each colour, a little coarse so antialiasing and noise fall together, with its pixels' sums.
+  const counts = new Map<number, [n: number, r: number, g: number, b: number]>();
+  let total = 0;
+  for (let y = top; y < bottom; y += step) {
+    for (let x = left; x < right; x += step) {
+      const k = (y * width + x) * 4;
+      const [r, g, b] = [rgba[k]!, rgba[k + 1]!, rgba[k + 2]!];
+      const key = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+      const seen = counts.get(key);
+      if (seen) {
+        seen[0] += 1;
+        seen[1] += r;
+        seen[2] += g;
+        seen[3] += b;
+      } else counts.set(key, [1, r, g, b]);
+      total += 1;
+    }
+  }
+  let best: [number, number, number, number] | null = null;
+  for (const seen of counts.values()) if (!best || seen[0] > best[0]) best = seen;
+  if (!best || best[0] < total * 0.6) return null;
+  const count = best[0];
+  const [r, g, b] = [best[1], best[2], best[3]].map((sum) => Math.round(sum / count)) as [number, number, number];
+  if (r >= 240 && g >= 240 && b >= 240) return null;
+  return [r, g, b].map((v) => v.toString(16).padStart(2, '0').toUpperCase()).join('');
 }

@@ -44,13 +44,17 @@ test.describe('Export to Excel and PowerPoint', () => {
     const sheet = strFromU8(files['xl/worksheets/sheet1.xml']!);
     expect(sheet).toContain('rightToLeft="1"');
     // The table's first column, the description, is column A; its header row reads in order.
-    const row = (text: string) => new RegExp(`<row r="\\d+"><c r="A\\d+" t="inlineStr"><is><t xml:space="preserve">${text}</t>`);
+    // Its rules are borders, so its cells carry a style.
+    const row = (text: string) => new RegExp(`<row r="\\d+"><c r="A\\d+" s="\\d+" t="inlineStr"><is><t xml:space="preserve">${text}</t>`);
     expect(sheet).toMatch(row('الوصف'));
-    expect(sheet).toMatch(/<t xml:space="preserve">الوصف<\/t><\/is><\/c><c r="B\d+" t="inlineStr"><is><t xml:space="preserve">الكمية<\/t>/);
+    expect(sheet).toMatch(/<t xml:space="preserve">الوصف<\/t><\/is><\/c><c r="B\d+" s="\d+" t="inlineStr"><is><t xml:space="preserve">الكمية<\/t>/);
     // 1,200.00 is the number 1200, shown with its grouping and decimals.
     expect(sheet).toMatch(/<c r="[C-D]\d+" s="\d+"><v>1200<\/v><\/c>/);
     expect(strFromU8(files['xl/styles.xml']!)).toContain('numFmtId="4"');
     expect(sheet).toContain('اشتراك سنوي في خدمة Warraq Pro');
+    // Brackets face each other, as written.
+    expect(sheet).toContain('دعم فني (Premium Support)');
+    expect(strFromU8(files['xl/styles.xml']!)).toContain('<left style="thin">');
     // The lines around the table are rows of their own.
     expect(sheet).toContain('فاتورة ضريبية مبسطة');
 

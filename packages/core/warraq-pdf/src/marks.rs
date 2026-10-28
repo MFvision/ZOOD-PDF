@@ -798,6 +798,7 @@ impl PdfDocument {
                                 matrix: [1.0, 0.0, 0.0, 1.0, -width / 2.0, baseline],
                                 size,
                                 space_stretch: 0.0,
+                                groups: &[],
                             },
                         );
                         ops.push(op("ET", vec![]));

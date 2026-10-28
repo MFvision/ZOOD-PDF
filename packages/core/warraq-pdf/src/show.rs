@@ -25,6 +25,10 @@ pub(crate) struct ShownLine<'a> {
     pub size: f32,
     /// Advance added to each space, in thousandths of an em (justification).
     pub space_stretch: f32,
+    /// Stretches of the glyphs (index ranges, in order, not overlapping)
+    /// that read as one text: a left-to-right stretch set inside a
+    /// right-to-left line, whose order a reader could not tell from the page.
+    pub groups: &'a [(Range<usize>, String)],
 }
 
 /// A run of a line's glyphs, and the text to read for them when theirs would
@@ -50,14 +54,62 @@ pub(crate) fn spans(subset: &FontSubset, glyphs: &[ShapedGlyph]) -> Vec<Span> {
             return;
         };
         let range = first.start..last.end;
-        let misread = word.iter().any(|cluster| {
+        let misread_cluster = |cluster: &Range<usize>| {
             let g = &glyphs[cluster.start];
             cluster.len() > 1
                 || subset.tounicode.get(&subset.cid(g.gid)) != Some(&g.text)
                 || glyphs[cluster.clone()]
                     .iter()
                     .any(|g| g.x_offset != 0.0 || g.y_offset != 0.0)
-        });
+        };
+        // A right-to-left word is marked letter by letter, not whole: readers
+        // that put a right-to-left line in reading order themselves (Poppler,
+        // MuPDF, and so Word's PDF import) would turn a whole word's text
+        // around a second time ("ةكرش" for "شركة"). One cluster's text reads
+        // the same whichever way a reader takes the line.
+        let rtl = word.len() > 1 && glyphs[first.start].offset > glyphs[last.start].offset;
+        if rtl {
+            // A letter with its marks: laid out right to left, a mark's
+            // cluster comes before its letter's.
+            let mut units: Vec<Vec<Range<usize>>> = Vec::new();
+            let mut marks: Vec<Range<usize>> = Vec::new();
+            for cluster in word.iter() {
+                let only_marks = glyphs[cluster.clone()].iter().all(|g| {
+                    g.text.is_empty()
+                        || g.text
+                            .chars()
+                            .all(warraq_text::normalize::is_mark_or_control)
+                });
+                marks.push(cluster.clone());
+                if !only_marks {
+                    units.push(std::mem::take(&mut marks));
+                }
+            }
+            match units.last_mut() {
+                Some(last) if !marks.is_empty() => last.extend(marks),
+                None if !marks.is_empty() => units.push(marks),
+                _ => {}
+            }
+            for unit in units {
+                let (Some(a), Some(b)) = (unit.first(), unit.last()) else {
+                    continue;
+                };
+                let misread = unit.len() > 1 || unit.iter().any(misread_cluster);
+                let actual_text = misread.then(|| {
+                    let mut typed: Vec<&ShapedGlyph> =
+                        unit.iter().flat_map(|c| glyphs[c.clone()].iter()).collect();
+                    typed.sort_by_key(|g| g.offset);
+                    typed.iter().map(|g| g.text.as_str()).collect::<String>()
+                });
+                out.push(Span {
+                    range: a.start..b.end,
+                    actual_text,
+                });
+            }
+            word.clear();
+            return;
+        }
+        let misread = word.iter().any(misread_cluster);
         // The word as it was typed: its clusters in the order of the text
         // they came from, whatever order they are laid out in.
         let actual_text = misread.then(|| {
@@ -145,7 +197,35 @@ pub(crate) fn show_line(
             run.clear();
         }
     };
-    for span in spans(subset, line.glyphs) {
+    let mut pieces = Vec::new();
+    let mut done = 0;
+    for (range, text) in line.groups {
+        if range.start < done || range.end > line.glyphs.len() || range.is_empty() {
+            continue;
+        }
+        pieces.extend(
+            spans(subset, &line.glyphs[done..range.start])
+                .into_iter()
+                .map(|s| Span {
+                    range: s.range.start + done..s.range.end + done,
+                    actual_text: s.actual_text,
+                }),
+        );
+        pieces.push(Span {
+            range: range.clone(),
+            actual_text: Some(text.clone()),
+        });
+        done = range.end;
+    }
+    pieces.extend(
+        spans(subset, &line.glyphs[done..])
+            .into_iter()
+            .map(|s| Span {
+                range: s.range.start + done..s.range.end + done,
+                actual_text: s.actual_text,
+            }),
+    );
+    for span in pieces {
         if let Some(text) = &span.actual_text {
             flush(ops, &mut run, run_start);
             ops.push(Operation::new(
@@ -199,26 +279,39 @@ mod tests {
     #[test]
     fn a_word_whose_glyphs_do_not_spell_it_carries_its_text() {
         let spans = spans_of("لكن في الخير");
-        // Visual order: the last word first.
-        assert_eq!(spans.len(), 5, "{spans:?}");
-        assert_eq!(spans[0].1.as_deref(), Some("الخير"), "kha is two glyphs");
-        assert_eq!(spans[1], (" ".into(), None));
-        assert_eq!(spans[2].1, None, "في reads back glyph by glyph");
-        assert_eq!(spans[4].1.as_deref(), Some("لكن"), "lam is two glyphs");
+        // Visual order: the last word first, letter by letter, so that a
+        // reader turning the line round itself never turns a word round twice.
+        let marked: Vec<(String, Option<String>)> =
+            spans.iter().filter(|s| s.1.is_some()).cloned().collect();
+        assert_eq!(
+            marked,
+            [
+                ("خ".to_string(), Some("خ".to_string())),
+                ("ل".to_string(), Some("ل".to_string()))
+            ],
+            "kha and lam are two glyphs each: {spans:?}"
+        );
+        assert!(spans.contains(&(" ".into(), None)));
+        assert!(spans
+            .iter()
+            .all(|s| s.1.as_deref().is_none_or(|t| t.chars().count() == 1)));
     }
 
     #[test]
     fn a_word_with_a_moved_mark_carries_its_text_and_latin_reads_as_it_is() {
         let spans = spans_of("يتركَّز Warraq");
         let marked: Vec<&str> = spans.iter().filter_map(|s| s.1.as_deref()).collect();
-        assert_eq!(marked, ["يتركَّز"]);
+        // The kaf with its marks reads as one, in reading order; the Latin
+        // word needs nothing.
+        assert!(marked.contains(&"كَّ"), "{marked:?}");
+        assert!(marked.iter().all(|m| !m.contains('W')), "{marked:?}");
     }
 
     #[test]
     fn a_word_of_two_directions_carries_its_text_in_reading_order() {
         let spans = spans_of("العدد123 ثَمّ");
         let marked: Vec<&str> = spans.iter().filter_map(|s| s.1.as_deref()).collect();
-        assert!(marked.contains(&"ثَمّ"), "{marked:?}");
+        assert!(marked.contains(&"ثَ") && marked.contains(&"مّ"), "{marked:?}");
         let shaper = Shaper::new(AMIRI).unwrap();
         let glyphs = shaper.shape_line("العدد123");
         let mut typed: Vec<&ShapedGlyph> = glyphs.iter().filter(|g| !g.text.is_empty()).collect();
@@ -244,6 +337,7 @@ mod tests {
                 matrix: [1.0, 0.0, 0.0, 1.0, 100.0, 700.0],
                 size: 12.0,
                 space_stretch: 0.0,
+                groups: &[],
             },
         );
         let names: Vec<&str> = ops.iter().map(|op| op.operator.as_str()).collect();

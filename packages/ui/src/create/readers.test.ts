@@ -94,7 +94,10 @@ describe('an Excel workbook', () => {
     expect(showNumber(46284, shapeOf('yyyy-mm-dd'))).toBe('2026-09-19');
     expect(showNumber(0.5, shapeOf('h:mm'))).toBe('12:00');
     expect(showNumber(1 / 3, shapeOf('General'))).toBe('0.33333333333');
-    expect(showNumber(5, shapeOf('"SAR" #,##0'))).toBe('5');
+    // The currency or unit the format writes around the number, as Excel shows it.
+    expect(showNumber(5, shapeOf('"SAR" #,##0'))).toBe('SAR 5');
+    expect(showNumber(12500, shapeOf('#,##0.00 "SR"'))).toBe('12,500.00 SR');
+    expect(showNumber(52.17, shapeOf('[$€-x-euro2] #,##0.00'))).toBe('€ 52.17');
     expect(excelDate(0, true)).toBe('1904-01-01');
     expect(cellRef('AB12')).toEqual([11, 27]);
     expect(cellRef('nonsense')).toBeNull();

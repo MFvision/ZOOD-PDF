@@ -145,6 +145,11 @@ struct Cell {
     span: usize,
     #[serde(default)]
     fill: Option<String>,
+    #[serde(default)]
+    color: Option<String>,
+    /// Into the document's faces.
+    #[serde(default)]
+    face: Option<usize>,
 }
 
 #[derive(Deserialize)]
@@ -195,6 +200,9 @@ enum BlockArgs {
         shade: Option<String>,
         #[serde(default)]
         preserve: bool,
+        /// Into the document's faces.
+        #[serde(default)]
+        face: Option<usize>,
     },
     Table {
         #[serde(default)]
@@ -211,6 +219,8 @@ enum BlockArgs {
         space_before: f32,
         #[serde(default = "six")]
         space_after: f32,
+        #[serde(default)]
+        face: Option<usize>,
     },
     Image {
         /// Into the pictures listed in `pictures`.
@@ -345,6 +355,7 @@ fn block(b: BlockArgs, nested: bool) -> Option<Block> {
             spacing,
             shade,
             preserve,
+            face,
         } => Block::Text(TextBlock {
             text,
             runs: runs
@@ -373,6 +384,7 @@ fn block(b: BlockArgs, nested: bool) -> Option<Block> {
             spacing,
             shade: shade.as_deref().and_then(colour),
             preserve,
+            face,
         }),
         BlockArgs::Table {
             widths,
@@ -382,6 +394,7 @@ fn block(b: BlockArgs, nested: bool) -> Option<Block> {
             size,
             space_before,
             space_after,
+            face,
         } => Block::Table(TableBlock {
             widths,
             rows: rows
@@ -395,6 +408,8 @@ fn block(b: BlockArgs, nested: bool) -> Option<Block> {
                             dir: c.dir.into(),
                             span: c.span,
                             fill: c.fill.as_deref().and_then(colour),
+                            color: c.color.as_deref().and_then(colour),
+                            face: c.face,
                         })
                         .collect()
                 })
@@ -404,6 +419,7 @@ fn block(b: BlockArgs, nested: bool) -> Option<Block> {
             size,
             space_before,
             space_after,
+            face,
         }),
         BlockArgs::Image {
             index,

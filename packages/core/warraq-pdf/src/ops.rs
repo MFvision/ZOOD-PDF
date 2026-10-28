@@ -274,6 +274,7 @@ pub fn append_line_in_color(
             matrix: [1.0, 0.0, 0.0, 1.0, x, y],
             size,
             space_stretch: 0.0,
+            groups: &[],
         },
     );
     ops.push(Operation::new("ET", vec![]));
@@ -763,6 +764,7 @@ pub fn replace_paragraph(
                 matrix: [1.0, 0.0, 0.0, 1.0, line.x, line.y],
                 size: font_size,
                 space_stretch: line.space_stretch,
+                groups: &[],
             },
         );
     }
