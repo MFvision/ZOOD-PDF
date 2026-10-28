@@ -51,6 +51,15 @@ body:has(.quick) {
   min-block-size: 36px;
 }
 
+.quick-file-failed {
+  background: var(--danger-bg);
+}
+
+.quick-file-failed .batch-bad,
+.quick-file-failed .quick-file-note {
+  color: var(--destructive);
+}
+
 .quick-file + .quick-file {
   border-block-start: 1px solid var(--separator);
 }

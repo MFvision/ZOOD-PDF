@@ -142,6 +142,7 @@ fn second_launch<R: Runtime>(app: &AppHandle<R>, args: Vec<String>, cwd: String)
     // not the editor (src/quick.rs).
     if let Some(request) = quick::parse(&args, Some(&cwd)) {
         core_bridge::debug_log(format!("second launch quick = {request:?}"));
+        ring::log("second launch: a quick tool, handed to this copy");
         quick::request(app, request);
         return;
     }
@@ -522,6 +523,7 @@ pub fn run() {
             quick::quick_job,
             quick::quick_close,
             quick::quick_settled,
+            quick::quick_note,
             quick_open_in_editor,
             shell_menu::shell_menu_set,
             shell_menu::shell_menu_state,

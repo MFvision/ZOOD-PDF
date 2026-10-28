@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, ExternalLink, FileText, Loader2, X } from 'lucide-react';
+import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, ExternalLink, FileText, Loader2, RotateCcw, X } from 'lucide-react';
 import '../styles/tokens.css';
 import '../styles/looks.css';
 import '../styles/appearance.css';
@@ -12,7 +12,7 @@ import './quick.css';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { getSharedCoreClient } from '../core/client';
-import { isQuickWindow, quickClose, quickJob, quickOpenInEditor, quickSettled } from '../core/host-tauri';
+import { isQuickWindow, quickClose, quickJob, quickNote, quickOpenInEditor, quickSettled } from '../core/host-tauri';
 import type { QuickJob } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
@@ -180,6 +180,19 @@ function QuickWindow() {
     const locked = [...finals.entries()].filter(([, state]) => wantsPassword(state)).map(([key]) => key);
     setRetry(locked);
     setPhase(locked.length > 0 ? 'options' : 'done');
+    const ended = [...finals.values()];
+    const failed = ended.filter((state) => state.state === 'failed').length;
+    void quickNote(`${picked.id}: ${ended.filter((state) => state.state === 'done').length} done, ${failed} failed`).catch(() => undefined);
+    // All done: the window goes by itself once the tick has shown. A failure keeps it, marked.
+    if (locked.length === 0 && ended.length > 0 && ended.every((state) => state.state === 'done')) {
+      window.setTimeout(() => void quickClose(), AUTO_CLOSE_MS);
+    }
+  };
+
+  /** Runs the tool again on the files that failed, and only those. */
+  const tryAgain = () => {
+    const failed = [...states.entries()].filter(([, state]) => state.state === 'failed').map(([key]) => key);
+    if (tool && failed.length > 0) void run(tool, options, failed);
   };
 
   /** A tool chosen or named: the editor's own opens there; one that needs nothing runs now. */
@@ -278,7 +291,7 @@ function QuickWindow() {
 
       <ul className="quick-files" aria-label={t('quick.files', { count: files.length })}>
         {files.map((file, key) => (
-          <li key={file.path} className="quick-file">
+          <li key={file.path} className={states.get(key)?.state === 'failed' ? 'quick-file quick-file-failed' : 'quick-file'}>
             {states.has(key) ? stateIcon(states.get(key)) : <Icon of={FileText} />}
             <span className="quick-file-name" dir="auto" title={file.path}>
               {file.name}
@@ -374,15 +387,19 @@ function QuickWindow() {
         {phase === 'done' ? (
           <>
             <p className="quick-summary" role="status">
-              {t('quick.summary', { done: doneCount, failed: failedCount })}
+              {failedCount === 0 && doneCount > 0 ? t('quick.allDone') : t('quick.summary', { done: doneCount, failed: failedCount })}
             </p>
-            <IconButton label={t('quick.close')} icon={<Icon of={CircleCheck} />} showLabel variant="primary" onClick={() => void quickClose()} />
+            {failedCount > 0 ? <IconButton label={t('quick.tryAgain')} icon={<Icon of={RotateCcw} />} showLabel onClick={tryAgain} /> : null}
+            <IconButton label={t('quick.close')} icon={<Icon of={CircleCheck} />} showLabel variant={failedCount > 0 ? undefined : 'primary'} onClick={() => void quickClose()} />
           </>
         ) : null}
       </footer>
     </main>
   );
 }
+
+/** How long a window whose files all went well stays, showing its ticks, before it closes. */
+const AUTO_CLOSE_MS = 1200;
 
 /** The whole quick tools window; the desktop host mounts it instead of `App` in a quick window. */
 export function QuickApp() {

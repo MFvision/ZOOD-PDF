@@ -341,6 +341,12 @@ export function quickSettled(done: boolean): Promise<void> {
   return invoke('quick_settled', { done }).then(() => undefined);
 }
 
+/** A line for the ring log (what this quick window did), for when a tool seems to do nothing. */
+export function quickNote(note: string): Promise<void> {
+  if (!internals()) return Promise.resolve();
+  return invoke('quick_note', { note }).then(() => undefined);
+}
+
 /** Opens a quick tool's result in the editor, or a file at the editor's own tool for one (`sign`). */
 export function quickOpenInEditor(path: string, tool?: string): Promise<void> {
   return invoke('quick_open_in_editor', { path, tool: tool ?? null }).then(() => undefined);

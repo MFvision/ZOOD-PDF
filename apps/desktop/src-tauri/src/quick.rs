@@ -64,6 +64,10 @@ pub const EDITOR_TOOLS: &[(&str, &str)] = &[("sign", "fillSign")];
 const MAX_FILES: usize = 500;
 /// How long requests for the same tool are gathered before the window opens.
 const GATHER: Duration = Duration::from_millis(450);
+/// A quick window that has not asked for its job by then is shown again and
+/// the log says so (the owner's right-click did nothing while ZOOD ran in
+/// the tray, and nothing said why).
+const ASK_WITHIN: Duration = Duration::from_secs(12);
 const WINDOW_PREFIX: &str = "quick-";
 
 /// One quick request, as parsed from a launch's arguments.
@@ -95,6 +99,8 @@ pub struct QuickState {
     jobs: Mutex<HashMap<String, QuickJob>>,
     /// Quick windows whose work is done, closed when the next one opens.
     settled: Mutex<HashSet<String>>,
+    /// Quick windows that have asked for their job: their page is up.
+    taken: Mutex<HashSet<String>>,
     next: AtomicU32,
 }
 
@@ -130,6 +136,11 @@ pub fn parse(args: &[String], cwd: Option<&Path>) -> Option<QuickRequest> {
 /// Takes a request: its files go in the file scope, and a window opens once
 /// requests for the same tool stop arriving.
 pub fn request<R: Runtime>(app: &AppHandle<R>, request: QuickRequest) {
+    crate::ring::log(&format!(
+        "quick: asked for {} with {} files",
+        request.tool.as_deref().unwrap_or("any tool"),
+        request.files.len()
+    ));
     let scope = app.fs_scope();
     for file in &request.files {
         if let Err(e) = scope.allow_file(file) {
@@ -179,8 +190,30 @@ pub fn request<R: Runtime>(app: &AppHandle<R>, request: QuickRequest) {
             .and_then(|mut gathering| gathering.remove(&key))
             .unwrap_or_default();
         let tool = (!key.is_empty()).then_some(key);
-        if let Err(e) = open_window(&app, &state, tool, files) {
-            eprintln!("warraq: cannot open the quick tools window: {e}");
+        let label = match open_window(&app, &state, tool, files) {
+            Ok(window) => {
+                crate::ring::log(&format!("quick: window {} opened", window.label()));
+                window.label().to_owned()
+            }
+            Err(e) => {
+                crate::ring::log(&format!("quick: the window could not open: {e}"));
+                eprintln!("warraq: cannot open the quick tools window: {e}");
+                return;
+            }
+        };
+        std::thread::sleep(ASK_WITHIN);
+        let asked = state
+            .taken
+            .lock()
+            .map(|mut taken| taken.remove(&label))
+            .unwrap_or(true);
+        // A window already closed (done and gone by itself) has nothing to say.
+        if let Some(window) = app.get_webview_window(&label).filter(|_| !asked) {
+            crate::ring::log(&format!("quick: window {label} has not asked for its job"));
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+            let _ = window.reload();
         }
     });
 }
@@ -242,8 +275,10 @@ fn open_window<R: Runtime>(
             .min_inner_size(400.0, 460.0)
             .center()
             .always_on_top(true)
+            .visible(true)
             .focused(true)
             .build()?;
+    let _ = window.show();
     let _ = window.set_focus();
     Ok(window)
 }
@@ -279,7 +314,28 @@ pub fn quick_job<R: Runtime>(
     window: WebviewWindow<R>,
     state: State<'_, QuickState>,
 ) -> Option<QuickJob> {
-    state.jobs.lock().ok()?.get(window.label()).cloned()
+    if let Ok(mut taken) = state.taken.lock() {
+        taken.insert(window.label().to_owned());
+    }
+    let job = state.jobs.lock().ok()?.get(window.label()).cloned();
+    crate::ring::log(&format!(
+        "quick: window {} {}",
+        window.label(),
+        if job.is_some() {
+            "took its job"
+        } else {
+            "found no job"
+        }
+    ));
+    job
+}
+
+/// What the quick window asking did, for the log: "done: 2 made, 0 failed",
+/// "closed itself". No file's name.
+#[tauri::command]
+pub fn quick_note<R: Runtime>(window: WebviewWindow<R>, note: String) {
+    let note: String = note.chars().filter(|c| !c.is_control()).take(120).collect();
+    crate::ring::log(&format!("quick: window {} {note}", window.label()));
 }
 
 /// The editor, created now if this run started for a quick tool only, and

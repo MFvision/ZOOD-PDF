@@ -110,6 +110,16 @@ jobs:
         shell: pwsh
         run: ./scripts/ci/ring-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Sample tests/fixtures/layers/layers.pdf -Out ring-check
 
+      # The right-click quick tools with the app in the tray: Word and
+      # Compress make their files and the window closes by itself; a broken
+      # file keeps the window open. Its log and screenshots go to ci-logs.
+      - name: try the right-click tools
+        id: quick
+        if: ${{ !inputs.weight_only }}
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/ci/quick-check.ps1 -App apps/desktop/src-tauri/target/release/warraq-desktop.exe -Sample tests/fixtures/layers/layers.pdf -Out quick-check
+
       # Ask ZOOD's island: one tap of right Ctrl shows it, drawn, the first
       # time and again after it closes. Its log and screenshots go to ci-logs.
       - name: try Ask ZOOD
@@ -182,6 +192,7 @@ jobs:
             echo "release: $(cat ../release-tag.txt 2>/dev/null || echo none)"
             echo "ring check: ${{ steps.ring.outcome }}"
             echo "remote check: ${{ steps.remote.outcome }}"
+            echo "quick check: ${{ steps.quick.outcome }}"
             echo "ask check: ${{ steps.ask.outcome }}"
             echo "perf check: ${{ steps.perf.outcome }}"
             echo "screenshot check: ${{ steps.shots.outcome }}"
@@ -189,6 +200,7 @@ jobs:
           } > status.txt
           [ -d ../ring-check ] && cp -r ../ring-check ring-check
           [ -d ../ask-check ] && cp -r ../ask-check ask-check
+          [ -d ../quick-check ] && cp -r ../quick-check quick-check
           [ -d ../perf-check ] && cp -r ../perf-check perf-check
           [ -d ../shot-check ] && cp -r ../shot-check shot-check
           for f in build test-core test-desktop test-remote; do
