@@ -286,16 +286,16 @@ export const CHAPTERS = [
     },
     points: [
       {
-        ar: 'اعرض من هاتفك: قلّب الصفحات، وأشِر بالليزر، وظلّل واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
-        en: 'Present from your phone: turn pages, point with a laser, highlight and write with the pen, and read your notes with a timer in view.',
+        ar: 'العرض: قلّب الصفحات، وأشِر بالليزر، وظلّل واكتب بالقلم، واقرأ ملاحظاتك والمؤقت أمامك.',
+        en: 'Present: turn pages, point with a laser, highlight and write with the pen, and read your notes with a timer in view.',
       },
       {
-        ar: 'اجعله فأرة الحاسوب ولوحة مفاتيحه، وقلّب به أي عرض تقديمي وارفع الصوت، حين تفعّل ذلك من التطبيق.',
-        en: "Use it as the computer's mouse and keyboard, move through any slideshow and set the volume, once you switch that on in the app.",
+        ar: 'التحكم: لوحة لمس، ولوحة مفاتيح جوالك نفسها، واختصارات النسخ واللصق والتراجع، وتقليب أي عرض تقديمي وضبط الصوت، حين تفعّل ذلك من التطبيق.',
+        en: "Control: a trackpad, your phone's own keyboard, shortcuts for copy, paste and undo, any slideshow and the volume, once you switch that on in the app.",
       },
       {
-        ar: 'أرسل الملف إلى هاتفك، أو صوّر صفحة فتصل ملفًا، أو مرّر ملفًا من هاتفك للأعلى فيصل إلى سطح مكتب الحاسوب، أو وقّع على الهاتف فيظهر توقيعك في الملف.',
-        en: "Send the file to your phone, photograph a page and it arrives as a PDF, flick a file up off your phone onto the computer's desktop, or sign on the phone and the signature lands in the file.",
+        ar: 'الإرسال: اسحب صورًا وملفات حتى 1 جيجابايت إلى سطح مكتب الحاسوب، وشارك الحافظة بلمسة حين تفعّلها، واحفظ الملف المفتوح أو صوّر صفحة أو وقّع بإصبعك.',
+        en: "Send: swipe photos and files up to 1 GB onto the computer's desktop, share the clipboard in one tap once you turn it on, and save the open PDF, scan a page or sign with your finger.",
       },
     ],
     note: {
@@ -365,16 +365,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.22، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.22, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.23، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.23, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.22، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.22, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.23، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.23, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -403,8 +403,8 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.22/ZOOD-PDF-Setup-0.4.22.exe',
-    sha256: '7e9fe1be7504b3b6a10abecd2caec869bf558ce3c6d70301b8a52421a002364c',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.23/ZOOD-PDF-Setup-0.4.23.exe',
+    sha256: 'f20238d15865f2fe11e6cefbf5374dfd073babcf74f2bafad0bd83fb1d3514df',
     steps: {
       ar: 'إن ظهر تنبيه ويندوز الأزرق، اختر «مزيد من المعلومات» ثم «تشغيل على أي حال». يظهر لأن التطبيق جديد وغير موقّع بعد.',
       en: 'If the blue Windows box appears, choose More info, then Run anyway. It shows because the app is new and not signed yet.',
@@ -413,8 +413,8 @@ export const DOWNLOADS = [
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.22/ZOOD-PDF-0.4.22-mac.dmg',
-    sha256: '64bbd08229faf4ddd30e0eb8ec78ea1980b9e47dcb2ebd8e5a30cd7f1e36c42f',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.23/ZOOD-PDF-0.4.23-mac.dmg',
+    sha256: 'd975e4022e89b7926ad9543769ddeb2220db4e73661b8599ee4da047a2facbaf',
     steps: {
       ar: 'اسحب زود PDF إلى التطبيقات وافتحه. إن منعه ماك، افتح الإعدادات › الخصوصية والأمن واختر «فتح على أي حال» مرة واحدة.',
       en: 'Drag ZOOD PDF to Applications and open it. If your Mac stops it, open System Settings › Privacy & Security and choose Open Anyway, once.',
