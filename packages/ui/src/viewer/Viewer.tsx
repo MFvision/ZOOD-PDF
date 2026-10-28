@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useDevicePixelRatio } from '../components/useDevicePixelRatio';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { fitPageZoom, fitWidthZoom, PAGE_GAP, VIEWER_PADDING } from '../state/zoom';
+import { fitMoved, fitPageZoom, fitWidthZoom, PAGE_GAP, VIEWER_PADDING } from '../state/zoom';
 import { PageView } from './PageView';
 import { useSharedObserver } from './useSharedObserver';
 
@@ -55,10 +55,13 @@ export function Viewer() {
     const element = containerRef.current;
     if (!element || state.zoomMode === 'custom') return;
     const mode = state.zoomMode;
+    let last: number | null = null;
     const compute = () => {
       const viewport = { width: element.clientWidth, height: element.clientHeight };
       if (viewport.width <= 0) return;
       const zoom = mode === 'fit-width' ? fitWidthZoom(viewport, largestPage) : fitPageZoom(viewport, largestPage);
+      if (!fitMoved(last, zoom)) return;
+      last = zoom;
       dispatch({ type: 'FIT_ZOOM_COMPUTED', zoom });
     };
     compute();

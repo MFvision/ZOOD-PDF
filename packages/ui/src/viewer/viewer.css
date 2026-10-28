@@ -4,6 +4,11 @@
   flex: 1;
   min-block-size: 0;
   overflow: auto;
+
+  /* The scrollbar's room is kept whether it shows or not: a fit-width page
+     just taller than the view otherwise flipped the zoom, the scrollbar with
+     it, and the page never finished drawing (Windows at 200%). */
+  scrollbar-gutter: stable;
   overscroll-behavior: contain;
   background: var(--bg-canvas);
 }
