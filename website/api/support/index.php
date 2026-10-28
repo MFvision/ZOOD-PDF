@@ -113,7 +113,8 @@ try {
                                 $body = trim((string) ($comment['body'] ?? ''));
                                 $role = $comment['author_association'] ?? '';
                                 if (in_array($role, ['OWNER', 'MEMBER', 'COLLABORATOR'], true) && preg_match('/^reply:\s*(.+)$/is', $body, $match)) {
-                                    $reply = mb_substr(trim($match[1]), 0, 1000);
+                                    // A signature under a --- rule (the footer some tools add) is not part of the reply.
+                                    $reply = mb_substr(trim((string) preg_replace('/\R\s*-{3,}\s*\R.*$/su', '', $match[1])), 0, 1000);
                                     break;
                                 }
                             }
