@@ -389,7 +389,7 @@ pub(crate) fn open_download(url: &str) -> Result<ureq::http::Response<ureq::Body
                 .get("location")
                 .and_then(|value| value.to_str().ok())
                 .ok_or_else(|| "E_NET: a redirect without a location".to_string())?;
-            url = next.to_string();
+            url = next_hop(&url, next)?;
             continue;
         }
         if status != 200 {
@@ -398,6 +398,17 @@ pub(crate) fn open_download(url: &str) -> Result<ureq::http::Response<ureq::Body
         return Ok(response);
     }
     Err("E_NET: too many redirects".to_string())
+}
+
+/// Where a redirect from `from` to `location` leads. Hugging Face answers
+/// small files with a relative `Location` (`/api/resolve-cache/…`), so it is
+/// read against the address it came from; the host check then sees the full
+/// address.
+fn next_hop(from: &str, location: &str) -> Result<String, String> {
+    tauri::Url::parse(from)
+        .and_then(|base| base.join(location))
+        .map(String::from)
+        .map_err(|_| format!("E_NET: a bad redirect: {location}"))
 }
 
 /// The download itself, on a blocking thread: each of the model's files
@@ -1237,6 +1248,23 @@ pub fn ai_cancel(state: State<'_, AiState>, id: String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_relative_redirect_stays_on_the_host_it_came_from() {
+        let from = "https://huggingface.co/Supertone/supertonic-3/resolve/abc/LICENSE";
+        let next = next_hop(
+            from,
+            "/api/resolve-cache/models/Supertone/supertonic-3/abc/LICENSE?etag=%221%22",
+        )
+        .unwrap();
+        assert_eq!(
+            next,
+            "https://huggingface.co/api/resolve-cache/models/Supertone/supertonic-3/abc/LICENSE?etag=%221%22"
+        );
+        let cdn = next_hop(from, "https://us.aws.cdn.hf.co/xet-bridge-us/x?y=1").unwrap();
+        assert_eq!(cdn, "https://us.aws.cdn.hf.co/xet-bridge-us/x?y=1");
+        assert!(allowed_host("huggingface.co") && allowed_host("us.aws.cdn.hf.co"));
+    }
 
     #[test]
     fn the_catalogue_names_every_file_with_its_checksum() {
