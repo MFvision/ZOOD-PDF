@@ -1,3 +1,4 @@
+import { CREATE_EXTENSIONS } from '../create/createPdf';
 import { CloudError } from './errors';
 import { failure, jsonOf, ok } from './http';
 import type { Api, CloudResponse } from './http';
@@ -75,9 +76,17 @@ function isPdfItem(item: GraphItem): boolean {
   return Boolean(item.file) && (item.file?.mimeType === 'application/pdf' || /\.pdf$/i.test(item.name));
 }
 
+/** A Word, Excel, PowerPoint, picture or text file: Create PDF makes a PDF of it. */
+function isCreateItem(item: GraphItem): boolean {
+  const extension = item.name.toLowerCase().split('.').pop() ?? '';
+  return Boolean(item.file) && item.name.includes('.') && CREATE_EXTENSIONS.includes(extension);
+}
+
 /**
- * A folder or a PDF as the browser lists it; anything else (other files,
- * OneNote notebooks) is left out. A shortcut to someone else's item is
+ * A folder, a PDF or a file Create PDF reads (Word, Excel, a picture…) as the
+ * browser lists it; anything else (other files, OneNote notebooks) is left
+ * out. Listing only PDFs left a folder of Word files looking empty: only its
+ * folders could be chosen (0.4.26). A shortcut to someone else's item is
  * listed as that item, in its own drive.
  */
 export function entryOf(item: GraphItem): Entry | null {
@@ -89,11 +98,12 @@ export function entryOf(item: GraphItem): Entry | null {
   if (target.folder || item.folder) {
     return { key, name: item.name, kind: 'folder', children: (target.folder ?? item.folder)?.childCount, modified };
   }
-  if (isPdfItem(target) || isPdfItem(item)) {
+  const pdf = isPdfItem(target) || isPdfItem(item);
+  if (pdf || isCreateItem(target) || isCreateItem(item)) {
     const path = item.parentReference?.path;
     // "/drive/root:/Reports/2026" → "Reports/2026", for search results.
     const location = path?.includes('root:') ? decodeURIComponent(path.slice(path.indexOf('root:') + 5)).replace(/^\//, '') : undefined;
-    return { key, name: item.name, kind: 'pdf', size: target.size ?? item.size, modified, location };
+    return { key, name: item.name, kind: pdf ? 'pdf' : 'file', size: target.size ?? item.size, modified, location };
   }
   return null;
 }
@@ -156,7 +166,7 @@ export class OneDrive {
     return { name: me.displayName ?? '', email: me.mail ?? me.userPrincipalName ?? '' };
   }
 
-  /** A folder's folders and PDFs (`null`: the top of the person's drive), or the page after `next`. */
+  /** A folder's folders, PDFs and files Create PDF reads (`null`: the top of the person's drive), or the page after `next`. */
   async list(folderKey: string | null, next?: string | null): Promise<Listing> {
     const folder = folderKey ? refOfKey(folderKey) : null;
     if (folderKey && !folder) throw new CloudError('notFound', 'not a OneDrive folder');
@@ -164,7 +174,7 @@ export class OneDrive {
     return listing(await this.api({ method: 'GET', url }), 'list');
   }
 
-  /** Folders and PDFs anywhere in the drive whose name or text matches. */
+  /** Folders, PDFs and files Create PDF reads, anywhere in the drive whose name or text matches. */
   async search(text: string, next?: string | null): Promise<Listing> {
     return listing(await this.api({ method: 'GET', url: next ?? searchUrl(text) }), 'search');
   }

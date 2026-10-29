@@ -13,7 +13,8 @@ export interface Account {
 export interface Entry {
   key: string;
   name: string;
-  kind: 'folder' | 'pdf';
+  /** `file`: not a PDF, but one Create PDF makes one of (Word, Excel, PowerPoint, a picture…). */
+  kind: 'folder' | 'pdf' | 'file';
   size?: number;
   /** ISO 8601. */
   modified?: string;
