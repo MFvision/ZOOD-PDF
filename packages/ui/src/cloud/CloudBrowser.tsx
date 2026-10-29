@@ -126,7 +126,7 @@ export function CloudBrowser({
   const shown = useMemo(() => {
     if (!walks) return entries;
     const collator = new Intl.Collator(lang, { numeric: true, sensitivity: 'base' });
-    return [...entries].sort((a, b) => (a.kind === b.kind ? collator.compare(a.name, b.name) : a.kind === 'folder' ? -1 : 1));
+    return [...entries].sort((a, b) => ((a.kind === 'folder') === (b.kind === 'folder') ? collator.compare(a.name, b.name) : a.kind === 'folder' ? -1 : 1));
   }, [entries, walks, lang]);
 
   const size = (bytes?: number) => {
