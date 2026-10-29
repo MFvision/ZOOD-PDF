@@ -1,4 +1,6 @@
-import type { UiLook } from '../state/preferences';
+import type { BaseLook, UiLook } from '../state/preferences';
+import { PREMIUM_THEMES } from '../styles/premiumThemes';
+import type { ThemeSide } from '../styles/premiumThemes';
 
 /**
  * A small drawing of each look for the Appearance page: the sidebar, the
@@ -20,7 +22,7 @@ interface Palette {
   radius: number;
 }
 
-const LIGHT: Record<UiLook, Palette> = {
+const BASE_LIGHT: Record<BaseLook, Palette> = {
   concept: { ground: '#dfe6f5', glow: '#c9d6f6', sidebar: 'rgb(255 255 255 / 55%)', card: 'rgb(255 255 255 / 85%)', edge: 'rgb(255 255 255 / 90%)', text: '#1d1d2b', muted: '#8a8fa3', accent: '#3b6cf6', tiles: ['#7b61ff', '#ff8a3d', '#3b82f6', '#22b8cf'], radius: 7 },
   glass: { ground: '#eef2f8', glow: '#dbe7fb', sidebar: 'rgb(246 246 248 / 85%)', card: '#ffffff', edge: '#e2e4ea', text: '#1d1d1f', muted: '#8e8e93', accent: '#0a84ff', tiles: ['#0a84ff', '#ff375f', '#30d158', '#bf5af2'], radius: 6 },
   zood: { ground: '#f5f1ed', sidebar: '#e6ddd4', card: '#fbf9f7', edge: '#d6c6b8', text: '#041e42', muted: '#977756', accent: '#73563a', tiles: ['#73563a', '#977756', '#ae8b66', '#73563a'], radius: 6 },
@@ -28,13 +30,21 @@ const LIGHT: Record<UiLook, Palette> = {
   mono: { ground: '#f4f4f4', sidebar: '#ffffff', card: '#ffffff', edge: '#d9d9d9', text: '#111111', muted: '#8c8c8c', accent: '#111111', tiles: ['#444444', '#444444', '#444444', '#444444'], radius: 5 },
 };
 
-const DARK: Record<UiLook, Palette> = {
+const BASE_DARK: Record<BaseLook, Palette> = {
   concept: { ground: '#1b1f33', glow: '#2b3566', sidebar: 'rgb(40 44 66 / 70%)', card: 'rgb(52 57 84 / 80%)', edge: 'rgb(255 255 255 / 12%)', text: '#f2f3f8', muted: '#9aa0b8', accent: '#6d8dff', tiles: ['#8f7bff', '#ff9a52', '#5b9bff', '#3cc8de'], radius: 7 },
   glass: { ground: '#1c1c1e', glow: '#26324a', sidebar: 'rgb(44 44 46 / 85%)', card: '#2c2c2e', edge: '#3a3a3c', text: '#f5f5f7', muted: '#8e8e93', accent: '#0a84ff', tiles: ['#0a84ff', '#ff375f', '#30d158', '#bf5af2'], radius: 6 },
   zood: { ground: '#11294b', sidebar: '#041e42', card: '#1d375c', edge: '#2a405e', text: '#f5f1ed', muted: '#ae8b66', accent: '#ae8b66', tiles: ['#ae8b66', '#c9a27c', '#ae8b66', '#977756'], radius: 6 },
   workbench: { ground: '#19191c', sidebar: '#26262a', card: '#2e2e33', edge: '#3c3c43', text: '#ececef', muted: '#6e6e76', accent: '#4b8bf5', tiles: ['#4b8bf5', '#4b8bf5', '#4b8bf5', '#4b8bf5'], radius: 3 },
   mono: { ground: '#141414', sidebar: '#1e1e1e', card: '#262626', edge: '#3a3a3a', text: '#f2f2f2', muted: '#8c8c8c', accent: '#f2f2f2', tiles: ['#cfcfcf', '#cfcfcf', '#cfcfcf', '#cfcfcf'], radius: 5 },
 };
+
+/** A premium theme drawn from its own colours: the window, sidebar, cards, button and its palette's tiles. */
+function premiumPalette(side: ThemeSide): Palette {
+  return { ground: side.bg, sidebar: side.side, card: side.card, edge: side.line, text: side.text, muted: side.muted, accent: side.accent, tiles: [side.accent, side.ink, side.hi, side.c30], radius: 6 };
+}
+
+const LIGHT: Record<UiLook, Palette> = { ...BASE_LIGHT, ...Object.fromEntries(PREMIUM_THEMES.map((theme) => [theme.id, premiumPalette(theme.light)])) } as Record<UiLook, Palette>;
+const DARK: Record<UiLook, Palette> = { ...BASE_DARK, ...Object.fromEntries(PREMIUM_THEMES.map((theme) => [theme.id, premiumPalette(theme.dark)])) } as Record<UiLook, Palette>;
 
 export function LookPreview({ look, dark, rtl, plainIcons }: { look: UiLook; dark: boolean; rtl: boolean; plainIcons: boolean }) {
   const p = (dark ? DARK : LIGHT)[look];

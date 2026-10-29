@@ -37,7 +37,8 @@ import { formatShortcut, hasNativeMenuBar, isApplePlatform, toAccelerator, useMe
 import type { MenuItemModel } from '../shell/menuModel';
 import { VoiceSettings } from '../speech/VoiceSettings';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { LOOK_IDS } from '../state/preferences';
+import { BASE_LOOK_IDS, PREMIUM_LOOK_IDS } from '../state/preferences';
+import { PREMIUM_THEMES } from '../styles/premiumThemes';
 import type { ThemeMode, UiLook } from '../state/preferences';
 import { ACCENTS, HOME_SECTIONS, resetSettings, updateSettings, useSettings } from '../state/settings';
 import type { Accent, AiPrompt, AppSettings, HomeSection } from '../state/settings';
@@ -138,21 +139,9 @@ export function GeneralPage() {
 
 /* --------------------------------------------------------------- Appearance */
 
-const LOOK_NAME: Record<UiLook, TKey> = {
-  concept: 'look.concept',
-  glass: 'look.glass',
-  zood: 'look.zood',
-  workbench: 'look.workbench',
-  mono: 'look.mono',
-};
-
-const LOOK_NOTE: Record<UiLook, TKey> = {
-  concept: 'look.concept.note',
-  glass: 'look.glass.note',
-  zood: 'look.zood.note',
-  workbench: 'look.workbench.note',
-  mono: 'look.mono.note',
-};
+const lookName = (look: UiLook): TKey => `look.${look}` as TKey;
+const lookNote = (look: UiLook): TKey => `look.${look}.note` as TKey;
+const PREMIUM_SWATCH = new Map(PREMIUM_THEMES.map((theme) => [theme.id as UiLook, theme.swatch]));
 
 const ACCENT_COLOR: Record<Exclude<Accent, 'look'>, string> = {
   blue: '#0a7cff',
@@ -172,6 +161,37 @@ export function AppearancePage() {
   const dark = useDark(theme);
   const mono = look === 'mono';
   const plain = mono || settings.icons === 'plain';
+  const premium = (PREMIUM_LOOK_IDS as readonly UiLook[]).includes(look);
+  const lookCard = (one: UiLook) => {
+    const swatch = PREMIUM_SWATCH.get(one);
+    return (
+      <button
+        key={one}
+        type="button"
+        role="radio"
+        aria-checked={look === one}
+        className={look === one ? 'look-card is-current' : 'look-card'}
+        onClick={() => dispatch({ type: 'SET_LOOK', look: one })}
+      >
+        <span className="look-card-picture">
+          <LookPreview look={one} dark={dark} rtl={dir === 'rtl'} plainIcons={one === 'mono' || settings.icons === 'plain'} />
+          {look === one && (
+            <span className="look-card-check" aria-hidden="true">
+              <Icon of={Check} size={12} />
+            </span>
+          )}
+        </span>
+        <span className="look-card-name">{t(lookName(one))}</span>
+        {swatch && (
+          <span className="look-card-swatch" aria-hidden="true">
+            {swatch.map((colour) => (
+              <i key={colour} style={{ background: colour }} />
+            ))}
+          </span>
+        )}
+      </button>
+    );
+  };
   return (
     <>
       <Group>
@@ -186,28 +206,15 @@ export function AppearancePage() {
           onChange={(next) => dispatch({ type: 'SET_THEME', theme: next })}
         />
       </Group>
-      <Group title={t('look.label')} note={t(LOOK_NOTE[look])}>
+      <Group title={t('look.label')} note={premium ? undefined : t(lookNote(look))}>
         <div className="look-grid" role="radiogroup" aria-label={t('look.label')}>
-          {LOOK_IDS.map((one) => (
-            <button
-              key={one}
-              type="button"
-              role="radio"
-              aria-checked={look === one}
-              className={look === one ? 'look-card is-current' : 'look-card'}
-              onClick={() => dispatch({ type: 'SET_LOOK', look: one })}
-            >
-              <span className="look-card-picture">
-                <LookPreview look={one} dark={dark} rtl={dir === 'rtl'} plainIcons={one === 'mono' || settings.icons === 'plain'} />
-                {look === one && (
-                  <span className="look-card-check" aria-hidden="true">
-                    <Icon of={Check} size={12} />
-                  </span>
-                )}
-              </span>
-              <span className="look-card-name">{t(LOOK_NAME[one])}</span>
-            </button>
-          ))}
+          {BASE_LOOK_IDS.map(lookCard)}
+        </div>
+      </Group>
+      {/* The premium colour themes: the same picture cards, each with its palette under it. */}
+      <Group title={t('look.premium')} note={premium ? t(lookNote(look)) : t('look.premium.note')}>
+        <div className="look-grid" role="radiogroup" aria-label={t('look.premium')}>
+          {PREMIUM_LOOK_IDS.map(lookCard)}
         </div>
       </Group>
       <Group title={t('prefs.icons')}>

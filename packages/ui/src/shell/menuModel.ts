@@ -1,7 +1,7 @@
 import { useCloud } from '../cloud/CloudContext';
 import { isTauriHost } from '../core/host-tauri';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { LOOK_IDS } from '../state/preferences';
+import { LOOK_IDS, PREMIUM_LOOK_IDS } from '../state/preferences';
 import type { ThemeMode, UiLook } from '../state/preferences';
 import { updateSettings, useSettings } from '../state/settings';
 import type { PageLayout } from '../state/settings';
@@ -315,7 +315,8 @@ export function useMenuModel(): MenuModel[] {
         { ...themeItem('system', `${t('theme.label')}: ${t('theme.system')}`), separatorBefore: true },
         themeItem('light', `${t('theme.label')}: ${t('theme.light')}`),
         themeItem('dark', `${t('theme.label')}: ${t('theme.dark')}`),
-        ...LOOK_IDS.map((look, index) => (index === 0 ? { ...lookItem(look), separatorBefore: true } : lookItem(look))),
+        // The looks, then the premium colour themes under their own line.
+        ...LOOK_IDS.map((look, index) => (index === 0 || look === PREMIUM_LOOK_IDS[0] ? { ...lookItem(look), separatorBefore: true } : lookItem(look))),
       ],
     },
     {

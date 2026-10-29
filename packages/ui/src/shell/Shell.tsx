@@ -28,6 +28,7 @@ import { useSettings } from '../state/settings';
 import { HistoryEffects } from '../history/HistoryEffects';
 import { VersionsDialog } from '../history/VersionsDialog';
 import { WelcomeTour } from '../tour/Tour';
+import { useLiquidGlass } from '../styles/liquidGlass';
 import { SupportCenter } from '../support/SupportCenter';
 import { GuideLayer } from '../support/GuideLayer';
 import { startLog } from '../support/log';
@@ -68,6 +69,7 @@ export function Shell() {
   const settings = useSettings();
   const { t, lang } = useI18n();
   const nativeMenu = hasNativeMenuBar();
+  const glass = useLiquidGlass<HTMLDivElement>();
   useKeyboardShortcuts();
   useShellMenuSync();
 
@@ -263,7 +265,7 @@ export function Shell() {
         <CloudSheets />
         <RemoteLayer />
         {state.toast && (
-          <div key={state.toast.nonce} className="toast" role="status">
+          <div key={state.toast.nonce} ref={glass} className="toast" role="status">
             {t(state.toast.key)}
           </div>
         )}

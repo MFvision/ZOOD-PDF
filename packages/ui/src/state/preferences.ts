@@ -1,10 +1,15 @@
 import type { Lang } from '../i18n/messages';
+import type { PremiumLook } from '../styles/premiumThemes';
 
 /** Everything remembered between sessions (names only, no document bytes). */
 export type ThemeMode = 'system' | 'light' | 'dark';
 /** The look over the light/dark appearance (`styles/looks.css`). */
-export type UiLook = 'concept' | 'glass' | 'zood' | 'workbench' | 'mono';
-export const LOOK_IDS: readonly UiLook[] = ['concept', 'glass', 'zood', 'workbench', 'mono'];
+export type BaseLook = 'concept' | 'glass' | 'zood' | 'workbench' | 'mono';
+/** The premium colour themes (`styles/looks/premium.css`): Liquid Glass's layout in a palette's colours. */
+export type UiLook = BaseLook | PremiumLook;
+export const BASE_LOOK_IDS: readonly BaseLook[] = ['concept', 'glass', 'zood', 'workbench', 'mono'];
+export const PREMIUM_LOOK_IDS: readonly PremiumLook[] = ['lantern', 'garden', 'silver', 'amethyst', 'walnut', 'latte', 'terra', 'atlas'];
+export const LOOK_IDS: readonly UiLook[] = [...BASE_LOOK_IDS, ...PREMIUM_LOOK_IDS];
 export type LeftTab = 'thumbnails' | 'bookmarks' | 'attachments' | 'layers' | 'comments';
 
 export interface Preferences {

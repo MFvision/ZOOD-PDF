@@ -1,0 +1,64 @@
+/*
+ * Liquid glass's light (with liquidGlass.ts, which bends the backdrop where the engine can).
+ * Real glass catches light along its rim and gathers it into a bright crescent in the curved
+ * corners nearest the light; a weaker one sits in the opposite corner. It never shows a band
+ * across the middle. Both are inset shadows, so they follow any shape and cost nothing.
+ *
+ * Imported after components.css and shell.css: it adds the light in front of each floating
+ * piece's own shadow. Off in the flat looks and with reduced transparency.
+ */
+
+:root {
+  --glass-light-x: 6px;
+  --glass-light:
+    inset 0 0.5px 0 rgb(255 255 255 / 60%),
+    inset var(--glass-light-x) 5px 10px -7px rgb(255 255 255 / 60%),
+    inset calc(var(--glass-light-x) * -1) -5px 10px -8px rgb(255 255 255 / 28%),
+    inset 0 0 0 0.5px rgb(255 255 255 / 24%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glass-light:
+      inset 0 0.5px 0 rgb(255 255 255 / 26%),
+      inset var(--glass-light-x) 5px 10px -7px rgb(255 255 255 / 30%),
+      inset calc(var(--glass-light-x) * -1) -5px 10px -8px rgb(255 255 255 / 12%),
+      inset 0 0 0 0.5px rgb(255 255 255 / 12%);
+  }
+}
+
+:root[data-theme="dark"] {
+  --glass-light:
+    inset 0 0.5px 0 rgb(255 255 255 / 26%),
+    inset var(--glass-light-x) 5px 10px -7px rgb(255 255 255 / 30%),
+    inset calc(var(--glass-light-x) * -1) -5px 10px -8px rgb(255 255 255 / 12%),
+    inset 0 0 0 0.5px rgb(255 255 255 / 12%);
+}
+
+/* The light comes from above the reading start: the top right in Arabic. */
+[dir="rtl"] {
+  --glass-light-x: -6px;
+}
+
+:root:root[data-look="workbench"],
+:root:root[data-look="mono"],
+html[data-reduce-transparency="on"] {
+  --glass-light: 0 0 0 0 transparent;
+}
+
+.popover,
+.menu-list,
+.toast {
+  box-shadow: var(--glass-light), var(--shadow-popover);
+}
+
+.dialog {
+  box-shadow: var(--glass-light), var(--shadow-sheet);
+}
+
+/* Where the engine can bend the backdrop (Windows), the HUD is clear glass: a lighter tint and
+   a light blur, so the bend shows, over the same text colour. */
+.toast[data-refract] {
+  background: var(--glass);
+  backdrop-filter: var(--glass-refract) blur(4px) saturate(170%) brightness(1.04);
+}
