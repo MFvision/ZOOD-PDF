@@ -6490,3 +6490,120 @@ main {
     font-size: 14px;
   }
 }
+
+/* ---- Photo scenes (js/scenes.js) ------------------------------------------
+   Full-width real photographs between chapters. The photo fills the band and
+   drifts a little with the scroll (--drift, -0.5 to 0.5); a navy veil from the
+   reading side keeps the words at AA contrast on any photo. */
+.scene {
+  --drift: 0;
+  position: relative;
+  z-index: 3;
+  margin: 0;
+  height: min(92svh, 64vw + 160px);
+  min-height: 460px;
+  overflow: hidden;
+  background: var(--navy-deep);
+  color: #fff;
+  isolation: isolate;
+}
+.scene img {
+  position: absolute;
+  inset: -8% 0;
+  width: 100%;
+  height: 116%;
+  object-fit: cover;
+  transform: translate3d(0, calc(var(--drift) * -7%), 0) scale(1.08);
+  transition: transform 1600ms var(--ease);
+  will-change: transform;
+}
+.scene.seen img {
+  transform: translate3d(0, calc(var(--drift) * -7%), 0) scale(1);
+  transition: transform 1600ms var(--ease);
+}
+.scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(to top, rgb(2 22 49 / 88%) 0%, rgb(2 22 49 / 45%) 38%, rgb(2 22 49 / 0%) 70%),
+    linear-gradient(to left, rgb(2 22 49 / 35%), rgb(2 22 49 / 0%) 60%);
+}
+[dir='ltr'] .scene::after {
+  background:
+    linear-gradient(to top, rgb(2 22 49 / 88%) 0%, rgb(2 22 49 / 45%) 38%, rgb(2 22 49 / 0%) 70%),
+    linear-gradient(to right, rgb(2 22 49 / 35%), rgb(2 22 49 / 0%) 60%);
+}
+.scene-words {
+  position: absolute;
+  z-index: 2;
+  inset-inline: max(var(--gutter), 6vw);
+  inset-block-end: clamp(48px, 9svh, 96px);
+  max-width: min(46rem, 100%);
+}
+.scene-title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: clamp(2rem, 1.2rem + 3.6vw, 4.4rem);
+  line-height: 1.15;
+  font-weight: 700;
+  text-wrap: balance;
+  max-width: 16em;
+}
+.scene-line {
+  margin: 0.6em 0 0;
+  font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
+  line-height: 1.6;
+  color: rgb(255 255 255 / 90%);
+  max-width: 40ch;
+}
+.scene-title,
+.scene-line {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity var(--slow) var(--ease),
+    transform var(--slow) var(--ease);
+}
+.scene-line {
+  transition-delay: 120ms;
+}
+.scene.seen .scene-title,
+.scene.seen .scene-line {
+  opacity: 1;
+  transform: none;
+}
+.scene-credit {
+  position: absolute;
+  z-index: 2;
+  inset-block-end: 12px;
+  inset-inline-end: max(var(--gutter), 2vw);
+  font-size: 0.72rem;
+  color: rgb(255 255 255 / 72%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene img,
+  .scene.seen img {
+    transform: none;
+    transition: none;
+    inset: 0;
+    height: 100%;
+  }
+  .scene-title,
+  .scene-line {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+@media (max-width: 599px) {
+  .scene {
+    height: 78svh;
+  }
+  .scene-credit {
+    inset-inline: var(--gutter) auto;
+    inset-block-start: 12px;
+    inset-block-end: auto;
+  }
+}

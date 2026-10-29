@@ -33,6 +33,7 @@ import { snapTitle } from './hero-snap.js';
 import { ICONS } from './icons.js';
 import { startPageMorph } from './page-morph.js';
 import { startFoldable } from './foldable.js';
+import { SCENES, sceneHtml, startScenes } from './scenes.js';
 
 const root = document.documentElement;
 export const lang = root.lang === 'en' ? 'en' : 'ar';
@@ -380,7 +381,10 @@ function startStory() {
   main.innerHTML =
     story
       .map((c, i) =>
-        c.kind === 'wall' ? wallHtml(c, i) : ROOMS[c.kind] ? roomHtml(c, i) : chapterHtml(c, i),
+        SCENES.filter((s) => s.before === c.id)
+          .map((s) => sceneHtml(s, t, escape))
+          .join('') +
+        (c.kind === 'wall' ? wallHtml(c, i) : ROOMS[c.kind] ? roomHtml(c, i) : chapterHtml(c, i)),
       )
       .join('') + insideHtml(inside);
 
@@ -390,6 +394,7 @@ function startStory() {
     new URL('../assets/brand/pattern.svg', import.meta.url).href,
   );
   document.body.append(footer());
+  startScenes(main, reduced);
 
   const sections = [...main.querySelectorAll('[data-chapter]')];
   const rooms = story.flatMap((c, k) => (ROOMS[c.kind] ? [[k, ROOMS[c.kind].frame]] : []));
