@@ -225,7 +225,7 @@ test.describe('OneDrive in the browser', () => {
     await drive.getByRole('button', { name: /^Sign In/ }).click();
     await signIn(page);
     const cards = drive.getByRole('list').getByRole('button');
-    await expect(cards).toHaveText([/^Choose Files/, /^Archive/, /^الفواتير/, /^World Bank briefing/]);
+    await expect(cards).toHaveText([/^Choose Files/, /^Archive/, /^الفواتير/, /^notes\.docx/, /^World Bank briefing/]);
     // Choosing more is its own card: from the drive, or from this computer.
     await cards.first().click();
     await expect(page.getByRole('menu', { name: 'Choose Files' }).getByRole('menuitem')).toHaveText(['From OneDrive…', 'From This Computer…']);
@@ -255,6 +255,24 @@ test.describe('OneDrive in the browser', () => {
     await expect(tabs).toHaveCount(2);
     await expect(tabs.nth(0)).toContainText('فاتورة ٢٠٢٦');
     await expect(tabs.nth(1)).toContainText('older 1');
+  });
+
+  test('a whole folder ticked opens every PDF in it, beside files ticked elsewhere', async ({ page, stayLocal: _ }) => {
+    const { fake } = driveWithFiles();
+    await microsoft(page, fake);
+    await page.goto('/');
+    await oneDriveRow(page).getByRole('button', { name: 'Open from OneDrive…' }).click();
+    await signIn(page);
+    const dialog = sheet(page);
+    // Word files are listed too (Create PDF makes PDFs of them), not only PDFs and folders.
+    await expect(dialog.getByRole('list', { name: 'Files' })).toContainText('notes.docx');
+    await dialog.getByRole('checkbox', { name: /the folder “الفواتير”/ }).check();
+    await dialog.getByRole('checkbox', { name: /World Bank briefing\.pdf/ }).check();
+    await dialog.getByRole('button', { name: 'Open Chosen (2)' }).click();
+    await expect(dialog).toBeHidden();
+    const tabs = page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab');
+    await expect(tabs).toHaveCount(6);
+    await expect(tabs.nth(0)).toContainText('World Bank briefing');
   });
 
   test('Save writes a new revision checked against the eTag it was opened at; a version conflict is the person’s to settle', async ({
@@ -441,7 +459,7 @@ test.describe('OneDrive in the browser', () => {
     await expect(sheet(page).getByRole('list', { name: 'Files' }).getByRole('button').first()).toBeVisible();
     fake.expireAccessTokens();
     await sheet(page).getByRole('button', { name: /^Archive/ }).click();
-    await expect(sheet(page)).toContainText('No folders or PDF files here.');
+    await expect(sheet(page)).toContainText('No folders, PDFs or documents here.');
     const refused = fake.log.filter((r) => r.url.startsWith(GRAPH) && r.url.includes('/children'));
     expect(refused.length).toBeGreaterThanOrEqual(3);
     expect(fake.tokenRequests.map((form) => form.grant_type)).toEqual(['authorization_code', 'refresh_token']);

@@ -12,6 +12,7 @@ import type { Account, Entry, Saved } from './drive';
 import { kindOf } from './errors';
 import type { CloudErrorKind } from './errors';
 import { MAX_TABS } from '../state/tabs';
+import { PDF_SNIFF_BYTES, looksLikePdf, typeForName } from '../state/pdfFile';
 import { pickedIds } from './gdrive';
 import { currentHost } from './host';
 import { googlePicker } from './oauth';
@@ -101,7 +102,7 @@ export interface CloudApi {
   pickWithGoogle: (purpose: 'open' | 'folder', name?: string) => void;
   signOut: (provider: ProviderId) => Promise<void>;
   openEntry: (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => Promise<void>;
-  /** Each PDF among `entries` in a tab of its own. */
+  /** Each PDF among `entries` (and in each folder among them) in a tab of its own; other files to Create PDF. */
   openEntries: (provider: ProviderId, entries: readonly Pick<Entry, 'key' | 'name' | 'kind'>[]) => Promise<void>;
   saveInto: (provider: ProviderId, folderKey: string | null, name: string) => Promise<void>;
   resolveConflict: (choice: 'copy' | 'replace' | 'cancel') => void;
@@ -290,34 +291,85 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       .catch(() => undefined);
   }, [binding, remote, info, documentPassword]);
 
-  const openEntry = useCallback(
-    async (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => {
+  /** A drive file as the app takes it in: a PDF opens (and claims Save), any other kind goes to Create PDF. */
+  const fetchEntry = useCallback(
+    async (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>): Promise<File | null> => {
       if (sheetRef.current?.provider === provider) setError(null);
       setActivity(provider, { kind: 'opening', provider, name: entry.name });
       try {
         const opened = await drive(provider).open(entry.key);
-        const file = new File([opened.bytes], opened.name, { type: 'application/pdf' });
+        // A PDF by its name or its bytes: a Word file typed a PDF was taken for one.
+        const pdf = typeForName(opened.name) !== '' || looksLikePdf(new Uint8Array(opened.bytes, 0, Math.min(opened.bytes.byteLength, PDF_SNIFF_BYTES)));
+        const file = new File([opened.bytes], opened.name, { type: pdf ? 'application/pdf' : '' });
         const { bytes: _bytes, ...saved } = opened;
-        pending.current.set(file, { ...saved, provider, file });
+        if (file.type === 'application/pdf') {
+          pending.current.set(file, { ...saved, provider, file });
+          setRecent(addCloudRecent({ provider, key: opened.key, name: opened.name, openedAt: Date.now() }));
+        }
         setActivity(provider, null);
-        showFor(provider, null);
-        setRecent(addCloudRecent({ provider, key: opened.key, name: opened.name, openedAt: Date.now() }));
-        await services.openFile(file, undefined, { recent: false });
+        return file;
       } catch (error) {
         setActivity(provider, null);
         if (kindOf(error) === 'signedOut') signInAgain(provider, { kind: 'recent', entry: { provider, key: entry.key, name: entry.name, openedAt: Date.now() } });
         else report(error, provider);
+        return null;
       }
     },
-    [drive, services, signInAgain, report, setActivity, showFor],
+    [drive, signInAgain, report, setActivity],
   );
 
-  /** Several files at once (picked, or chosen in the sheet): each PDF opens in a tab of its own, one after another. */
+  const openEntry = useCallback(
+    async (provider: ProviderId, entry: Pick<Entry, 'key' | 'name'>) => {
+      const file = await fetchEntry(provider, entry);
+      if (!file) return;
+      showFor(provider, null);
+      await services.openFile(file, undefined, { recent: false });
+    },
+    [fetchEntry, services, showFor],
+  );
+
+  /**
+   * Several at once (picked, or ticked in the sheet): each PDF opens in a tab
+   * of its own, one after another; a folder ticked brings what is in it (not
+   * its folders); the files that are not PDFs go to Create PDF together.
+   */
   const openEntries = useCallback(
     async (provider: ProviderId, entries: readonly Pick<Entry, 'key' | 'name' | 'kind'>[]) => {
-      for (const entry of entries.filter((one) => one.kind === 'pdf').slice(0, MAX_TABS)) await openEntry(provider, entry);
+      const files: Pick<Entry, 'key' | 'name' | 'kind'>[] = entries.filter((one) => one.kind !== 'folder');
+      for (const folder of entries.filter((one) => one.kind === 'folder')) {
+        setActivity(provider, { kind: 'opening', provider, name: folder.name });
+        try {
+          const listing = await drive(provider).list(folder.key);
+          files.push(...listing.entries.filter((one) => one.kind !== 'folder'));
+        } catch (error) {
+          setActivity(provider, null);
+          if (kindOf(error) === 'signedOut') return signInAgain(provider, { kind: 'browse' });
+          report(error, provider);
+          return;
+        }
+        setActivity(provider, null);
+      }
+      const seen = new Set<string>();
+      const unique = files.filter((one) => !seen.has(one.key) && Boolean(seen.add(one.key)));
+      const others: File[] = [];
+      let opened = 0;
+      for (const entry of unique.slice(0, MAX_TABS * 2)) {
+        if (entry.kind === 'pdf' && opened >= MAX_TABS) continue;
+        const file = await fetchEntry(provider, entry);
+        if (!file) continue;
+        if (file.type === 'application/pdf') {
+          opened += 1;
+          showFor(provider, null);
+          await services.openFile(file, undefined, { recent: false });
+        } else others.push(file);
+      }
+      if (others.length > 0) {
+        showFor(provider, null);
+        services.dropFiles(others);
+      }
+      if (unique.length === 0 && entries.some((one) => one.kind === 'folder')) dispatch({ type: 'TOAST', key: 'cloud.browse.folderNothing' });
     },
-    [openEntry],
+    [drive, fetchEntry, services, showFor, signInAgain, report, setActivity, dispatch],
   );
 
   /** Asks the person, in a sheet, and waits for the choice. */
@@ -471,7 +523,8 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
             report(error, provider);
             return;
           }
-          await openEntries(provider, picked);
+          // A folder picked opens in the sheet below, to choose from.
+          await openEntries(provider, picked.filter((entry) => entry.kind !== 'folder'));
           const folder = picked.find((entry) => entry.kind === 'folder');
           if (folder) showFor(provider, { kind: 'browse', provider, mode: 'open', folder: { key: folder.key, name: folder.name } });
           else if (!picked.some((entry) => entry.kind === 'pdf')) showFor(provider, { kind: 'browse', provider, mode: 'open' });

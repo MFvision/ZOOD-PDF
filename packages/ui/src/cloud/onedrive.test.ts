@@ -19,14 +19,16 @@ function drive(handle: Parameters<typeof recording>[0]) {
 const auth = (request: CloudRequest) => request.headers?.authorization;
 
 describe('listing and searching OneDrive', () => {
-  it('lists folders and PDFs, leaves other files out, and follows a shortcut to its own drive', async () => {
+  it('lists folders, PDFs and files Create PDF reads, leaves other files out, and follows a shortcut to its own drive', async () => {
     const { onedrive, seen } = drive(() =>
       reply(200, {
         value: [
           { id: 'F1', name: 'Reports', folder: { childCount: 3 }, parentReference: { driveId: 'd1' } },
           { id: 'P1', name: 'فاتورة.pdf', size: 1200, file: { mimeType: 'application/pdf' }, parentReference: { driveId: 'd1' } },
           { id: 'P2', name: 'scan.PDF', file: { mimeType: 'application/octet-stream' }, parentReference: { driveId: 'd1' } },
-          { id: 'X1', name: 'notes.docx', file: { mimeType: 'application/vnd.openxmlformats' } },
+          { id: 'X1', name: 'notes.docx', file: { mimeType: 'application/vnd.openxmlformats' }, parentReference: { driveId: 'd1' } },
+          { id: 'X2', name: 'setup.exe', file: { mimeType: 'application/octet-stream' }, parentReference: { driveId: 'd1' } },
+          { id: 'X3', name: 'README', file: { mimeType: 'text/plain' }, parentReference: { driveId: 'd1' } },
           { id: 'N1', name: 'Notebook', package: { type: 'oneNote' }, folder: {} },
           { id: 'S1', name: 'Shared', remoteItem: { id: 'R9', name: 'Shared', folder: { childCount: 1 }, parentReference: { driveId: 'other' } } },
         ],
@@ -42,6 +44,7 @@ describe('listing and searching OneDrive', () => {
       ['Reports', 'folder', 'd1!F1'],
       ['فاتورة.pdf', 'pdf', 'd1!P1'],
       ['scan.PDF', 'pdf', 'd1!P2'],
+      ['notes.docx', 'file', 'd1!X1'],
       ['Shared', 'folder', 'other!R9'],
     ]);
     expect(listing.next).toBe(`${GRAPH}/me/drive/root/children?$skiptoken=2`);

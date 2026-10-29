@@ -64,6 +64,31 @@ pub struct Labels {
     pub copy: String,
     pub paste: String,
     pub select_all: String,
+    /// Quit asks first when documents have unsaved changes: its words. Older
+    /// pages send none, and the English ones are said instead.
+    #[serde(default)]
+    pub quit_unsaved_title: String,
+    #[serde(default)]
+    pub quit_unsaved_one: String,
+    /// With `{count}`.
+    #[serde(default)]
+    pub quit_unsaved_many: String,
+    #[serde(default)]
+    pub quit_anyway: String,
+    #[serde(default)]
+    pub quit_cancel: String,
+    /// Quit asks while documents are open (unless turned off): its words.
+    #[serde(default)]
+    pub quit_open_title: String,
+    #[serde(default)]
+    pub quit_open_one: String,
+    /// With `{count}`.
+    #[serde(default)]
+    pub quit_open_many: String,
+    #[serde(default)]
+    pub quit_now: String,
+    #[serde(default)]
+    pub quit_never: String,
 }
 
 /// One item of the model.
@@ -123,6 +148,72 @@ impl MenuSpec {
 /// person has open).
 #[derive(Default)]
 pub struct MenuState(Mutex<Option<MenuSpec>>);
+
+/// The application menu's Quit. Not the system's own item: that one ends the
+/// app at once (`terminate:`), with unsaved changes and all, and it was what
+/// a stray click on a slow Mac chose (0.4.26). This one asks first when
+/// something is unsaved (`updates::quit_asking`).
+pub const QUIT_ID: &str = "warraq-quit";
+
+/// The words Quit's question is asked in, from the menu last built.
+static QUIT_WORDS: Mutex<Option<Labels>> = Mutex::new(None);
+
+/// What Quit's questions say, in the interface's language.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuitWords {
+    pub title: String,
+    pub message: String,
+    /// The button that quits.
+    pub quit: String,
+    /// "Don't ask again" (only when documents are open, nothing unsaved).
+    pub never: String,
+    pub cancel: String,
+}
+
+/// Quit's question for `count` documents: unsaved ones when `unsaved`,
+/// else open ones. English when the page sent no words.
+pub fn quit_words(count: u32, unsaved: bool) -> QuitWords {
+    let labels = QUIT_WORDS.lock().ok().and_then(|words| words.clone());
+    let l = labels.as_ref();
+    let pick = |said: Option<&String>, english: &str| {
+        said.filter(|text| !text.trim().is_empty())
+            .cloned()
+            .unwrap_or_else(|| english.to_string())
+            .replace("{count}", &count.to_string())
+    };
+    let cancel = pick(l.map(|l| &l.quit_cancel), "Cancel");
+    if unsaved {
+        QuitWords {
+            title: pick(l.map(|l| &l.quit_unsaved_title), "Quit without saving?"),
+            message: if count == 1 {
+                pick(
+                    l.map(|l| &l.quit_unsaved_one),
+                    "One document has unsaved changes. Quitting now loses them.",
+                )
+            } else {
+                pick(
+                    l.map(|l| &l.quit_unsaved_many),
+                    "{count} documents have unsaved changes. Quitting now loses them.",
+                )
+            },
+            quit: pick(l.map(|l| &l.quit_anyway), "Quit Anyway"),
+            never: String::new(),
+            cancel,
+        }
+    } else {
+        QuitWords {
+            title: pick(l.map(|l| &l.quit_open_title), "Quit ZOOD PDF?"),
+            message: if count == 1 {
+                pick(l.map(|l| &l.quit_open_one), "One document is open.")
+            } else {
+                pick(l.map(|l| &l.quit_open_many), "{count} documents are open.")
+            },
+            quit: pick(l.map(|l| &l.quit_now), "Quit"),
+            never: pick(l.map(|l| &l.quit_never), "Quit, Don't Ask Again"),
+            cancel,
+        }
+    }
+}
 
 /// The model's id for a menu event, or `None` for the host's own items.
 pub fn model_id(event_id: &str) -> Option<&str> {
@@ -213,6 +304,9 @@ fn application_entries(spec: &MenuSpec) -> Vec<AppEntry<'_>> {
 /// Builds the whole menu bar from the UI's model.
 pub fn build<R: Runtime>(app: &AppHandle<R>, spec: &MenuSpec) -> tauri::Result<Menu<R>> {
     let labels = &spec.labels;
+    if let Ok(mut words) = QUIT_WORDS.lock() {
+        *words = Some(labels.clone());
+    }
     let menu = Menu::new(app)?;
 
     let application = Submenu::new(app, &labels.app_name, true)?;
@@ -233,9 +327,13 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, spec: &MenuSpec) -> tauri::Result<M
             AppEntry::ShowAll => {
                 application.append(&PredefinedMenuItem::show_all(app, Some(&labels.show_all))?)?
             }
-            AppEntry::Quit => {
-                application.append(&PredefinedMenuItem::quit(app, Some(&labels.quit))?)?
-            }
+            AppEntry::Quit => application.append(&MenuItem::with_id(
+                app,
+                QUIT_ID,
+                &labels.quit,
+                true,
+                Some("CmdOrCtrl+Q"),
+            )?)?,
         }
     }
     menu.append(&application)?;
@@ -461,5 +559,29 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn quit_asks_in_the_page_language_or_in_english() {
+        *QUIT_WORDS.lock().unwrap() = None;
+        let words = quit_words(3, true);
+        assert_eq!(words.title, "Quit without saving?");
+        assert!(words.message.starts_with("3 documents"));
+        assert_eq!(
+            (words.quit.as_str(), words.cancel.as_str()),
+            ("Quit Anyway", "Cancel")
+        );
+        assert_eq!(quit_words(1, false).message, "One document is open.");
+        assert!(!quit_words(2, false).never.is_empty());
+        let mut labels = spec().labels;
+        labels.quit_unsaved_many = "في {count} مستندات تغييرات غير محفوظة".into();
+        labels.quit_open_one = "مستند واحد مفتوح.".into();
+        *QUIT_WORDS.lock().unwrap() = Some(labels);
+        assert_eq!(
+            quit_words(4, true).message,
+            "في 4 مستندات تغييرات غير محفوظة"
+        );
+        assert_eq!(quit_words(1, false).message, "مستند واحد مفتوح.");
+        *QUIT_WORDS.lock().unwrap() = None;
     }
 }

@@ -41,8 +41,9 @@ export function FormRuntimeProvider({ children }: { children: ReactNode }) {
     if (!documentBytes) return;
     let cancelled = false;
     client
+      // Read on every file opened: a copy only where the core takes the buffer.
       .callStatic<FormModel>('forms.inspect', { password: documentPassword ?? null }, [
-        documentBytes.slice(0),
+        client.takesBuffers ? documentBytes.slice(0) : documentBytes,
       ])
       .then(
         ({ result }) => {

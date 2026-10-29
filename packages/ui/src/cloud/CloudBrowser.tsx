@@ -57,7 +57,7 @@ export function CloudBrowser({
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{ view: string; entries: Entry[]; next: string | null; failed: CloudErrorKind | null } | null>(null);
   const [more, setMore] = useState(false);
-  // PDFs ticked to open together, kept while the person moves between folders.
+  // PDFs, documents and whole folders ticked to open together, kept while the person moves between folders.
   const [chosen, setChosen] = useState<ReadonlyMap<string, Entry>>(new Map());
   const choose = (entry: Entry, on: boolean) =>
     setChosen((current) => {
@@ -126,7 +126,7 @@ export function CloudBrowser({
   const shown = useMemo(() => {
     if (!walks) return entries;
     const collator = new Intl.Collator(lang, { numeric: true, sensitivity: 'base' });
-    return [...entries].sort((a, b) => (a.kind === b.kind ? collator.compare(a.name, b.name) : a.kind === 'folder' ? -1 : 1));
+    return [...entries].sort((a, b) => ((a.kind === 'folder') === (b.kind === 'folder') ? collator.compare(a.name, b.name) : a.kind === 'folder' ? -1 : 1));
   }, [entries, walks, lang]);
 
   const size = (bytes?: number) => {
@@ -215,8 +215,9 @@ export function CloudBrowser({
 
       <ul className="cloud-list" aria-label={t('cloud.browse.list')} aria-busy={loading || undefined}>
         {shown.map((entry) => {
-          const disabled = busy || (mode === 'saveAs' && entry.kind === 'pdf');
-          const ticks = mode === 'open' && entry.kind === 'pdf';
+          const disabled = busy || (mode === 'saveAs' && entry.kind !== 'folder');
+          // A folder ticks too (what is in it opens); its row still goes into it.
+          const ticks = mode === 'open';
           return (
             <li key={entry.key} className={ticks ? 'cloud-pick' : undefined}>
               {ticks && (
@@ -225,7 +226,7 @@ export function CloudBrowser({
                   className="cloud-pick-box"
                   checked={chosen.has(entry.key)}
                   disabled={busy}
-                  aria-label={t('cloud.browse.choose', { name: entry.name })}
+                  aria-label={t(entry.kind === 'folder' ? 'cloud.browse.chooseFolder' : 'cloud.browse.choose', { name: entry.name })}
                   onChange={(event) => choose(entry, event.target.checked)}
                 />
               )}

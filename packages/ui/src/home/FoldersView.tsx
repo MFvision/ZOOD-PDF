@@ -253,7 +253,7 @@ function DriveFiles({ provider, onBack, onChoose }: { provider: ProviderId; onBa
     const listed = current?.entries ?? [];
     if (!drive.folders) return listed;
     const collator = new Intl.Collator(lang, { numeric: true, sensitivity: 'base' });
-    return [...listed].sort((a, b) => (a.kind === b.kind ? collator.compare(a.name, b.name) : a.kind === 'folder' ? -1 : 1));
+    return [...listed].sort((a, b) => ((a.kind === 'folder') === (b.kind === 'folder') ? collator.compare(a.name, b.name) : a.kind === 'folder' ? -1 : 1));
   }, [current, drive, lang]);
   const showMore = (page: string) => {
     setMore(true);

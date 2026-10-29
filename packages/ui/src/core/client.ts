@@ -67,6 +67,16 @@ export class CoreClient {
     };
   }
 
+  /**
+   * Whether buffers given to the core are taken from the caller (transferred
+   * to the worker), so a caller keeping the bytes must pass a copy. The
+   * desktop's native core only reads them: a copy there is one more of the
+   * whole file for nothing (a 268 MB OneDrive PDF took the page to 2.6 GB).
+   */
+  get takesBuffers(): boolean {
+    return this.worker !== null;
+  }
+
   /** Resolves once the worker has chosen the WASM module or the mock. */
   init(): Promise<CoreStatus> {
     this.statusPromise ??= this.request('init', { mock: this.forceMock });

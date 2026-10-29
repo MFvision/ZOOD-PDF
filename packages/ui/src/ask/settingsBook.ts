@@ -1,4 +1,4 @@
-import { configureRing, ringSettings, setShellMenu, shellMenuState } from '../core/host-tauri';
+import { configureRing, quitAsks, ringSettings, setQuitAsks, setShellMenu, shellMenuState } from '../core/host-tauri';
 import { readQuickPreferences, writeQuickPreferences } from '../quick/QuickSettings';
 import { translate } from '../i18n/messages';
 import type { TKey } from '../i18n/messages';
@@ -107,6 +107,15 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
       { value: 'reopen', label: 'prefs.startWith.reopen', words: ['reopen', 'last files', 'last documents', 'اخر الملفات', 'اخر المستندات'] },
     ],
     names: ['open with the last files', 'reopen the last files', 'when the app opens', 'when it opens', 'start with', 'startup', 'on start', 'at launch', 'عند فتح التطبيق', 'عند فتح البرنامج', 'عند التشغيل', 'البدايه'],
+  },
+  {
+    id: 'quitAsks',
+    section: 'general',
+    label: 'prefs.quitAsks',
+    kind: 'toggle',
+    names: ['ask before quitting', 'confirm quit', 'ask before quit', 'quit confirmation', 'اسال قبل الانهاء', 'تاكيد الانهاء', 'السؤال قبل الانهاء', 'اسال قبل الخروج', 'تاكيد الخروج'],
+    desktop: true,
+    host: true,
   },
   {
     id: 'checkUpdates',
@@ -1014,6 +1023,8 @@ export async function settingNow(entry: SettingEntry, setters: SettingSetters): 
     }
     case 'ringSize':
       return settings.ringSize;
+    case 'quitAsks':
+      return (await quitAsks().catch(() => true)) ? 'on' : 'off';
     case 'shellMenu': {
       const menu = await shellMenuState().catch(() => null);
       return menu && menu.kind === 'registry' ? (menu.on && readQuickPreferences().menu ? 'on' : 'off') : null;
@@ -1083,6 +1094,9 @@ export async function applySetting(entry: SettingEntry, value: string, setters: 
       }
       return true;
     }
+    case 'quitAsks':
+      await setQuitAsks(on);
+      return true;
     case 'shellMenu': {
       const menu = await shellMenuState().catch(() => null);
       // A Mac's Quick Actions are the system's to switch, in System Settings.
