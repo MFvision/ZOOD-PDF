@@ -32,3 +32,12 @@ export async function unsavedEverywhere(): Promise<number> {
     return 0;
   }
 }
+
+let reportedOpen = 0;
+
+/** Tells the host how many documents this window has open (Quit asks while there are any). */
+export function reportOpen(count: number): void {
+  if (!isTauriHost() || count === reportedOpen) return;
+  reportedOpen = count;
+  void invokeHost('open_report', { count }).catch(() => undefined);
+}

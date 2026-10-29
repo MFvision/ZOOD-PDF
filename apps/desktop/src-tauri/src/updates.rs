@@ -26,7 +26,7 @@ pub struct UpdateState(Mutex<Option<Update>>);
 /// How many documents each window holds with unsaved changes, by window
 /// label, so "Update now" can warn before the restart closes them all.
 #[derive(Default)]
-pub struct UnsavedState(Mutex<HashMap<String, u32>>);
+pub struct UnsavedState(pub(crate) Mutex<HashMap<String, u32>>);
 
 /// Each window says how many of its documents have unsaved changes whenever
 /// that number changes.
@@ -54,7 +54,7 @@ pub fn unsaved_total(app: AppHandle, state: State<'_, UnsavedState>) -> u32 {
 const MAX_TABS_PER_WINDOW: u32 = 64;
 
 /// The sum over windows still open; a closed window's entry is dropped.
-fn total_open(counts: &mut HashMap<String, u32>, open: impl Fn(&str) -> bool) -> u32 {
+pub(crate) fn total_open(counts: &mut HashMap<String, u32>, open: impl Fn(&str) -> bool) -> u32 {
     counts.retain(|label, _| open(label));
     counts.values().fold(0u32, |sum, n| sum.saturating_add(*n))
 }

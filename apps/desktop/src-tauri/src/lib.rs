@@ -33,6 +33,7 @@ pub mod print;
 pub mod profile;
 pub mod putaway;
 pub mod quick;
+pub mod quit;
 pub mod recent;
 pub mod remote;
 pub mod ring;
@@ -352,6 +353,7 @@ pub fn run() {
         // The macOS menu bar is the UI's model (src/menu.rs); until the UI
         // sends it, Tauri's default menu stands in.
         .manage(menu::MenuState::default())
+        .manage(quit::OpenState::default())
         // Cloud drives: the sign-in under way and the system's credential store.
         .manage(cloud::CloudState::default())
         // The Library's walks under way, and its folder watcher.
@@ -376,6 +378,7 @@ pub fn run() {
                 quick::show_editor(app);
             }
             ring::TRAY_QUIT => app.exit(0),
+            menu::QUIT_ID => quit::quit_asking(app),
             id if presence::on_menu(app, id) => {}
             id => menu::forward(app, id),
         })
@@ -519,6 +522,9 @@ pub fn run() {
             updates::update_check,
             updates::update_install,
             updates::unsaved_report,
+            quit::open_report,
+            quit::quit_ask_get,
+            quit::quit_ask_set,
             updates::unsaved_total,
             quick::quick_job,
             quick::quick_close,

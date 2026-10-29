@@ -818,6 +818,18 @@ export interface NativeMenuLabels {
   copy: string;
   paste: string;
   selectAll: string;
+  /** Quit's question when documents have unsaved changes; `quitUnsavedMany` has `{count}`. */
+  quitUnsavedTitle: string;
+  quitUnsavedOne: string;
+  quitUnsavedMany: string;
+  quitAnyway: string;
+  quitCancel: string;
+  /** Quit's question while documents are open; `quitOpenMany` has `{count}`. */
+  quitOpenTitle: string;
+  quitOpenOne: string;
+  quitOpenMany: string;
+  quitNow: string;
+  quitNever: string;
 }
 
 export interface NativeMenuSpec {
@@ -1522,4 +1534,15 @@ export function onLibraryWatch(onEvent: (event: LibraryWatchEvent) => void): () 
  */
 export async function saveDeck(bytes: Uint8Array, title: string): Promise<string> {
   return (await invoke('ask_save_deck', bytes, { headers: { 'x-warraq-name': encodeURIComponent(title) } })) as string;
+}
+
+/* ----------------------------------------------------------------- quit */
+
+/** Settings › General: whether Quit asks while documents are open (`src-tauri/src/quit.rs`). */
+export async function quitAsks(): Promise<boolean> {
+  return (await invoke('quit_ask_get')) !== false;
+}
+
+export async function setQuitAsks(on: boolean): Promise<boolean> {
+  return (await invoke('quit_ask_set', { on })) !== false;
 }

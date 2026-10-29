@@ -6,7 +6,7 @@ import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
 import { hasUnsavedEdits } from '../state/appReducer';
 import { useAppState, useServices } from '../state/AppContext';
-import { reportUnsaved, unsavedEverywhere, unsavedHere } from './unsaved';
+import { reportOpen, reportUnsaved, unsavedEverywhere, unsavedHere } from './unsaved';
 import {
   checkForUpdate,
   dismissUpdate,
@@ -41,12 +41,14 @@ export function useInstallUpdate(): { install: () => void; dialog: ReactNode } {
   return { install, dialog };
 }
 
-/** Tells the host how many of this window's documents have unsaved changes. */
+/** Tells the host how many of this window's documents are open, and how many have unsaved changes. */
 function useReportUnsaved(): void {
   const state = useAppState();
   const { tabs, activeTab } = useServices();
   const count = unsavedHere(tabs, activeTab, state.document !== null && hasUnsavedEdits(state));
   useEffect(() => reportUnsaved(count), [count]);
+  const open = Math.max(tabs.length, state.document !== null ? 1 : 0);
+  useEffect(() => reportOpen(open), [open]);
 }
 
 /**

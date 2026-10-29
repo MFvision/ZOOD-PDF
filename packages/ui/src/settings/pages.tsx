@@ -10,8 +10,10 @@ import {
   isTauriHost,
   openDefaultApps,
   pickFolder,
+  quitAsks,
   resetRing,
   ringSettings,
+  setQuitAsks,
   setShellMenu,
   shellMenuState,
   systemUserName,
@@ -103,6 +105,7 @@ export function GeneralPage() {
           ]}
           onChange={(startWith) => set({ startWith })}
         />
+        {hasNativeMenuBar() && <QuitAsksToggle />}
       </Group>
       {canUpdate() && <UpdatesGroup />}
       {desktop && (
@@ -134,6 +137,34 @@ export function GeneralPage() {
         />
       </Group>
     </>
+  );
+}
+
+/** Quit asks first while documents are open; the host keeps it (`src-tauri/src/quit.rs`), as its dialog does. */
+function QuitAsksToggle() {
+  const { t } = useI18n();
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void quitAsks().then(
+      (asks) => alive && setOn(asks),
+      () => alive && setOn(true),
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return (
+    <Toggle
+      label={t('prefs.quitAsks')}
+      hint={t('prefs.quitAsksHint')}
+      checked={on ?? true}
+      disabled={on === null}
+      onChange={(next) => {
+        setOn(next);
+        void setQuitAsks(next).catch(() => setOn(!next));
+      }}
+    />
   );
 }
 
