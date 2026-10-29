@@ -435,6 +435,20 @@ html[data-look="mono"] .prefs-nav-icon {
   text-align: center;
 }
 
+/* A premium theme's palette, its three colours as dots under the name. */
+.look-card-swatch {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.look-card-swatch i {
+  inline-size: 12px;
+  block-size: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.5px var(--separator);
+}
+
 .look-card-check {
   position: absolute;
   inset-block-start: var(--space-5);

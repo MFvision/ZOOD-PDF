@@ -36,7 +36,8 @@ import type { SectionId } from '../settings/SettingsWindow';
 import type { ChapterId } from './chapters';
 import { isApplePlatform } from '../shell/menuModel';
 import { useAppDispatch, useAppState } from '../state/AppContext';
-import { LOOK_IDS } from '../state/preferences';
+import { BASE_LOOK_IDS } from '../state/preferences';
+import { PREMIUM_THEMES } from '../styles/premiumThemes';
 import type { ThemeMode } from '../state/preferences';
 import { useSettings } from '../state/settings';
 import { commandOf } from '../ai/chat/commands';
@@ -199,7 +200,7 @@ export function LookScene({ onSettings }: { onSettings: (section: SectionId) => 
           {t('look.label')}
         </p>
         <div className="tour-looks" role="radiogroup" aria-labelledby="tour-look-label">
-          {LOOK_IDS.map((one, index) => (
+          {BASE_LOOK_IDS.map((one, index) => (
             <button
               key={one}
               type="button"
@@ -218,6 +219,30 @@ export function LookScene({ onSettings }: { onSettings: (section: SectionId) => 
                 )}
               </span>
               <span className="tour-look-name">{t(`look.${one}`)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="tour-field">
+        <p className="tour-field-label" id="tour-premium-label">
+          {t('look.premium')}
+        </p>
+        {/* The premium colour themes as palette chips: tap one to try it here. */}
+        <div className="tour-palettes" role="radiogroup" aria-labelledby="tour-premium-label">
+          {PREMIUM_THEMES.map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              role="radio"
+              aria-checked={look === theme.id}
+              aria-label={t(`look.${theme.id}`)}
+              title={t(`look.${theme.id}`)}
+              className={look === theme.id ? 'tour-palette is-current' : 'tour-palette'}
+              onClick={() => dispatch({ type: 'SET_LOOK', look: theme.id })}
+            >
+              {theme.swatch.map((colour) => (
+                <i key={colour} style={{ background: colour }} />
+              ))}
             </button>
           ))}
         </div>

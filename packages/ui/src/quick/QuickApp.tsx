@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CircleAlert, CircleCheck, CircleDashed, ExternalLink, FileText, Loader2, RotateCcw, X } from 'lucide-react';
 import '../styles/tokens.css';
 import '../styles/looks.css';
+import '../styles/looks/premium.css';
 import '../styles/appearance.css';
 import { applyAppearance } from '../settings/SettingsEffects';
 import '../styles/fonts.css';

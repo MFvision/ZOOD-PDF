@@ -4,7 +4,7 @@ import { translate } from '../i18n/messages';
 import type { TKey } from '../i18n/messages';
 import type { SectionId } from '../settings/SettingsWindow';
 import { normalize } from '../ai/chat/commands';
-import { LOOK_IDS } from '../state/preferences';
+import { LOOK_IDS, PREMIUM_LOOK_IDS } from '../state/preferences';
 import type { ThemeMode, UiLook } from '../state/preferences';
 import { ACCENTS, getSettings, updateSettings } from '../state/settings';
 import type { AppSettings } from '../state/settings';
@@ -67,13 +67,7 @@ const LANGUAGES: readonly SettingChoice[] = [
   { value: 'en', label: 'lang.en', words: ['english', 'انجليزي', 'انجليزيه', 'انقليزي', 'انكليزي', 'انجلش'] },
 ];
 
-const LOOK_NAME: Record<UiLook, TKey> = {
-  concept: 'look.concept',
-  glass: 'look.glass',
-  zood: 'look.zood',
-  workbench: 'look.workbench',
-  mono: 'look.mono',
-};
+const LOOK_NAME = (look: UiLook): TKey => `look.${look}` as TKey;
 
 const LOOK_WORDS: Record<UiLook, readonly string[]> = {
   concept: ['concept', 'كونسبت'],
@@ -81,6 +75,14 @@ const LOOK_WORDS: Record<UiLook, readonly string[]> = {
   zood: ['zood', 'zood look', 'زود'],
   workbench: ['workbench', 'classic', 'منضده', 'كلاسيكي'],
   mono: ['mono', 'monochrome', 'black and white', 'grey', 'احادي', 'ابيض واسود', 'رمادي'],
+  lantern: ['desert lantern', 'lantern', 'mocha', 'فانوس الصحراء', 'فانوس', 'موكا'],
+  garden: ['night garden', 'garden', 'حديقه الليل', 'حديقه'],
+  silver: ['silver signal', 'silver', 'اشاره فضيه', 'فضي', 'فضيه'],
+  amethyst: ['amethyst night', 'amethyst', 'ليل الجمشت', 'جمشت'],
+  walnut: ['walnut grove', 'walnut', 'بستان الجوز', 'جوز'],
+  latte: ['cosmic latte', 'latte', 'لاتيه كوني', 'لاتيه'],
+  terra: ['stone and clay', 'stone', 'clay', 'حجر وطين', 'طين'],
+  atlas: ['summer trip', 'summer', 'رحله صيف', 'صيف'],
 };
 
 /** Every setting Ask ZOOD can change or show, page by page as Settings lists them. */
@@ -135,8 +137,17 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     section: 'appearance',
     label: 'look.label',
     kind: 'choice',
-    choices: LOOK_IDS.map((look) => ({ value: look, label: LOOK_NAME[look], words: LOOK_WORDS[look] })),
+    choices: LOOK_IDS.map((look) => ({ value: look, label: LOOK_NAME(look), words: LOOK_WORDS[look] })),
     names: ['look', 'style', 'app look', 'design', 'skin', 'مظهر عام', 'شكل', 'شكل التطبيق', 'ستايل', 'تصميم'],
+  },
+  {
+    // The premium colour themes: the same setting as the look, offered on their own row.
+    id: 'premiumLook',
+    section: 'appearance',
+    label: 'look.premium',
+    kind: 'choice',
+    choices: PREMIUM_LOOK_IDS.map((look) => ({ value: look, label: LOOK_NAME(look), words: LOOK_WORDS[look] })),
+    names: ['premium theme', 'premium themes', 'colour theme', 'color theme', 'palette', 'ثيم', 'ثيمات', 'ثيم مميز', 'ثيمات مميزه', 'الوان التطبيق'],
   },
   {
     id: 'icons',
@@ -988,6 +999,7 @@ export async function settingNow(entry: SettingEntry, setters: SettingSetters): 
     case 'theme':
       return setters.theme;
     case 'look':
+    case 'premiumLook':
       return setters.look;
     case 'icons':
       return settings.icons === 'plain' ? 'off' : 'on';
@@ -1045,6 +1057,7 @@ export async function applySetting(entry: SettingEntry, value: string, setters: 
       setters.setTheme(value);
       return true;
     case 'look':
+    case 'premiumLook':
       if (!LOOK_IDS.includes(value as UiLook)) return false;
       setters.setLook(value as UiLook);
       return true;

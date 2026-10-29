@@ -1,0 +1,880 @@
+/*
+ * The premium colour themes (Settings › Appearance › Premium themes): eight palettes, each with a
+ * day and a night side, over Liquid Glass's layout. Generated from premiumThemes.ts; the test
+ * beside it checks the two agree and that every text pair reads at 4.5:1 or better.
+ *
+ * Each theme follows 60-30-10: the first colour fills the window, the second tints the sidebar,
+ * text and borders, the third is kept for the main button, links and highlights.
+ */
+
+/* ---- Desert lantern (Mocha brown #5B4632, Champagne gold #F4D9A0, Burnt amber #C8792C) ---- */
+
+:root:root[data-look="lantern"] {
+  --accent: #c8792c;
+  --accent-contrast: #2b2119;
+  --window-background: #faf3e4;
+  --toolbar-background: rgb(250 243 228 / 90%);
+  --sidebar-background: rgb(223 205 170 / 86%);
+  --content-background: #fffaf0;
+  --under-page-background: #e6e0d2;
+  --grouped-background: #fffaf0;
+  --elevated-background: rgb(255 250 240 / 94%);
+  --control-background: #fffaf0;
+  --control-border: rgb(58 44 31 / 18%);
+  --glass: rgb(255 250 240 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #3a2c1f;
+  --secondary-label: #76614a;
+  --tertiary-label: rgb(58 44 31 / 38%);
+  --quaternary-label: rgb(58 44 31 / 12%);
+  --separator: rgb(91 70 50 / 30%);
+  --opaque-separator: #e6d3ae;
+  --fill: rgb(58 44 31 / 14%);
+  --secondary-fill: rgb(58 44 31 / 10%);
+  --tertiary-fill: rgb(58 44 31 / 7%);
+  --quaternary-fill: rgb(58 44 31 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(244 217 160 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(91 70 50 / 18%), transparent 70%), linear-gradient(165deg, #faf3e4 0%, #f7ebd1 55%, #f4e3be 100%);
+  --glass-panel: rgb(250 243 228 / 70%);
+  --glass-card: rgb(255 250 240 / 80%);
+  --glass-border: rgb(91 70 50 / 24%);
+  --glass-hover: rgb(255 250 240 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(91 70 50 / 20%);
+  --look-highlight: #f4d9a0;
+  --look-on-highlight: #3a2c1f;
+  --look-link: #9a561a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="lantern"]:not([data-theme="light"]) {
+    --accent: #c8792c;
+    --accent-contrast: #1e150d;
+    --window-background: #2b2119;
+    --toolbar-background: rgb(43 33 25 / 90%);
+    --sidebar-background: rgb(64 53 39 / 86%);
+    --content-background: #3a2d21;
+    --under-page-background: #201913;
+    --grouped-background: #3a2d21;
+    --elevated-background: rgb(58 45 33 / 94%);
+    --control-background: rgb(247 235 211 / 8%);
+    --control-border: rgb(247 235 211 / 18%);
+    --glass: rgb(58 45 33 / 76%);
+    --glass-edge: rgb(247 235 211 / 16%);
+    --label: #f7ebd3;
+    --secondary-label: #cdb896;
+    --tertiary-label: rgb(247 235 211 / 38%);
+    --quaternary-label: rgb(247 235 211 / 12%);
+    --separator: rgb(244 217 160 / 26%);
+    --opaque-separator: #4e3d2c;
+    --fill: rgb(247 235 211 / 14%);
+    --secondary-fill: rgb(247 235 211 / 10%);
+    --tertiary-fill: rgb(247 235 211 / 7%);
+    --quaternary-fill: rgb(247 235 211 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(200 121 44 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(244 217 160 / 12%), transparent 70%), linear-gradient(165deg, #2b2119 0%, #271e16 55%, #231a13 100%);
+    --glass-panel: rgb(43 33 25 / 70%);
+    --glass-card: rgb(58 45 33 / 80%);
+    --glass-border: rgb(247 235 211 / 14%);
+    --glass-hover: rgb(58 45 33 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(244 217 160 / 20%);
+    --look-highlight: #f4d9a0;
+    --look-on-highlight: #2b2119;
+    --look-link: #f4d9a0;
+  }
+}
+
+:root:root[data-look="lantern"][data-theme="dark"] {
+  --accent: #c8792c;
+  --accent-contrast: #1e150d;
+  --window-background: #2b2119;
+  --toolbar-background: rgb(43 33 25 / 90%);
+  --sidebar-background: rgb(64 53 39 / 86%);
+  --content-background: #3a2d21;
+  --under-page-background: #201913;
+  --grouped-background: #3a2d21;
+  --elevated-background: rgb(58 45 33 / 94%);
+  --control-background: rgb(247 235 211 / 8%);
+  --control-border: rgb(247 235 211 / 18%);
+  --glass: rgb(58 45 33 / 76%);
+  --glass-edge: rgb(247 235 211 / 16%);
+  --label: #f7ebd3;
+  --secondary-label: #cdb896;
+  --tertiary-label: rgb(247 235 211 / 38%);
+  --quaternary-label: rgb(247 235 211 / 12%);
+  --separator: rgb(244 217 160 / 26%);
+  --opaque-separator: #4e3d2c;
+  --fill: rgb(247 235 211 / 14%);
+  --secondary-fill: rgb(247 235 211 / 10%);
+  --tertiary-fill: rgb(247 235 211 / 7%);
+  --quaternary-fill: rgb(247 235 211 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(200 121 44 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(244 217 160 / 12%), transparent 70%), linear-gradient(165deg, #2b2119 0%, #271e16 55%, #231a13 100%);
+  --glass-panel: rgb(43 33 25 / 70%);
+  --glass-card: rgb(58 45 33 / 80%);
+  --glass-border: rgb(247 235 211 / 14%);
+  --glass-hover: rgb(58 45 33 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(244 217 160 / 20%);
+  --look-highlight: #f4d9a0;
+  --look-on-highlight: #2b2119;
+  --look-link: #f4d9a0;
+}
+
+/* ---- Night garden (Charcoal black #171717, Forest green #06110C, Crimson red #A31C1B) ---- */
+
+:root:root[data-look="garden"] {
+  --accent: #a31c1b;
+  --accent-contrast: #fff6f4;
+  --window-background: #f1f4ef;
+  --toolbar-background: rgb(241 244 239 / 90%);
+  --sidebar-background: rgb(196 204 197 / 86%);
+  --content-background: #fafcf9;
+  --under-page-background: #dee0dc;
+  --grouped-background: #fafcf9;
+  --elevated-background: rgb(250 252 249 / 94%);
+  --control-background: #fafcf9;
+  --control-border: rgb(6 17 12 / 18%);
+  --glass: rgb(250 252 249 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #06110c;
+  --secondary-label: #4c6356;
+  --tertiary-label: rgb(6 17 12 / 38%);
+  --quaternary-label: rgb(6 17 12 / 12%);
+  --separator: rgb(6 17 12 / 30%);
+  --opaque-separator: #cbd8ce;
+  --fill: rgb(6 17 12 / 14%);
+  --secondary-fill: rgb(6 17 12 / 10%);
+  --tertiary-fill: rgb(6 17 12 / 7%);
+  --quaternary-fill: rgb(6 17 12 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(159 211 184 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(6 17 12 / 18%), transparent 70%), linear-gradient(165deg, #f1f4ef 0%, #eaefe9 55%, #e3eae3 100%);
+  --glass-panel: rgb(241 244 239 / 70%);
+  --glass-card: rgb(250 252 249 / 80%);
+  --glass-border: rgb(6 17 12 / 24%);
+  --glass-hover: rgb(250 252 249 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(6 17 12 / 20%);
+  --look-highlight: #cfe6d8;
+  --look-on-highlight: #06110c;
+  --look-link: #a31c1b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="garden"]:not([data-theme="light"]) {
+    --accent: #c0262a;
+    --accent-contrast: #fff4f2;
+    --window-background: #06110c;
+    --toolbar-background: rgb(6 17 12 / 90%);
+    --sidebar-background: rgb(23 23 23 / 86%);
+    --content-background: #10211a;
+    --under-page-background: #040d09;
+    --grouped-background: #10211a;
+    --elevated-background: rgb(16 33 26 / 94%);
+    --control-background: rgb(236 243 238 / 8%);
+    --control-border: rgb(236 243 238 / 18%);
+    --glass: rgb(16 33 26 / 76%);
+    --glass-edge: rgb(236 243 238 / 16%);
+    --label: #ecf3ee;
+    --secondary-label: #9fc7b1;
+    --tertiary-label: rgb(236 243 238 / 38%);
+    --quaternary-label: rgb(236 243 238 / 12%);
+    --separator: rgb(23 23 23 / 26%);
+    --opaque-separator: #1f3a2e;
+    --fill: rgb(236 243 238 / 14%);
+    --secondary-fill: rgb(236 243 238 / 10%);
+    --tertiary-fill: rgb(236 243 238 / 7%);
+    --quaternary-fill: rgb(236 243 238 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(163 28 27 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(23 23 23 / 12%), transparent 70%), linear-gradient(165deg, #06110c 0%, #0e1412 55%, #171717 100%);
+    --glass-panel: rgb(6 17 12 / 70%);
+    --glass-card: rgb(16 33 26 / 80%);
+    --glass-border: rgb(236 243 238 / 14%);
+    --glass-hover: rgb(16 33 26 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(23 23 23 / 20%);
+    --look-highlight: #9fd3b8;
+    --look-on-highlight: #06110c;
+    --look-link: #ee6a5e;
+  }
+}
+
+:root:root[data-look="garden"][data-theme="dark"] {
+  --accent: #c0262a;
+  --accent-contrast: #fff4f2;
+  --window-background: #06110c;
+  --toolbar-background: rgb(6 17 12 / 90%);
+  --sidebar-background: rgb(23 23 23 / 86%);
+  --content-background: #10211a;
+  --under-page-background: #040d09;
+  --grouped-background: #10211a;
+  --elevated-background: rgb(16 33 26 / 94%);
+  --control-background: rgb(236 243 238 / 8%);
+  --control-border: rgb(236 243 238 / 18%);
+  --glass: rgb(16 33 26 / 76%);
+  --glass-edge: rgb(236 243 238 / 16%);
+  --label: #ecf3ee;
+  --secondary-label: #9fc7b1;
+  --tertiary-label: rgb(236 243 238 / 38%);
+  --quaternary-label: rgb(236 243 238 / 12%);
+  --separator: rgb(23 23 23 / 26%);
+  --opaque-separator: #1f3a2e;
+  --fill: rgb(236 243 238 / 14%);
+  --secondary-fill: rgb(236 243 238 / 10%);
+  --tertiary-fill: rgb(236 243 238 / 7%);
+  --quaternary-fill: rgb(236 243 238 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(163 28 27 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(23 23 23 / 12%), transparent 70%), linear-gradient(165deg, #06110c 0%, #0e1412 55%, #171717 100%);
+  --glass-panel: rgb(6 17 12 / 70%);
+  --glass-card: rgb(16 33 26 / 80%);
+  --glass-border: rgb(236 243 238 / 14%);
+  --glass-hover: rgb(16 33 26 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(23 23 23 / 20%);
+  --look-highlight: #9fd3b8;
+  --look-on-highlight: #06110c;
+  --look-link: #ee6a5e;
+}
+
+/* ---- Silver signal (Charcoal grey #2A2A2A, Moonlit silver #C0C0C0, Signal red #E10600) ---- */
+
+:root:root[data-look="silver"] {
+  --accent: #e10600;
+  --accent-contrast: #fff;
+  --window-background: #e9e9e9;
+  --toolbar-background: rgb(233 233 233 / 90%);
+  --sidebar-background: rgb(195 195 195 / 86%);
+  --content-background: #f6f6f6;
+  --under-page-background: #d6d6d6;
+  --grouped-background: #f6f6f6;
+  --elevated-background: rgb(246 246 246 / 94%);
+  --control-background: #f6f6f6;
+  --control-border: rgb(42 42 42 / 18%);
+  --glass: rgb(246 246 246 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #2a2a2a;
+  --secondary-label: #5e5e5e;
+  --tertiary-label: rgb(42 42 42 / 38%);
+  --quaternary-label: rgb(42 42 42 / 12%);
+  --separator: rgb(42 42 42 / 30%);
+  --opaque-separator: #cfcfcf;
+  --fill: rgb(42 42 42 / 14%);
+  --secondary-fill: rgb(42 42 42 / 10%);
+  --tertiary-fill: rgb(42 42 42 / 7%);
+  --quaternary-fill: rgb(42 42 42 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(192 192 192 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(42 42 42 / 18%), transparent 70%), linear-gradient(165deg, #e9e9e9 0%, #e2e2e2 55%, #dcdcdc 100%);
+  --glass-panel: rgb(233 233 233 / 70%);
+  --glass-card: rgb(246 246 246 / 80%);
+  --glass-border: rgb(42 42 42 / 24%);
+  --glass-hover: rgb(246 246 246 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(42 42 42 / 20%);
+  --look-highlight: #2a2a2a;
+  --look-on-highlight: #f6f6f6;
+  --look-link: #bf0500;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="silver"]:not([data-theme="light"]) {
+    --accent: #e10600;
+    --accent-contrast: #fff;
+    --window-background: #1c1c1c;
+    --toolbar-background: rgb(28 28 28 / 90%);
+    --sidebar-background: rgb(47 47 47 / 86%);
+    --content-background: #2a2a2a;
+    --under-page-background: #151515;
+    --grouped-background: #2a2a2a;
+    --elevated-background: rgb(42 42 42 / 94%);
+    --control-background: rgb(237 237 237 / 8%);
+    --control-border: rgb(237 237 237 / 18%);
+    --glass: rgb(42 42 42 / 76%);
+    --glass-edge: rgb(237 237 237 / 16%);
+    --label: #ededed;
+    --secondary-label: #c0c0c0;
+    --tertiary-label: rgb(237 237 237 / 38%);
+    --quaternary-label: rgb(237 237 237 / 12%);
+    --separator: rgb(192 192 192 / 26%);
+    --opaque-separator: #3a3a3a;
+    --fill: rgb(237 237 237 / 14%);
+    --secondary-fill: rgb(237 237 237 / 10%);
+    --tertiary-fill: rgb(237 237 237 / 7%);
+    --quaternary-fill: rgb(237 237 237 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(225 6 0 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(192 192 192 / 12%), transparent 70%), linear-gradient(165deg, #1c1c1c 0%, #1a1a1a 55%, #171717 100%);
+    --glass-panel: rgb(28 28 28 / 70%);
+    --glass-card: rgb(42 42 42 / 80%);
+    --glass-border: rgb(237 237 237 / 14%);
+    --glass-hover: rgb(42 42 42 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(192 192 192 / 20%);
+    --look-highlight: #c0c0c0;
+    --look-on-highlight: #1c1c1c;
+    --look-link: #ff5c50;
+  }
+}
+
+:root:root[data-look="silver"][data-theme="dark"] {
+  --accent: #e10600;
+  --accent-contrast: #fff;
+  --window-background: #1c1c1c;
+  --toolbar-background: rgb(28 28 28 / 90%);
+  --sidebar-background: rgb(47 47 47 / 86%);
+  --content-background: #2a2a2a;
+  --under-page-background: #151515;
+  --grouped-background: #2a2a2a;
+  --elevated-background: rgb(42 42 42 / 94%);
+  --control-background: rgb(237 237 237 / 8%);
+  --control-border: rgb(237 237 237 / 18%);
+  --glass: rgb(42 42 42 / 76%);
+  --glass-edge: rgb(237 237 237 / 16%);
+  --label: #ededed;
+  --secondary-label: #c0c0c0;
+  --tertiary-label: rgb(237 237 237 / 38%);
+  --quaternary-label: rgb(237 237 237 / 12%);
+  --separator: rgb(192 192 192 / 26%);
+  --opaque-separator: #3a3a3a;
+  --fill: rgb(237 237 237 / 14%);
+  --secondary-fill: rgb(237 237 237 / 10%);
+  --tertiary-fill: rgb(237 237 237 / 7%);
+  --quaternary-fill: rgb(237 237 237 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(225 6 0 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(192 192 192 / 12%), transparent 70%), linear-gradient(165deg, #1c1c1c 0%, #1a1a1a 55%, #171717 100%);
+  --glass-panel: rgb(28 28 28 / 70%);
+  --glass-card: rgb(42 42 42 / 80%);
+  --glass-border: rgb(237 237 237 / 14%);
+  --glass-hover: rgb(42 42 42 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(192 192 192 / 20%);
+  --look-highlight: #c0c0c0;
+  --look-on-highlight: #1c1c1c;
+  --look-link: #ff5c50;
+}
+
+/* ---- Amethyst night (Jet black #050505, Royal amethyst #3B0A6B, Electric cyan #00E5FF) ---- */
+
+:root:root[data-look="amethyst"] {
+  --accent: #3b0a6b;
+  --accent-contrast: #fff;
+  --window-background: #f5f2fa;
+  --toolbar-background: rgb(245 242 250 / 90%);
+  --sidebar-background: rgb(210 197 225 / 86%);
+  --content-background: #fcfbfe;
+  --under-page-background: #e1dfe6;
+  --grouped-background: #fcfbfe;
+  --elevated-background: rgb(252 251 254 / 94%);
+  --control-background: #fcfbfe;
+  --control-border: rgb(26 8 51 / 18%);
+  --glass: rgb(252 251 254 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #1a0833;
+  --secondary-label: #5b4a78;
+  --tertiary-label: rgb(26 8 51 / 38%);
+  --quaternary-label: rgb(26 8 51 / 12%);
+  --separator: rgb(59 10 107 / 30%);
+  --opaque-separator: #dcd1ec;
+  --fill: rgb(26 8 51 / 14%);
+  --secondary-fill: rgb(26 8 51 / 10%);
+  --tertiary-fill: rgb(26 8 51 / 7%);
+  --quaternary-fill: rgb(26 8 51 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(0 229 255 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(59 10 107 / 18%), transparent 70%), linear-gradient(165deg, #f5f2fa 0%, #f0eaf7 55%, #eae3f4 100%);
+  --glass-panel: rgb(245 242 250 / 70%);
+  --glass-card: rgb(252 251 254 / 80%);
+  --glass-border: rgb(59 10 107 / 24%);
+  --glass-hover: rgb(252 251 254 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(59 10 107 / 20%);
+  --look-highlight: #b8f6ff;
+  --look-on-highlight: #1a0833;
+  --look-link: #00707f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="amethyst"]:not([data-theme="light"]) {
+    --accent: #00e5ff;
+    --accent-contrast: #050505;
+    --window-background: #09070d;
+    --toolbar-background: rgb(9 7 13 / 90%);
+    --sidebar-background: rgb(20 10 34 / 86%);
+    --content-background: #171024;
+    --under-page-background: #07050a;
+    --grouped-background: #171024;
+    --elevated-background: rgb(23 16 36 / 94%);
+    --control-background: rgb(242 237 249 / 8%);
+    --control-border: rgb(242 237 249 / 18%);
+    --glass: rgb(23 16 36 / 76%);
+    --glass-edge: rgb(242 237 249 / 16%);
+    --label: #f2edf9;
+    --secondary-label: #b7a6d3;
+    --tertiary-label: rgb(242 237 249 / 38%);
+    --quaternary-label: rgb(242 237 249 / 12%);
+    --separator: rgb(59 10 107 / 26%);
+    --opaque-separator: #2a1a42;
+    --fill: rgb(242 237 249 / 14%);
+    --secondary-fill: rgb(242 237 249 / 10%);
+    --tertiary-fill: rgb(242 237 249 / 7%);
+    --quaternary-fill: rgb(242 237 249 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(59 10 107 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(59 10 107 / 12%), transparent 70%), linear-gradient(165deg, #09070d 0%, #0c0812 55%, #0e0a16 100%);
+    --glass-panel: rgb(9 7 13 / 70%);
+    --glass-card: rgb(23 16 36 / 80%);
+    --glass-border: rgb(242 237 249 / 14%);
+    --glass-hover: rgb(23 16 36 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(59 10 107 / 20%);
+    --look-highlight: #3b0a6b;
+    --look-on-highlight: #f2edf9;
+    --look-link: #5ceeff;
+  }
+}
+
+:root:root[data-look="amethyst"][data-theme="dark"] {
+  --accent: #00e5ff;
+  --accent-contrast: #050505;
+  --window-background: #09070d;
+  --toolbar-background: rgb(9 7 13 / 90%);
+  --sidebar-background: rgb(20 10 34 / 86%);
+  --content-background: #171024;
+  --under-page-background: #07050a;
+  --grouped-background: #171024;
+  --elevated-background: rgb(23 16 36 / 94%);
+  --control-background: rgb(242 237 249 / 8%);
+  --control-border: rgb(242 237 249 / 18%);
+  --glass: rgb(23 16 36 / 76%);
+  --glass-edge: rgb(242 237 249 / 16%);
+  --label: #f2edf9;
+  --secondary-label: #b7a6d3;
+  --tertiary-label: rgb(242 237 249 / 38%);
+  --quaternary-label: rgb(242 237 249 / 12%);
+  --separator: rgb(59 10 107 / 26%);
+  --opaque-separator: #2a1a42;
+  --fill: rgb(242 237 249 / 14%);
+  --secondary-fill: rgb(242 237 249 / 10%);
+  --tertiary-fill: rgb(242 237 249 / 7%);
+  --quaternary-fill: rgb(242 237 249 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(59 10 107 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(59 10 107 / 12%), transparent 70%), linear-gradient(165deg, #09070d 0%, #0c0812 55%, #0e0a16 100%);
+  --glass-panel: rgb(9 7 13 / 70%);
+  --glass-card: rgb(23 16 36 / 80%);
+  --glass-border: rgb(242 237 249 / 14%);
+  --glass-hover: rgb(23 16 36 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(59 10 107 / 20%);
+  --look-highlight: #3b0a6b;
+  --look-on-highlight: #f2edf9;
+  --look-link: #5ceeff;
+}
+
+/* ---- Walnut grove (Sage green #87A96B, Walnut brown #5A3E2B, Amber glow #D5851F) ---- */
+
+:root:root[data-look="walnut"] {
+  --accent: #d5851f;
+  --accent-contrast: #2b1e14;
+  --window-background: #f3f1ea;
+  --toolbar-background: rgb(243 241 234 / 90%);
+  --sidebar-background: rgb(213 224 201 / 86%);
+  --content-background: #fbfaf6;
+  --under-page-background: #e0ded7;
+  --grouped-background: #fbfaf6;
+  --elevated-background: rgb(251 250 246 / 94%);
+  --control-background: #fbfaf6;
+  --control-border: rgb(59 42 29 / 18%);
+  --glass: rgb(251 250 246 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #3b2a1d;
+  --secondary-label: #6a5a4c;
+  --tertiary-label: rgb(59 42 29 / 38%);
+  --quaternary-label: rgb(59 42 29 / 12%);
+  --separator: rgb(135 169 107 / 30%);
+  --opaque-separator: #d9d6c8;
+  --fill: rgb(59 42 29 / 14%);
+  --secondary-fill: rgb(59 42 29 / 10%);
+  --tertiary-fill: rgb(59 42 29 / 7%);
+  --quaternary-fill: rgb(59 42 29 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(135 169 107 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(135 169 107 / 18%), transparent 70%), linear-gradient(165deg, #f3f1ea 0%, #eaede1 55%, #e2e9d8 100%);
+  --glass-panel: rgb(243 241 234 / 70%);
+  --glass-card: rgb(251 250 246 / 80%);
+  --glass-border: rgb(135 169 107 / 24%);
+  --glass-hover: rgb(251 250 246 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(135 169 107 / 20%);
+  --look-highlight: #f6d9a8;
+  --look-on-highlight: #3b2a1d;
+  --look-link: #99580b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="walnut"]:not([data-theme="light"]) {
+    --accent: #d5851f;
+    --accent-contrast: #1e1712;
+    --window-background: #1e1712;
+    --toolbar-background: rgb(30 23 18 / 90%);
+    --sidebar-background: rgb(40 40 28 / 86%);
+    --content-background: #2b211a;
+    --under-page-background: #16110e;
+    --grouped-background: #2b211a;
+    --elevated-background: rgb(43 33 26 / 94%);
+    --control-background: rgb(243 236 223 / 8%);
+    --control-border: rgb(243 236 223 / 18%);
+    --glass: rgb(43 33 26 / 76%);
+    --glass-edge: rgb(243 236 223 / 16%);
+    --label: #f3ecdf;
+    --secondary-label: #b9c9a8;
+    --tertiary-label: rgb(243 236 223 / 38%);
+    --quaternary-label: rgb(243 236 223 / 12%);
+    --separator: rgb(135 169 107 / 26%);
+    --opaque-separator: #43342a;
+    --fill: rgb(243 236 223 / 14%);
+    --secondary-fill: rgb(243 236 223 / 10%);
+    --tertiary-fill: rgb(243 236 223 / 7%);
+    --quaternary-fill: rgb(243 236 223 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(135 169 107 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(135 169 107 / 12%), transparent 70%), linear-gradient(165deg, #1e1712 0%, #1c1510 55%, #19130f 100%);
+    --glass-panel: rgb(30 23 18 / 70%);
+    --glass-card: rgb(43 33 26 / 80%);
+    --glass-border: rgb(243 236 223 / 14%);
+    --glass-hover: rgb(43 33 26 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(135 169 107 / 20%);
+    --look-highlight: #87a96b;
+    --look-on-highlight: #1e1712;
+    --look-link: #e9a24a;
+  }
+}
+
+:root:root[data-look="walnut"][data-theme="dark"] {
+  --accent: #d5851f;
+  --accent-contrast: #1e1712;
+  --window-background: #1e1712;
+  --toolbar-background: rgb(30 23 18 / 90%);
+  --sidebar-background: rgb(40 40 28 / 86%);
+  --content-background: #2b211a;
+  --under-page-background: #16110e;
+  --grouped-background: #2b211a;
+  --elevated-background: rgb(43 33 26 / 94%);
+  --control-background: rgb(243 236 223 / 8%);
+  --control-border: rgb(243 236 223 / 18%);
+  --glass: rgb(43 33 26 / 76%);
+  --glass-edge: rgb(243 236 223 / 16%);
+  --label: #f3ecdf;
+  --secondary-label: #b9c9a8;
+  --tertiary-label: rgb(243 236 223 / 38%);
+  --quaternary-label: rgb(243 236 223 / 12%);
+  --separator: rgb(135 169 107 / 26%);
+  --opaque-separator: #43342a;
+  --fill: rgb(243 236 223 / 14%);
+  --secondary-fill: rgb(243 236 223 / 10%);
+  --tertiary-fill: rgb(243 236 223 / 7%);
+  --quaternary-fill: rgb(243 236 223 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(135 169 107 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(135 169 107 / 12%), transparent 70%), linear-gradient(165deg, #1e1712 0%, #1c1510 55%, #19130f 100%);
+  --glass-panel: rgb(30 23 18 / 70%);
+  --glass-card: rgb(43 33 26 / 80%);
+  --glass-border: rgb(243 236 223 / 14%);
+  --glass-hover: rgb(43 33 26 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(135 169 107 / 20%);
+  --look-highlight: #87a96b;
+  --look-on-highlight: #1e1712;
+  --look-link: #e9a24a;
+}
+
+/* ---- Cosmic latte (Cosmic latte #B7A89A, Mocha cream #E8DCC6, Deep burgundy #722F37) ---- */
+
+:root:root[data-look="latte"] {
+  --accent: #722f37;
+  --accent-contrast: #fbf4ea;
+  --window-background: #f3ecdf;
+  --toolbar-background: rgb(243 236 223 / 90%);
+  --sidebar-background: rgb(225 213 192 / 86%);
+  --content-background: #fbf7f0;
+  --under-page-background: #e0d9cd;
+  --grouped-background: #fbf7f0;
+  --elevated-background: rgb(251 247 240 / 94%);
+  --control-background: #fbf7f0;
+  --control-border: rgb(46 26 29 / 18%);
+  --glass: rgb(251 247 240 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #2e1a1d;
+  --secondary-label: #6b5a52;
+  --tertiary-label: rgb(46 26 29 / 38%);
+  --quaternary-label: rgb(46 26 29 / 12%);
+  --separator: rgb(183 168 154 / 30%);
+  --opaque-separator: #d6c8b5;
+  --fill: rgb(46 26 29 / 14%);
+  --secondary-fill: rgb(46 26 29 / 10%);
+  --tertiary-fill: rgb(46 26 29 / 7%);
+  --quaternary-fill: rgb(46 26 29 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(183 168 154 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(183 168 154 / 18%), transparent 70%), linear-gradient(165deg, #f3ecdf 0%, #eee4d2 55%, #e8dcc6 100%);
+  --glass-panel: rgb(243 236 223 / 70%);
+  --glass-card: rgb(251 247 240 / 80%);
+  --glass-border: rgb(183 168 154 / 24%);
+  --glass-hover: rgb(251 247 240 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(183 168 154 / 20%);
+  --look-highlight: #e8dcc6;
+  --look-on-highlight: #2e1a1d;
+  --look-link: #722f37;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="latte"]:not([data-theme="light"]) {
+    --accent: #a2464f;
+    --accent-contrast: #fbf2e6;
+    --window-background: #211819;
+    --toolbar-background: rgb(33 24 25 / 90%);
+    --sidebar-background: rgb(56 47 45 / 86%);
+    --content-background: #2e2325;
+    --under-page-background: #191213;
+    --grouped-background: #2e2325;
+    --elevated-background: rgb(46 35 37 / 94%);
+    --control-background: rgb(242 233 218 / 8%);
+    --control-border: rgb(242 233 218 / 18%);
+    --glass: rgb(46 35 37 / 76%);
+    --glass-edge: rgb(242 233 218 / 16%);
+    --label: #f2e9da;
+    --secondary-label: #c4b6a8;
+    --tertiary-label: rgb(242 233 218 / 38%);
+    --quaternary-label: rgb(242 233 218 / 12%);
+    --separator: rgb(232 220 198 / 26%);
+    --opaque-separator: #3d3032;
+    --fill: rgb(242 233 218 / 14%);
+    --secondary-fill: rgb(242 233 218 / 10%);
+    --tertiary-fill: rgb(242 233 218 / 7%);
+    --quaternary-fill: rgb(242 233 218 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(114 47 55 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(232 220 198 / 12%), transparent 70%), linear-gradient(165deg, #211819 0%, #1e1616 55%, #1b1314 100%);
+    --glass-panel: rgb(33 24 25 / 70%);
+    --glass-card: rgb(46 35 37 / 80%);
+    --glass-border: rgb(242 233 218 / 14%);
+    --glass-hover: rgb(46 35 37 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(232 220 198 / 20%);
+    --look-highlight: #e8dcc6;
+    --look-on-highlight: #211819;
+    --look-link: #e28b95;
+  }
+}
+
+:root:root[data-look="latte"][data-theme="dark"] {
+  --accent: #a2464f;
+  --accent-contrast: #fbf2e6;
+  --window-background: #211819;
+  --toolbar-background: rgb(33 24 25 / 90%);
+  --sidebar-background: rgb(56 47 45 / 86%);
+  --content-background: #2e2325;
+  --under-page-background: #191213;
+  --grouped-background: #2e2325;
+  --elevated-background: rgb(46 35 37 / 94%);
+  --control-background: rgb(242 233 218 / 8%);
+  --control-border: rgb(242 233 218 / 18%);
+  --glass: rgb(46 35 37 / 76%);
+  --glass-edge: rgb(242 233 218 / 16%);
+  --label: #f2e9da;
+  --secondary-label: #c4b6a8;
+  --tertiary-label: rgb(242 233 218 / 38%);
+  --quaternary-label: rgb(242 233 218 / 12%);
+  --separator: rgb(232 220 198 / 26%);
+  --opaque-separator: #3d3032;
+  --fill: rgb(242 233 218 / 14%);
+  --secondary-fill: rgb(242 233 218 / 10%);
+  --tertiary-fill: rgb(242 233 218 / 7%);
+  --quaternary-fill: rgb(242 233 218 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(114 47 55 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(232 220 198 / 12%), transparent 70%), linear-gradient(165deg, #211819 0%, #1e1616 55%, #1b1314 100%);
+  --glass-panel: rgb(33 24 25 / 70%);
+  --glass-card: rgb(46 35 37 / 80%);
+  --glass-border: rgb(242 233 218 / 14%);
+  --glass-hover: rgb(46 35 37 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(232 220 198 / 20%);
+  --look-highlight: #e8dcc6;
+  --look-on-highlight: #211819;
+  --look-link: #e28b95;
+}
+
+/* ---- Stone and clay (Sage green #9CAF88, Concrete grey #A7A7A7, Burnt amber #CC5500) ---- */
+
+:root:root[data-look="terra"] {
+  --accent: #b34a00;
+  --accent-contrast: #fff;
+  --window-background: #f0f0ec;
+  --toolbar-background: rgb(240 240 236 / 90%);
+  --sidebar-background: rgb(215 223 206 / 86%);
+  --content-background: #f9f9f6;
+  --under-page-background: #ddddd9;
+  --grouped-background: #f9f9f6;
+  --elevated-background: rgb(249 249 246 / 94%);
+  --control-background: #f9f9f6;
+  --control-border: rgb(35 40 30 / 18%);
+  --glass: rgb(249 249 246 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #23281e;
+  --secondary-label: #5d6257;
+  --tertiary-label: rgb(35 40 30 / 38%);
+  --quaternary-label: rgb(35 40 30 / 12%);
+  --separator: rgb(156 175 136 / 30%);
+  --opaque-separator: #d3d3ce;
+  --fill: rgb(35 40 30 / 14%);
+  --secondary-fill: rgb(35 40 30 / 10%);
+  --tertiary-fill: rgb(35 40 30 / 7%);
+  --quaternary-fill: rgb(35 40 30 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(156 175 136 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(156 175 136 / 18%), transparent 70%), linear-gradient(165deg, #f0f0ec 0%, #e8ece2 55%, #e1e7d9 100%);
+  --glass-panel: rgb(240 240 236 / 70%);
+  --glass-card: rgb(249 249 246 / 80%);
+  --glass-border: rgb(156 175 136 / 24%);
+  --glass-hover: rgb(249 249 246 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(156 175 136 / 20%);
+  --look-highlight: #d3ddc7;
+  --look-on-highlight: #23281e;
+  --look-link: #a84500;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="terra"]:not([data-theme="light"]) {
+    --accent: #c24e00;
+    --accent-contrast: #fff;
+    --window-background: #1d2219;
+    --toolbar-background: rgb(29 34 25 / 90%);
+    --sidebar-background: rgb(44 47 41 / 86%);
+    --content-background: #283022;
+    --under-page-background: #161a13;
+    --grouped-background: #283022;
+    --elevated-background: rgb(40 48 34 / 94%);
+    --control-background: rgb(238 241 232 / 8%);
+    --control-border: rgb(238 241 232 / 18%);
+    --glass: rgb(40 48 34 / 76%);
+    --glass-edge: rgb(238 241 232 / 16%);
+    --label: #eef1e8;
+    --secondary-label: #b5bdaa;
+    --tertiary-label: rgb(238 241 232 / 38%);
+    --quaternary-label: rgb(238 241 232 / 12%);
+    --separator: rgb(167 167 167 / 26%);
+    --opaque-separator: #39412f;
+    --fill: rgb(238 241 232 / 14%);
+    --secondary-fill: rgb(238 241 232 / 10%);
+    --tertiary-fill: rgb(238 241 232 / 7%);
+    --quaternary-fill: rgb(238 241 232 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(204 85 0 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(167 167 167 / 12%), transparent 70%), linear-gradient(165deg, #1d2219 0%, #1a1f17 55%, #181c15 100%);
+    --glass-panel: rgb(29 34 25 / 70%);
+    --glass-card: rgb(40 48 34 / 80%);
+    --glass-border: rgb(238 241 232 / 14%);
+    --glass-hover: rgb(40 48 34 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(167 167 167 / 20%);
+    --look-highlight: #9caf88;
+    --look-on-highlight: #1d2219;
+    --look-link: #f08a4b;
+  }
+}
+
+:root:root[data-look="terra"][data-theme="dark"] {
+  --accent: #c24e00;
+  --accent-contrast: #fff;
+  --window-background: #1d2219;
+  --toolbar-background: rgb(29 34 25 / 90%);
+  --sidebar-background: rgb(44 47 41 / 86%);
+  --content-background: #283022;
+  --under-page-background: #161a13;
+  --grouped-background: #283022;
+  --elevated-background: rgb(40 48 34 / 94%);
+  --control-background: rgb(238 241 232 / 8%);
+  --control-border: rgb(238 241 232 / 18%);
+  --glass: rgb(40 48 34 / 76%);
+  --glass-edge: rgb(238 241 232 / 16%);
+  --label: #eef1e8;
+  --secondary-label: #b5bdaa;
+  --tertiary-label: rgb(238 241 232 / 38%);
+  --quaternary-label: rgb(238 241 232 / 12%);
+  --separator: rgb(167 167 167 / 26%);
+  --opaque-separator: #39412f;
+  --fill: rgb(238 241 232 / 14%);
+  --secondary-fill: rgb(238 241 232 / 10%);
+  --tertiary-fill: rgb(238 241 232 / 7%);
+  --quaternary-fill: rgb(238 241 232 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(204 85 0 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(167 167 167 / 12%), transparent 70%), linear-gradient(165deg, #1d2219 0%, #1a1f17 55%, #181c15 100%);
+  --glass-panel: rgb(29 34 25 / 70%);
+  --glass-card: rgb(40 48 34 / 80%);
+  --glass-border: rgb(238 241 232 / 14%);
+  --glass-hover: rgb(40 48 34 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(167 167 167 / 20%);
+  --look-highlight: #9caf88;
+  --look-on-highlight: #1d2219;
+  --look-link: #f08a4b;
+}
+
+/* ---- Summer trip (Baby blue #B7D8F5, Red #E10600, Sunshine yellow #FFD700) ---- */
+
+:root:root[data-look="atlas"] {
+  --accent: #e10600;
+  --accent-contrast: #fff;
+  --window-background: #e6f1fc;
+  --toolbar-background: rgb(230 241 252 / 90%);
+  --sidebar-background: rgb(180 202 223 / 86%);
+  --content-background: #f9fcff;
+  --under-page-background: #d4dee8;
+  --grouped-background: #f9fcff;
+  --elevated-background: rgb(249 252 255 / 94%);
+  --control-background: #f9fcff;
+  --control-border: rgb(15 42 68 / 18%);
+  --glass: rgb(249 252 255 / 76%);
+  --glass-edge: rgb(255 255 255 / 70%);
+  --label: #0f2a44;
+  --secondary-label: #3f5c7a;
+  --tertiary-label: rgb(15 42 68 / 38%);
+  --quaternary-label: rgb(15 42 68 / 12%);
+  --separator: rgb(15 42 68 / 30%);
+  --opaque-separator: #bfd6ec;
+  --fill: rgb(15 42 68 / 14%);
+  --secondary-fill: rgb(15 42 68 / 10%);
+  --tertiary-fill: rgb(15 42 68 / 7%);
+  --quaternary-fill: rgb(15 42 68 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(255 215 0 / 34%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(15 42 68 / 18%), transparent 70%), linear-gradient(165deg, #e6f1fc 0%, #daeafa 55%, #cfe4f8 100%);
+  --glass-panel: rgb(230 241 252 / 70%);
+  --glass-card: rgb(249 252 255 / 80%);
+  --glass-border: rgb(15 42 68 / 24%);
+  --glass-hover: rgb(249 252 255 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 10%), 0 0 0 0.5px rgb(15 42 68 / 20%);
+  --look-highlight: #ffd700;
+  --look-on-highlight: #0f2a44;
+  --look-link: #c20500;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:root[data-look="atlas"]:not([data-theme="light"]) {
+    --accent: #e10600;
+    --accent-contrast: #fff;
+    --window-background: #0e1b2a;
+    --toolbar-background: rgb(14 27 42 / 90%);
+    --sidebar-background: rgb(34 49 64 / 86%);
+    --content-background: #162739;
+    --under-page-background: #0a1420;
+    --grouped-background: #162739;
+    --elevated-background: rgb(22 39 57 / 94%);
+    --control-background: rgb(238 246 254 / 8%);
+    --control-border: rgb(238 246 254 / 18%);
+    --glass: rgb(22 39 57 / 76%);
+    --glass-edge: rgb(238 246 254 / 16%);
+    --label: #eef6fe;
+    --secondary-label: #b7d8f5;
+    --tertiary-label: rgb(238 246 254 / 38%);
+    --quaternary-label: rgb(238 246 254 / 12%);
+    --separator: rgb(183 216 245 / 26%);
+    --opaque-separator: #243a52;
+    --fill: rgb(238 246 254 / 14%);
+    --secondary-fill: rgb(238 246 254 / 10%);
+    --tertiary-fill: rgb(238 246 254 / 7%);
+    --quaternary-fill: rgb(238 246 254 / 4%);
+    --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(183 216 245 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(183 216 245 / 12%), transparent 70%), linear-gradient(165deg, #0e1b2a 0%, #0c1826 55%, #0a1622 100%);
+    --glass-panel: rgb(14 27 42 / 70%);
+    --glass-card: rgb(22 39 57 / 80%);
+    --glass-border: rgb(238 246 254 / 14%);
+    --glass-hover: rgb(22 39 57 / 95%);
+    --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(183 216 245 / 20%);
+    --look-highlight: #ffd700;
+    --look-on-highlight: #0e1b2a;
+    --look-link: #ff5a4e;
+  }
+}
+
+:root:root[data-look="atlas"][data-theme="dark"] {
+  --accent: #e10600;
+  --accent-contrast: #fff;
+  --window-background: #0e1b2a;
+  --toolbar-background: rgb(14 27 42 / 90%);
+  --sidebar-background: rgb(34 49 64 / 86%);
+  --content-background: #162739;
+  --under-page-background: #0a1420;
+  --grouped-background: #162739;
+  --elevated-background: rgb(22 39 57 / 94%);
+  --control-background: rgb(238 246 254 / 8%);
+  --control-border: rgb(238 246 254 / 18%);
+  --glass: rgb(22 39 57 / 76%);
+  --glass-edge: rgb(238 246 254 / 16%);
+  --label: #eef6fe;
+  --secondary-label: #b7d8f5;
+  --tertiary-label: rgb(238 246 254 / 38%);
+  --quaternary-label: rgb(238 246 254 / 12%);
+  --separator: rgb(183 216 245 / 26%);
+  --opaque-separator: #243a52;
+  --fill: rgb(238 246 254 / 14%);
+  --secondary-fill: rgb(238 246 254 / 10%);
+  --tertiary-fill: rgb(238 246 254 / 7%);
+  --quaternary-fill: rgb(238 246 254 / 4%);
+  --home-gradient: radial-gradient(55% 50% at 88% 6%, rgb(183 216 245 / 24%), transparent 70%), radial-gradient(50% 50% at 10% 92%, rgb(183 216 245 / 12%), transparent 70%), linear-gradient(165deg, #0e1b2a 0%, #0c1826 55%, #0a1622 100%);
+  --glass-panel: rgb(14 27 42 / 70%);
+  --glass-card: rgb(22 39 57 / 80%);
+  --glass-border: rgb(238 246 254 / 14%);
+  --glass-hover: rgb(22 39 57 / 95%);
+  --shadow-small: 0 1px 3px rgb(0 0 0 / 35%), 0 0 0 0.5px rgb(183 216 245 / 20%);
+  --look-highlight: #ffd700;
+  --look-on-highlight: #0e1b2a;
+  --look-link: #ff5a4e;
+}
