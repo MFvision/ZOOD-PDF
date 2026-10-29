@@ -639,8 +639,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
         const bytes = await file.arrayBuffer();
-        // Kept before the core takes `bytes` over (it is transferred to the worker).
-        const kept = bytes.slice(0);
+        // Kept before the core takes `bytes` over (it is transferred to the
+        // worker); the desktop's core only reads them, so they are kept as they are.
+        const kept = client.takesBuffers ? bytes.slice(0) : bytes;
         const opened = await client.open(bytes, password);
         if (sequence !== openSequence.current) {
           void opened.free();
