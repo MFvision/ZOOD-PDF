@@ -67,3 +67,24 @@ const WORLD = /^(?:how (?:many|much|long|old|far)|when (?:is|are|was|does|did|wi
 export function asksTheWorld(words: string): boolean {
   return WORLD.test(simple(words));
 }
+
+const QUESTION =
+  /^(?:how|what|whats|why|who|whom|whose|where|when|which|is|are|can|could|should|would|will|does|did|explain|tell me|give me|teach me|ideas?|suggest|recommend|define|compare|plan)\b|[?؟]$|^(?:كيف|وش|ايش|شو|ليش|لماذا|ماذا|ما هو|ما هي|ماهو|ماهي|مين|من هو|من هي|متى|وين|اين|هل|كم|اشرح|علمني|عطني|اعطني|اقترح|انصحني|قارن)(?= |$)/;
+/** Words that point at something in front of the person: the screen, a window, their files or a message. */
+const HERE =
+  /\b(?:this|that|these|those|here|screen|window|page|tab|button|menu|click|selected|file|files|folder|email|message|pdf|document)\b|(?:^| )(?:هذا|هذي|هذه|هاذا|هذاك|هنا|الشاشه|الشاشة|النافذه|النافذة|الصفحه|الصفحة|الزر|اضغط|الملف|الملفات|المجلد|الايميل|الرساله|الرسالة|المستند)(?= |$)/;
+
+/**
+ * A question for a general assistant, about the world and not about the
+ * screen: "what is the weather like in winter?", "how do I set up a company
+ * hub?", «كيف أبدأ مشروع؟». It is answered in words by the best model, with
+ * no picture of the screen and no window text (a picture made the small
+ * model answer about the screen, or say it could only help with PDFs, and
+ * reading it was most of the wait), and never taken for a tool or a setting.
+ */
+export function asksAGeneralQuestion(words: string): boolean {
+  const said = simple(words).replace(/[.!…]+$/, '');
+  if (!said || SETTING.test(said) || HERE.test(said)) return false;
+  if (asksAboutWords(words) || asksToReadOut(words)) return false;
+  return QUESTION.test(said) || asksTheWorld(words);
+}

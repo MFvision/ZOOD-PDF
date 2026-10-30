@@ -55,7 +55,7 @@ fn chord_with(key: char, shift: bool) -> Result<(), String> {
                 Ok(())
             }
         })
-        .and_then(|()| keys.key(Key::Unicode(key), Direction::Click));
+        .and_then(|()| keys.key(crate::remote::keys::shortcut_key(key), Direction::Click));
     // Let go of both whatever happened, so no key stays held down.
     if shift {
         let _ = keys.key(Key::Shift, Direction::Release);
