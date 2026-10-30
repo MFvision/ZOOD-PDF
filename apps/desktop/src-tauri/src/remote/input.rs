@@ -258,6 +258,7 @@ mod system {
 
     use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
 
+    use super::super::keys::shortcut_key;
     use super::{Act, Click, Named, Shortcut};
 
     /// The key held for shortcuts here, and the letter (or key) pressed with it.
@@ -268,19 +269,19 @@ mod system {
             Key::Control
         };
         match shortcut {
-            Shortcut::Copy => (vec![command], Key::Unicode('c')),
-            Shortcut::Paste => (vec![command], Key::Unicode('v')),
-            Shortcut::Cut => (vec![command], Key::Unicode('x')),
-            Shortcut::Undo => (vec![command], Key::Unicode('z')),
+            Shortcut::Copy => (vec![command], shortcut_key('c')),
+            Shortcut::Paste => (vec![command], shortcut_key('v')),
+            Shortcut::Cut => (vec![command], shortcut_key('x')),
+            Shortcut::Undo => (vec![command], shortcut_key('z')),
             Shortcut::Redo if cfg!(target_os = "macos") => {
-                (vec![command, Key::Shift], Key::Unicode('z'))
+                (vec![command, Key::Shift], shortcut_key('z'))
             }
-            Shortcut::Redo => (vec![command], Key::Unicode('y')),
-            Shortcut::SelectAll => (vec![command], Key::Unicode('a')),
+            Shortcut::Redo => (vec![command], shortcut_key('y')),
+            Shortcut::SelectAll => (vec![command], shortcut_key('a')),
             Shortcut::SwitchApp if cfg!(target_os = "macos") => (vec![Key::Meta], Key::Tab),
             Shortcut::SwitchApp => (vec![Key::Alt], Key::Tab),
-            Shortcut::ZoomIn => (vec![command], Key::Unicode('=')),
-            Shortcut::ZoomOut => (vec![command], Key::Unicode('-')),
+            Shortcut::ZoomIn => (vec![command], shortcut_key('=')),
+            Shortcut::ZoomOut => (vec![command], shortcut_key('-')),
         }
     }
 

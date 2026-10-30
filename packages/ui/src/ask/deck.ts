@@ -84,9 +84,15 @@ export function deckPrompt(count: number, language: 'ar' | 'en'): string {
   ].join('\n');
 }
 
-/** The person's answers, as the model reads them. */
-export function deckRequest(topic: string, notes: string): string {
-  return [`Topic: ${topic.trim()}`, notes.trim() ? `Who it is for and what it must cover: ${notes.trim()}` : ''].filter(Boolean).join('\n');
+/** The person's answers, as the model reads them, and the answer the slides are made from, if any. */
+export function deckRequest(topic: string, notes: string, source = ''): string {
+  return [
+    `Topic: ${topic.trim()}`,
+    notes.trim() ? `Who it is for and what it must cover: ${notes.trim()}` : '',
+    source.trim() ? `Build the slides from this answer, keeping its facts and steps:\n${source.trim().slice(0, 3000)}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 const clip = (text: unknown, most: number): string =>

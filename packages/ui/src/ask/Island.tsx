@@ -4,6 +4,7 @@ import {
   ClipboardPaste,
   Copy,
   FileText,
+  FileType,
   FolderInput,
   Keyboard,
   Loader,
@@ -84,7 +85,9 @@ import {
 import type { BookEntry, BookStep, Control, Intent } from './book';
 import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
 import type { SettingAsk } from './settingsBook';
-import { asksAboutWords, asksTheWorld, asksToReadOut } from './content';
+import { answerFile, answerTitle } from './answerFile';
+import type { AnswerFileKind } from './answerFile';
+import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
 import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
 import type { DeckLook } from './deck';
@@ -242,7 +245,17 @@ type Phase =
       onlyPoints: boolean;
     }
   /** "Make me a presentation": its few questions, then the slides being written (`deck.ts`). */
-  | { kind: 'deck'; words: string; topic: string; notes: string; size: (typeof DECK_SIZES)[number]; look: DeckLook; working: boolean }
+  | {
+      kind: 'deck';
+      words: string;
+      topic: string;
+      notes: string;
+      size: (typeof DECK_SIZES)[number];
+      look: DeckLook;
+      working: boolean;
+      /** The answer the slides are made from, when an answer asked for them. */
+      source?: string;
+    }
   | { kind: 'decked'; words: string; say: string }
   | { kind: 'problem'; message: TKey; detail?: string };
 
@@ -300,6 +313,8 @@ function Island() {
   const leaveTimer = useRef(0);
   const [typed, setTyped] = useState('');
   const [copied, setCopied] = useState(false);
+  /** An answer being kept as a file. */
+  const [making, setMaking] = useState<AnswerFileKind | null>(null);
   /** An answer is being read out from its Read button. */
   const [readingOut, setReadingOut] = useState(false);
   const card = useRef<HTMLDivElement | null>(null);
@@ -660,25 +675,31 @@ function Island() {
     const id = `ask-${Date.now()}-${asked}`;
     try {
       const moment = momentOf(await invokeHost('ask_moment'));
-      setPhase({ kind: 'thinking', words, screen: moment.screen && Boolean(brain.sees) });
+      // A question for a general assistant ("what is the weather like in winter?", «كيف أسوي مشروع؟»):
+      // answered in words by the best model, without a picture of the screen or the window's text.
+      const general = !chosen && asksAGeneralQuestion(words);
+      setPhase({ kind: 'thinking', words, screen: moment.screen && Boolean(brain.sees) && !general });
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
       // A setting named with its choice, or a page of Settings, before the menus: "keep 20 versions", "AI settings".
-      const named = !chosen && !past;
+      const named = !chosen && !past && !general;
       // Words to write, sum up, read out or judge ("write a reply", "لخص الإيميل") are the model's, never a setting's.
       const readOut = !moment.ours && asksToReadOut(words);
-      const about = readOut || asksAboutWords(words);
+      const about = readOut || asksAboutWords(words) || general;
       const setting = named && !about;
       // Another app's everyday command ("print", «اطبع», "new tab"): its own shortcut, no picture.
       const shortcut = named && !moment.ours ? shortcutAsked(words) : null;
       if (shortcut) return await shortcutLane(words, shortcut, spoken);
       // "Make me a presentation": a few questions, then ZOOD writes the file itself.
-      if (named && deckAsked(words)) return startDeck(words, spoken);
+      if (!chosen && !past && deckAsked(words)) return startDeck(words, spoken);
       // Another app's button by its name ("archive", "click Insert", «أرشف»), before ZOOD's own settings:
       // there, "new message" is the app's button, not ZOOD's greeting.
       if (named && !moment.ours && (await controlsLane(words, spoken, 'bare'))) return;
       if (named && !moment.ours && (await controlsLane(words, spoken, 'named'))) return;
       if (setting && settingFirst(words, true) && (await settingsLane(words, spoken))) return;
       if (named && moment.ours && (await bookLane(words, spoken))) return;
+      // "How do I add a signature?" in ZOOD PDF is still shown on the screen, when a command is
+      // named outright; a general "how do I …" is never guessed into one of ZOOD's commands.
+      if (general && moment.ours && intentOf(words) === 'show' && (await bookLane(words, spoken, false))) return;
       // A setting, by its name, from anywhere: Settings opens at it.
       if (setting && (await settingsLane(words, spoken))) return;
       // Named by its words, not as a phrase: done when one is clearly meant, offered when a few could be.
@@ -692,14 +713,14 @@ function Island() {
       // Not a tool either: "extract the dates from this" is not Extract pages.
       if ((chosen || !about) && (await quickLane(words, spoken, moment, chosen))) return;
       // Another app: its buttons by their names, before any picture is read.
-      if (!chosen && !past && !moment.ours && (await controlsLane(words, spoken))) return;
+      if (!chosen && !past && !general && !moment.ours && (await controlsLane(words, spoken))) return;
       // Words to be read or heard, and Show me or Do it for me, come from the best model there is (`writerFor`).
       const model = about || intentOf(words) || shouldTalk(prefs.talkBack, spoken) ? await writerFor(brain, await machineMemoryGiB()) : brain;
-      const screen = moment.screen && Boolean(model.sees);
+      const screen = moment.screen && Boolean(model.sees) && !general;
       const wallet = await loadWallet(t('wallet.me')).catch(() => null);
-      const text = await wordsOfWindow(moment, model);
-      const tapped = moment.app !== '' || moment.title !== '' || text !== '';
-      const documents = await lookUp(moment.title, `${text}\n${words}`);
+      const text = general ? '' : await wordsOfWindow(moment, model);
+      const tapped = !general && (moment.app !== '' || moment.title !== '' || text !== '');
+      const documents = await lookUp(general ? '' : moment.title, `${text}\n${words}`);
       const context: Moment = {
         files: moment.files,
         screen,
@@ -835,7 +856,7 @@ function Island() {
    * (`shell/askBridge.ts`) — no picture, no model reading the screen. False
    * when a part of the request is not a command, for the models to answer.
    */
-  const bookLane = async (words: string, spoken: boolean): Promise<boolean> => {
+  const bookLane = async (words: string, spoken: boolean, guess = true): Promise<boolean> => {
     const said = intentOf(words);
     // A question about a command ("what does Print do?") is answered, not done.
     if (!said && /[?؟]|^(?:what|why|which|who|is|are|does|ما |ماذا|وش |ايش|ليش|لماذا|هل )/i.test(words.trim()))
@@ -849,7 +870,7 @@ function Island() {
     for (const part of parts) {
       let step = stepOf(part, entries);
       // Only an outright "do it" or "show me" is worth the decider's guess.
-      if (!step && said) {
+      if (!step && said && guess) {
         const id = await decided(part, 'Which ZOOD PDF command does the person want?', bookOptions(entries));
         const entry = id ? entries.find((one) => one.id === id) : undefined;
         if (entry) step = stepFor(entry, part);
@@ -1469,7 +1490,7 @@ function Island() {
           model: model.id,
           messages: [
             { role: 'system', content: deckPrompt(asked.size, language) },
-            { role: 'user', content: deckRequest(asked.topic, asked.notes) },
+            { role: 'user', content: deckRequest(asked.topic, asked.notes, asked.source) },
           ],
           grammar: deckGrammar(asked.size),
           maxTokens: 300 + asked.size * 180,
@@ -1492,6 +1513,57 @@ function Island() {
       setPhase({ kind: 'problem', ...errorKey(error) });
     }
   };
+
+  /** An answer kept as a PDF or a Word file: saved in Documents › ZOOD PDF and opened. */
+  const keepAs = async (kind: AnswerFileKind, words: string, answer: string) => {
+    stopSpeaking();
+    setMaking(kind);
+    const language = languageOf(words || answer);
+    try {
+      const title = answerTitle(words, translate(language, 'ask.file.untitled'));
+      const bytes = await answerFile(kind, title, answer, getSharedCoreClient());
+      await saveDeck(bytes, title, kind);
+      const say = translate(language, kind === 'pdf' ? 'ask.file.donePdf' : 'ask.file.doneWord', { title });
+      aloud(say, false);
+      setPhase({ kind: 'decked', words, say });
+    } catch (error) {
+      setPhase({ kind: 'problem', ...errorKey(error) });
+    } finally {
+      setMaking(null);
+    }
+  };
+
+  /** An answer made a presentation: the deck's questions, with the answer to build it from. */
+  const deckFromAnswer = (words: string, answer: string) => {
+    stopSpeaking();
+    setPhase({
+      kind: 'deck',
+      words,
+      topic: answerTitle(words, ''),
+      notes: '',
+      size: 5,
+      look: 'zood',
+      working: false,
+      source: answer,
+    });
+    void invokeHost('ask_type_instead').catch(() => undefined);
+  };
+
+  /** "Keep it as": PDF, Word or PowerPoint, under an answer. */
+  const fileButtons = (words: string, answer: string) => (
+    <div className="ask-keep">
+      <span className="ask-detail">{t('ask.file.keepAs')}</span>
+      <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => void keepAs('pdf', words, answer)}>
+        {making === 'pdf' ? <Loader className="spin" /> : <FileText />} PDF
+      </button>
+      <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => void keepAs('docx', words, answer)}>
+        {making === 'docx' ? <Loader className="spin" /> : <FileType />} Word
+      </button>
+      <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => deckFromAnswer(words, answer)}>
+        <Presentation /> PowerPoint
+      </button>
+    </div>
+  );
 
   const tidyNow = (words: string, preview: TidyPreview) => {
     stopSpeaking();
@@ -1830,6 +1902,7 @@ function Island() {
             </button>
             {answerButtons(phase.decision.text)}
           </div>
+          {phase.decision.act === 'answer' && fileButtons(phase.words, phase.decision.text)}
         </div>
       )}
       {phase.kind === 'said' && !phase.decision.text && phase.decision.act === 'answer' && phase.decision.say && (

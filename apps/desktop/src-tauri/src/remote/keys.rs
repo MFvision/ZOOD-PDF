@@ -80,6 +80,31 @@ pub fn to_mac(name: &str) -> Option<u16> {
         .filter(|&code| code != NONE)
 }
 
+/// The key pressed with Ctrl (Command) for a shortcut's letter, `v` for
+/// paste. On a Mac it is the key's place on the keyboard: enigo's
+/// `Key::Unicode` looks the letter up in the current keyboard layout
+/// (`TISCopyCurrentKeyboardInputSource`), which macOS allows only on the
+/// main thread, and these keys are pressed from a worker thread, so the
+/// look-up stopped the whole app ("Put it at my cursor", 2026-10-30). The
+/// place also works with an Arabic layout in front, where there is no `v`.
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub fn shortcut_key(letter: char) -> enigo::Key {
+    #[cfg(target_os = "macos")]
+    {
+        let name = match letter {
+            'a'..='z' => format!("Key{}", letter.to_ascii_uppercase()),
+            '0'..='9' => format!("Digit{letter}"),
+            '=' => "Equal".to_string(),
+            '-' => "Minus".to_string(),
+            _ => String::new(),
+        };
+        if let Some(code) = to_mac(&name) {
+            return enigo::Key::Other(u32::from(code));
+        }
+    }
+    enigo::Key::Unicode(letter)
+}
+
 /// A key's name as the other computer should press it: between a PC and a
 /// Mac, Control and Command (Windows key) change places.
 pub fn across(name: &'static str, from_os: &str, to_os: &str) -> &'static str {
