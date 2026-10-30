@@ -35,6 +35,13 @@ describe('a general question', () => {
     'وش يقول هذا الإيميل',
     'كيف أوقع الملف',
     'make me a presentation about our sales',
+    'do you see my screen?',
+    'what do you think about this product?',
+    'what do you know about this?',
+    'why is my computer slow?',
+    'can you look at the error and tell me what to do',
+    'تشوف الشاشة؟',
+    'وش رايك في هالمنتج اللي قدامي؟ شوف',
   ])('“%s” stays with the screen, the tools or Settings', (words) => {
     expect(asksAGeneralQuestion(words)).toBe(false);
   });

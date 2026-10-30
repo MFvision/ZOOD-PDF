@@ -244,6 +244,7 @@ function exampleLines(moment: Moment): string[] {
       '- "وريني كيف أضيف توقيع" → {"say": "اضغط على توقيع أولًا.", "act": "show", "x": …, "y": …}',
       '- "explain this screen" → {"say": "This is the print window; I\'ll walk you through it.", "act": "explain"}',
       '- "do it for me: turn on dark mode" → {"say": "Opening Settings.", "act": "do", "x": …, "y": …}',
+      '- "what do you think about this product?" → {"say": "Here is what I see and what I know about it.", "act": "answer", "text": "…what the screen shows (name, price, main features), then what you know about it, its strong and weak points, and what to check before buying"} (read the picture; never "point" for a question like this)',
     );
   lines.push(
     '- "وش يقدر يسوي زود؟" → {"say": "يعدّل ملفات PDF ويحوّلها ويوقّعها، كلها على جهازك.", "act": "answer"}',

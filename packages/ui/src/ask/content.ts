@@ -72,7 +72,7 @@ const QUESTION =
   /^(?:how|what|whats|why|who|whom|whose|where|when|which|is|are|can|could|should|would|will|does|did|explain|tell me|give me|teach me|ideas?|suggest|recommend|define|compare|plan)\b|[?؟]$|^(?:كيف|وش|ايش|شو|ليش|لماذا|ماذا|ما هو|ما هي|ماهو|ماهي|مين|من هو|من هي|متى|وين|اين|هل|كم|اشرح|علمني|عطني|اعطني|اقترح|انصحني|قارن)(?= |$)/;
 /** Words that point at something in front of the person: the screen, a window, their files or a message. */
 const HERE =
-  /\b(?:this|that|these|those|here|screen|window|page|tab|button|menu|click|selected|file|files|folder|email|message|pdf|document)\b|(?:^| )(?:هذا|هذي|هذه|هاذا|هذاك|هنا|الشاشه|الشاشة|النافذه|النافذة|الصفحه|الصفحة|الزر|اضغط|الملف|الملفات|المجلد|الايميل|الرساله|الرسالة|المستند)(?= |$)/;
+  /\b(?:this|that|these|those|here|screen|window|page|tab|button|menu|click|selected|file|files|folder|email|message|pdf|document|see|look|showing|picture|image|photo|error|my (?:computer|mac|pc|laptop))\b|(?:^| )(?:هذا|هذي|هذه|هاذا|هذاك|هنا|شوف|تشوف|الصوره|الصورة|الخطا|جهازي|الشاشه|الشاشة|النافذه|النافذة|الصفحه|الصفحة|الزر|اضغط|الملف|الملفات|المجلد|الايميل|الرساله|الرسالة|المستند)(?= |$)/;
 
 /**
  * A question for a general assistant, about the world and not about the
