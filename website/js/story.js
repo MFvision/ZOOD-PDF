@@ -365,16 +365,16 @@ export const PLATFORMS = [
     id: 'windows',
     name: { ar: 'ويندوز', en: 'Windows' },
     status: {
-      ar: 'الإصدار 0.4.28، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
-      en: 'Version 0.4.28, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
+      ar: 'الإصدار 0.4.29، ويحدّث نفسه. غير موقّع بعد، فقد ينبّهك ويندوز قبل تشغيله أول مرة.',
+      en: 'Version 0.4.29, and it updates itself. Not signed yet, so Windows may warn you the first time it runs.',
     },
   },
   {
     id: 'mac',
     name: { ar: 'ماك', en: 'Mac' },
     status: {
-      ar: 'الإصدار 0.4.28، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
-      en: "Version 0.4.28, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
+      ar: 'الإصدار 0.4.29، ويحدّث نفسه. إلى أن يُضاف توثيق Apple، اسمح بفتحه مرة من الإعدادات › الخصوصية والأمن.',
+      en: "Version 0.4.29, and it updates itself. Until Apple's notarisation is added, allow it once in System Settings › Privacy & Security.",
     },
   },
   {
@@ -403,8 +403,8 @@ export const DOWNLOADS = [
   {
     id: 'windows',
     label: { ar: 'ويندوز', en: 'Windows' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.28/ZOOD-PDF-Setup-0.4.28.exe',
-    sha256: 'a1c5a7e2d549e7ca6f24ebea8b5f2ae53910418ace75b5ff444e69817f63f20d',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.29/ZOOD-PDF-Setup-0.4.29.exe',
+    sha256: '43453f88ff3e76fa91ea5b51bd07a2d19fdf732101730cb7cbb4874b20a5de75',
     steps: {
       ar: 'إن ظهر تنبيه ويندوز الأزرق، اختر «مزيد من المعلومات» ثم «تشغيل على أي حال». يظهر لأن التطبيق جديد وغير موقّع بعد.',
       en: 'If the blue Windows box appears, choose More info, then Run anyway. It shows because the app is new and not signed yet.',
@@ -413,8 +413,8 @@ export const DOWNLOADS = [
   {
     id: 'mac',
     label: { ar: 'ماك', en: 'Mac' },
-    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.28/ZOOD-PDF-0.4.28-mac.dmg',
-    sha256: '87e0e934da36ee529a3fcf716a756b47033290942681b075e2ccad09124bae90',
+    href: 'https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.29/ZOOD-PDF-0.4.29-mac.dmg',
+    sha256: '800ccf2cf5aba9cac198fb409f871f4b4002e1706cbea7fff91a7ec0f9d0b423',
     steps: {
       ar: 'اسحب زود PDF إلى التطبيقات وافتحه. إن منعه ماك، افتح الإعدادات › الخصوصية والأمن واختر «فتح على أي حال» مرة واحدة.',
       en: 'Drag ZOOD PDF to Applications and open it. If your Mac stops it, open System Settings › Privacy & Security and choose Open Anyway, once.',
