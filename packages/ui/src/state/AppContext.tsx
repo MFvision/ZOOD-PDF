@@ -1806,8 +1806,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
         await openFile(new File([bytes], combinedFileName(files.map((file) => file.name), word), { type: 'application/pdf' }), undefined, { unsaved: true });
-      } catch {
-        dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.failed' });
+      } catch (error) {
+        // The engine refuses a file that brings no readable pages: say which
+        // problem it is, not just that combining failed.
+        const lost = /no pages that can be read/.test(String((error as { message?: string } | null)?.message ?? error));
+        dispatch({ type: 'DOCUMENT_FAILED', error: lost ? 'combine.pagesLost' : 'combine.failed' });
       }
     },
     [client, openFile],
