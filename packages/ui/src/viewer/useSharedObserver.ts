@@ -19,11 +19,20 @@ export function useSharedObserver(
 ): SharedObserver {
   const callbacks = useRef(new Map<Element, EntryCallback>());
   const observerRef = useRef<IntersectionObserver | null>(null);
+  /** The root the observer was made for: a root put back in the page (a grid
+   * shown again after a document switch) needs a new one, or nothing it holds
+   * ever comes into view and its pages stay blank (First Five, Abu Fahad). */
+  const rootOf = useRef<Element | null>(null);
   const thresholdKey = Array.isArray(threshold) ? threshold.join(',') : String(threshold);
 
   const observe = useCallback(
     (element: Element, callback: EntryCallback) => {
+      if (observerRef.current && rootOf.current !== rootRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
       if (!observerRef.current) {
+        rootOf.current = rootRef.current;
         observerRef.current = new IntersectionObserver(
           (entries) => {
             for (const entry of entries) callbacks.current.get(entry.target)?.(entry);

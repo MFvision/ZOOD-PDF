@@ -168,7 +168,8 @@
   --border-strong: var(--control-border);
   --accent-fg: var(--accent-contrast);
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
-  --focus: color-mix(in srgb, var(--accent) 55%, transparent);
+  /* 85 %, not 55 %: a reader with weak eyes could only just see the 55 % ring (First Five, Abu Fahad). */
+  --focus: color-mix(in srgb, var(--accent) 85%, transparent);
   --selection: color-mix(in srgb, var(--accent) 28%, transparent);
   --danger: var(--destructive);
   --danger-bg: color-mix(in srgb, var(--red) 12%, transparent);

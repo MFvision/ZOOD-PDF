@@ -325,6 +325,10 @@ function reduce(state: AppState, action: AppAction): AppState {
         scrollRequest: null,
         find: { ...state.find, matches: [], cursor: 0, searched: false },
         edit: { ...createEditState(), active: state.edit.active },
+        // Pages chosen in one file mean nothing in another: page 10 of the
+        // file closed stayed chosen in the next one, with Delete one key away
+        // (First Five, Abu Fahad).
+        organize: { selection: NO_SELECTION, revision: state.organize.revision + 1, busy: false },
       };
     case 'DOCUMENT_FAILED':
       return { ...state, loadingName: null, error: action.error, errorName: action.name ?? null, passwordPrompt: null, switching: null };

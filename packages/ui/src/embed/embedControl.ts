@@ -376,6 +376,16 @@ export function setZoom(registry: PluginRegistry, scale: number | 'fit-page' | '
   capability<Zoom>(registry, 'zoom')?.requestZoom(scale);
 }
 
+/** The zoom on screen, 1 = 100 %; null before a document is showing. */
+export function zoomNow(registry: PluginRegistry): number | null {
+  try {
+    const level = capability<Zoom>(registry, 'zoom')?.getState().currentZoomLevel;
+    return typeof level === 'number' ? level : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Follows `pendingRedactionCount`: now, whenever the marks change, and when
  * another document becomes active. Returns the unsubscribe.

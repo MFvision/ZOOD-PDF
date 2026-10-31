@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pause, Play, ScanText, Sparkles, Square, X } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
@@ -8,7 +8,7 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { openSettingsAt } from '../settings/SettingsWindow';
 import { readOcrOptions } from '../ocr/run';
 import type { OcrProgress } from '../ocr/run';
-import { closeBar, pause, refreshVoices, resume, setRate, setSleep, setVoice, SLEEP_MINUTES, start, stop, useReadAloud } from './readAloud';
+import { closeBar, documentChanged, pause, refreshVoices, resume, setRate, setSleep, setVoice, SLEEP_MINUTES, start, stop, useReadAloud } from './readAloud';
 import type { Scope } from './readAloud';
 import { readingSource } from './readingSource';
 import { voiceLabel, voicesFor } from './voices';
@@ -19,6 +19,7 @@ const RATES = [0.75, 1, 1.25, 1.5, 2, 2.5, 3];
 const NOTICE: Record<NonNullable<ReturnType<typeof useReadAloud>['notice']>, TKey> = {
   unsupported: 'readAloud.unsupported',
   noVoices: 'readAloud.noVoices',
+  speechFailed: 'readAloud.speechFailed',
   noText: 'readAloud.noText',
   noSelection: 'readAloud.noSelection',
   done: 'readAloud.done',
@@ -44,6 +45,17 @@ export function ReadAloudBar() {
   }, []);
 
   const [ocr, setOcr] = useState<OcrProgress | 'failed' | 'none' | null>(null);
+
+  // Another document: the reading and its message were about the one before
+  // (the message stayed on screen over the next file, First Five, Abu Fahad).
+  const documentId = state.document?.id ?? null;
+  const shownFor = useRef(documentId);
+  useEffect(() => {
+    if (shownFor.current === documentId) return;
+    shownFor.current = documentId;
+    documentChanged();
+    setOcr((now) => (now === 'failed' || now === 'none' ? null : now));
+  }, [documentId]);
 
   const begin = async (scope: Scope) => {
     setOcr(null);
@@ -106,16 +118,23 @@ export function ReadAloudBar() {
   return (
     <div className="readaloud" role="region" aria-label={t('readAloud.label')}>
       <div className="readaloud-scope" role="group" aria-label={t('readAloud.what')}>
-        {(['page', 'document', 'selection'] as const).map((scope) => (
-          <IconButton
-            key={scope}
-            label={t(`readAloud.${scope}`)}
-            icon={<Icon of={Play} />}
-            showLabel
-            disabled={busy && !reading.paused && reading.scope === scope}
-            onClick={() => void begin(scope)}
-          />
-        ))}
+        {/* Pressed while it reads, not disabled: a disabled button drops the
+            keyboard focus, which went nowhere (First Five, Abu Fahad). */}
+        {(['page', 'document', 'selection'] as const).map((scope) => {
+          const now = busy && !reading.paused && reading.scope === scope;
+          return (
+            <IconButton
+              key={scope}
+              label={t(`readAloud.${scope}`)}
+              icon={<Icon of={Play} />}
+              showLabel
+              pressed={now}
+              onClick={() => {
+                if (!now) void begin(scope);
+              }}
+            />
+          );
+        })}
       </div>
       {busy && (
         <>
@@ -155,7 +174,7 @@ export function ReadAloudBar() {
       <label className="readaloud-field">
         <span>{t('readAloud.voiceAr')}</span>
         <select className="select" value={reading.voiceAr ?? ''} onChange={(event) => setVoice('ar', event.target.value || null)}>
-          <option value="">{t('readAloud.auto')}</option>
+          <option value="">{t(arabic.length === 0 && reading.engine !== null ? 'readAloud.noneInstalled' : 'readAloud.auto')}</option>
           {arabic.map((voice) => (
             <option key={voice.id} value={voice.id}>
               {voiceLabel(voice, quality)}
@@ -166,7 +185,7 @@ export function ReadAloudBar() {
       <label className="readaloud-field">
         <span>{t('readAloud.voiceEn')}</span>
         <select className="select" value={reading.voiceEn ?? ''} onChange={(event) => setVoice('en', event.target.value || null)}>
-          <option value="">{t('readAloud.auto')}</option>
+          <option value="">{t(english.length === 0 && reading.engine !== null ? 'readAloud.noneInstalled' : 'readAloud.auto')}</option>
           {english.map((voice) => (
             <option key={voice.id} value={voice.id}>
               {voiceLabel(voice, quality)}
@@ -184,7 +203,18 @@ export function ReadAloudBar() {
           />
         </span>
       ) : null}
-      <span className="readaloud-status" role="status">
+      {/* A problem (no voice, nothing to read) on a line of its own, in the
+          label colour: as small grey text squeezed at the end of the bar it
+          was easy to miss (First Five, Abu Fahad). */}
+      <span
+        className={[
+          'readaloud-status',
+          !recognizing && (ocr === 'failed' || ocr === 'none' || (!busy && reading.notice !== null && reading.notice !== 'done' && reading.notice !== 'slept')) && 'is-problem',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        role="status"
+      >
         {recognizing
           ? t('readAloud.recognizing', { page: Math.max(1, ocr.page), of: Math.max(1, ocr.of) })
           : ocr === 'failed'

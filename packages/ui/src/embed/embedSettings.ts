@@ -3,7 +3,7 @@ import { readJson, writeJson } from '../state/preferences';
 import { SHEET_QUERY } from '../shell/sheetDrag';
 import { getSettings } from '../state/settings';
 import type { OpenZoom, PageLayout } from '../state/settings';
-import { commandActive, runCommand, setZoom } from './embedControl';
+import { commandActive, runCommand, setZoom, zoomNow } from './embedControl';
 import type { EmbedZoom } from './embedControl';
 
 /**
@@ -70,6 +70,9 @@ export function applyOpenZoom(registry: PluginRegistry, zoom: OpenZoom, file: st
   setZoom(registry, rememberedZoom(file) ?? 'fit-width');
 }
 
+/** Above this, fitting the width only blows a small page up (a photo made into a PDF opened at 279 %). */
+const FIT_WIDTH_MOST = 1.5;
+
 /** Everything Settings › Viewing says about a document that has just opened. */
 export function applyOpenSettings(registry: PluginRegistry, file: string): void {
   const settings = getSettings();
@@ -80,6 +83,15 @@ export function applyOpenSettings(registry: PluginRegistry, file: string): void 
   applyPageLayout(registry, settings.pageLayout);
   // One page at a time fits each page already.
   if (settings.pageLayout !== 'single') applyOpenZoom(registry, settings.openZoom, file);
+  // A small page (a receipt photographed and made into a PDF) fitted to the
+  // width came up blurred and cut off at 279 %: the whole page instead
+  // (First Five, Rami, 2026-10-31).
+  if (settings.pageLayout !== 'single' && settings.openZoom === 'fit-width') {
+    setTimeout(() => {
+      const now = zoomNow(registry);
+      if (now !== null && now > FIT_WIDTH_MOST) setZoom(registry, 'fit-page');
+    }, 120);
+  }
 }
 
 const SIDEBAR = 'panel:toggle-sidebar';

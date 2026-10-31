@@ -119,9 +119,11 @@ export function OrganizePanel() {
         {t('tool.organize')}
       </h3>
       {state.document === null && <OpenFirst />}
-      <p className="organize-count" role="status">
-        {t('organize.selected', { count: pages.length, total: count })}
-      </p>
+      {state.document !== null && (
+        <p className="organize-count" role="status">
+          {t('organize.selected', { count: pages.length, total: count })}
+        </p>
+      )}
       <div className="tool-actions">
         <IconButton
           label={t('organize.rotateLeft')}

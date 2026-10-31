@@ -2109,7 +2109,7 @@
   "readAloud.done": "Finished reading.",
   "readAloud.noText": "There is no text to read here. A scanned page can be read after Scan & OCR.",
   "readAloud.noSelection": "Select the text to read first, then press The selection.",
-  "readAloud.noVoices": "The system has no voice for this text, or reading stopped. Install a voice in the system’s settings and try again.",
+  "readAloud.noVoices": "This computer has no voice for this language. Install one in the system’s settings (on Windows: Settings › Time & language › Speech), then try again.",
   "readAloud.unsupported": "This browser cannot read aloud (no speech synthesis).",
   "readAloud.moreVoices": "The voices are the system’s own, offline. More — Arabic ones too — can be added in the system’s speech settings.",
   "readAloud.moreVoicesApple": "The voices are the system’s own, offline. More — including Enhanced and Premium ones, and Arabic voices such as Maged — can be downloaded in System Settings › Accessibility › Spoken Content. Siri’s voices are not offered to apps.",
@@ -3718,5 +3718,7 @@
   "shortcuts.close": "Close the document",
   "shortcuts.findNext": "Next match",
   "shortcuts.findPrevious": "Previous match",
-  "shortcuts.menuBar": "Go to the menu bar"
+  "shortcuts.menuBar": "Go to the menu bar",
+  "readAloud.speechFailed": "Reading stopped: the voice did not answer. Try again, or choose another voice.",
+  "readAloud.noneInstalled": "None installed"
 }
