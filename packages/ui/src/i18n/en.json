@@ -3731,6 +3731,8 @@
   "ocr.stopping": "Stopping after this page…",
   "ocr.stoppedKept": "Stopped. Pages read before you stopped: {pages}. They now have a text layer ({words} words); save to keep it.",
   "ocr.stoppedNothing": "Stopped before any page was read. Nothing was changed.",
+  "export.stop": "Stop",
+  "export.stopped": "Export stopped. Nothing was saved.",
   "ocr.noWords": "No words were found on the pages read ({count}). Try the clean-up options above, or a clearer scan.",
   "ocr.gone": "Text recognition stopped: the document it was reading was closed. No other file was changed.",
   "error.openNamed": "“{name}” could not be opened: it is damaged, or not really a PDF. If it came by email or from the web, download it again.",

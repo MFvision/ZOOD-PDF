@@ -1,6 +1,6 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Download, FileOutput } from 'lucide-react';
+import { CircleStop, Download, FileOutput } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
@@ -8,13 +8,12 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { saveBytes } from '../state/saveFile';
 import { DEFAULT_RESOLUTION, EXPORT_FORMATS, IMAGE_FORMATS, RESOLUTIONS, isImageFormat } from './formats';
 import type { ExportFormat, ImageFormat } from './formats';
+import { beginExport, endExport, exportProgress, stopExport, useExportRun } from './exportRun';
 import { exportCurrentFile } from './runExport';
 import type { SlideMode, WordMode } from './runExport';
 import type { SheetMode } from './tables';
 import './export.css';
 import { OpenFirst } from '../tools/OpenFirst';
-
-type Outcome = { kind: 'done'; name: string; reduced: boolean } | { kind: 'noText' };
 
 /**
  * Export: the document's content in another format, with Arabic in reading
@@ -34,8 +33,10 @@ export function ExportPanel() {
   const [sheets, setSheets] = useState<SheetMode>('page');
   const [slides, setSlides] = useState<SlideMode>('picture');
   const [words, setWords] = useState<WordMode>('layout');
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // Kept outside the panel (`exportRun.ts`): leaving and coming back shows the
+  // export still under way, rather than an idle panel that starts another.
+  const exportRun = useExportRun();
+  const { progress } = exportRun;
   // Set when this copy needs a password the app does not have: one set in Protect.
   const [locked, setLocked] = useState<{ wrong: boolean } | null>(null);
   const [password, setPassword] = useState('');
@@ -46,16 +47,22 @@ export function ExportPanel() {
     setShownFor(documentId);
     setLocked(null);
     setPassword('');
-    setOutcome(null);
   }
+  // What the last export came to, for this document only: another starts afresh.
+  const outcome = exportRun.documentId === documentId ? exportRun.outcome : null;
   const running = progress !== null;
+  // An export for a document no longer on screen (closed, another tab) stops.
+  useEffect(() => {
+    if (running && exportRun.documentId !== documentId) stopExport();
+  }, [running, exportRun.documentId, documentId]);
   const ready = state.view === 'viewer' && state.document !== null && state.switching === null && !running;
 
   const run = async (given?: string) => {
     const name = state.document?.name;
-    if (!name || running) return;
-    setOutcome(null);
-    setProgress({ done: 0, total: state.document?.pageCount ?? 0 });
+    if (!name || documentId === null || running) return;
+    const signal = beginExport(documentId, state.document?.pageCount ?? 0);
+    if (!signal) return;
+    let ended: Parameters<typeof endExport>[1] = null;
     try {
       const result = await exportCurrentFile(
         services,
@@ -69,26 +76,28 @@ export function ExportPanel() {
           pageLabel: (page) => t('viewer.page', { page }),
           tableLabel: (n) => t('export.tableLabel', { n }),
           pagesWord: t('export.pagesWord'),
-          onProgress: (done, total) => setProgress({ done, total }),
+          onProgress: (done, total) => exportProgress(signal, done, total),
+          signal,
         },
         given ?? services.documentPassword,
       );
       setLocked(null);
       if (!result) {
-        setOutcome({ kind: 'noText' });
+        ended = { kind: 'noText' };
         return;
       }
       if (await saveBytes(result.bytes, result.fileName, result.kind)) {
-        setOutcome({ kind: 'done', name: result.fileName, reduced: result.reduced });
+        ended = { kind: 'done', name: result.fileName, reduced: result.reduced };
       }
     } catch (error) {
+      if (signal.aborted) return;
       if ((error as { code?: string } | null)?.code === 'E_PASSWORD') {
         setLocked({ wrong: given !== undefined });
         return;
       }
       dispatch({ type: 'DOCUMENT_FAILED', error: 'export.failed' });
     } finally {
-      setProgress(null);
+      endExport(signal, ended);
     }
   };
 
@@ -96,7 +105,9 @@ export function ExportPanel() {
     ? t('export.progress', { page: Math.min(progress.done + 1, progress.total), total: progress.total })
     : outcome?.kind === 'done'
       ? t('export.done', { name: outcome.name })
-      : '';
+      : outcome?.kind === 'stopped'
+        ? t('export.stopped')
+        : '';
 
   return (
     <div className="tool-panel">
@@ -231,6 +242,7 @@ export function ExportPanel() {
           disabled={!ready || (locked !== null && password.length === 0)}
           onClick={() => void run(locked ? password : undefined)}
         />
+        {running && <IconButton label={t('export.stop')} icon={<Icon of={CircleStop} />} showLabel onClick={stopExport} />}
       </div>
       <p className="tool-panel-note" role="status">
         {status}
