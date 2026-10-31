@@ -12,7 +12,10 @@ const BUILD = [
   'assets/pdfium-abc.wasm',
   'assets/tesseract-core-lstm.wasm-abc.js',
   'assets/worker.min-abc.js',
+  'assets/ort-wasm-simd-threaded-abc.wasm',
+  'assets/detect.worker-abc.js',
   'ocr/ara.traineddata.gz',
+  'ocr/lines.onnx',
   'licenses/THIRD-PARTY-LICENSES.md',
 ];
 
@@ -36,10 +39,13 @@ describe('the service worker the build writes', () => {
       '/manifest.webmanifest',
     ]);
     expect(lazy).toEqual([
+      '/assets/detect.worker-abc.js',
+      '/assets/ort-wasm-simd-threaded-abc.wasm',
       '/assets/tesseract-core-lstm.wasm-abc.js',
       '/assets/worker.min-abc.js',
       '/licenses/THIRD-PARTY-LICENSES.md',
       '/ocr/ara.traineddata.gz',
+      '/ocr/lines.onnx',
     ]);
   });
 

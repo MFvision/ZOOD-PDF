@@ -94,6 +94,17 @@ export const NOTICES: Notice[] = [
     header:
       "Tesseract's trained models for Arabic, English, Persian and Urdu (ocr/*.traineddata.gz, 4.0.0_best_int, from tesseract-ocr/tessdata_best) are under the Apache License 2.0:",
   },
+  {
+    fileName: 'paddleocr-LICENSE.txt',
+    path: () => join(packageRoot('tesseract.js-core'), 'LICENSE'),
+    header:
+      "The line finder (ocr/lines.onnx) is PaddleOCR's PP-OCRv5 mobile text detection model (PaddlePaddle/PP-OCRv5_mobile_det), converted to ONNX; it is under the Apache License 2.0:",
+  },
+  {
+    fileName: 'onnxruntime-web-LICENSE.txt',
+    path: () => ui('models/onnxruntime-LICENSE.txt'),
+    header: 'ONNX Runtime, compiled to WebAssembly in onnxruntime-web (ort-wasm-simd-threaded.wasm), which runs the line finder:',
+  },
 ];
 
 export function notices(): Plugin {
