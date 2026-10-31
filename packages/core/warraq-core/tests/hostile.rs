@@ -108,9 +108,11 @@ const MEMORY_BUDGET: usize = 400 << 20;
 /// What one run of the whole surface (`drive`: some forty operations) may
 /// take. A decompression bomb of a megabyte is decoded up to the engine's
 /// limit by each operation that reads the stream, so it gets longer; each
-/// operation on its own stays well under a second.
+/// operation on its own stays well under a second (the limit lets a real
+/// 600 dpi colour scan decode, so a bomb decodes that far too). The hangs this
+/// guards against ran for minutes; the budget leaves room for a busy CI runner.
 fn time_budget(input_len: usize) -> Duration {
-    let secs = if input_len >= 512 << 10 { 10 } else { 4 };
+    let secs = if input_len >= 512 << 10 { 16 } else { 8 };
     // A debug build is many times slower than what ships.
     Duration::from_secs(if cfg!(debug_assertions) {
         secs * 10
