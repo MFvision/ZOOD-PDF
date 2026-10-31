@@ -128,10 +128,11 @@ impl<'a> Shaper<'a> {
         let mut clusters: Vec<usize> = infos.iter().map(|i| i.cluster as usize).collect();
         clusters.sort_unstable();
         clusters.dedup();
+        // A binary search: `clusters` is sorted, and a scan per glyph made a
+        // long run quadratic (one 500 000-letter word took a minute).
         let next_cluster = |c: usize| {
             clusters
-                .iter()
-                .find(|&&x| x > c)
+                .get(clusters.partition_point(|&x| x <= c))
                 .copied()
                 .unwrap_or(text.len())
         };
