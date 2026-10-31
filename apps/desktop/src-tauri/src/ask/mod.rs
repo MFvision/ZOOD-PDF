@@ -697,6 +697,14 @@ pub fn ask_stop<R: Runtime>(app: AppHandle<R>) {
     std::thread::spawn(move || released(&app, None));
 }
 
+/// From the island's Reply button, under an answer that asks the person
+/// something: listening again, as one tap of the key would. On a thread of
+/// its own: opening the microphone may take a while (`summon`).
+#[tauri::command]
+pub fn ask_listen_again<R: Runtime>(app: AppHandle<R>) {
+    std::thread::spawn(move || pressed(&app, Opened::Tapped));
+}
+
 /// From the island, while it listens: the person would rather type. What
 /// was heard is dropped and the island takes the keyboard, as one tap does
 /// when one tap types.

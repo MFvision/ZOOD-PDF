@@ -90,6 +90,14 @@ describe('Ask ZOOD settings', () => {
     ).toBe('qwen2.5-0.5b');
   });
 
+  it('never thinks with a model bigger than the computer, even when it was chosen', () => {
+    // The 4B model chosen on an 8 GB MacBook Air froze the whole Mac (2026-10-31).
+    const big = { enabled: true, brain: 'qwen3-vl-4b', screen: true, shortcut: DEFAULT_SHORTCUT, ...TAPS };
+    expect(chosenBrain(big, 8).id).toBe('qwen2.5-1.5b');
+    expect(chosenBrain(big, 16).id).toBe('qwen3-vl-4b');
+    expect(chosenBrain(big, null).id).not.toBe('');
+  });
+
   it('never offers a model that only hears as the one that decides', () => {
     const ears = new Set(earModels().map((model) => model.id));
     expect(brainChoices().some((model) => ears.has(model.id))).toBe(false);

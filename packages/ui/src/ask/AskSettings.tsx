@@ -20,6 +20,7 @@ import {
   askAccess,
   askAllow,
   brainChoices,
+  fitsMemory,
   chosenBrain,
   configureAsk,
   DEFAULT_SHORTCUT,
@@ -332,13 +333,14 @@ export function AskSettings() {
       <Pick
         label={t('ask.settings.brain')}
         hint={t('ask.settings.brainHint')}
-        value={prefs.brain ?? ''}
+        value={prefs.brain && brain.id === prefs.brain ? prefs.brain : ''}
         options={[
           {
             value: '',
             label: t('ask.settings.brainAuto', { name: shortModelName(fallback.name) }),
           },
-          ...brainChoices().map((model) => ({
+          // A model bigger than this computer's memory is not offered: it would freeze it.
+          ...brainChoices().filter((model) => fitsMemory(model, memory)).map((model) => ({
             value: model.id,
             label: t(model.sees ? 'ask.settings.brainSees' : 'ask.settings.brainLight', {
               name: shortModelName(model.name),

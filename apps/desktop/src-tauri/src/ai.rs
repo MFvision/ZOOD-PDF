@@ -59,6 +59,27 @@ pub struct ModelSpec {
     /// It reads pictures: Ask ZOOD can show it the screen.
     #[serde(default)]
     pub sees: bool,
+    /// The memory, in GiB, a computer needs to run it (`models.json`).
+    #[serde(default, rename = "ramGiB")]
+    pub ram_gib: f64,
+}
+
+/// Whether a computer with `memory` bytes can hold `spec`, with the half
+/// GiB of slack the interface allows (a "16 GB" machine reports a little
+/// less). Unknown memory is let through: the interface asked first.
+///
+/// A model bigger than this is never loaded. On a Mac its layers go to the
+/// graphics processor, whose memory is the computer's own and cannot be
+/// paged out: the 4B model with its window on an 8 GB MacBook Air took so
+/// much that the whole Mac stopped answering and had to be switched off
+/// (2026-10-31, "go to Amazon").
+pub fn fits_memory(spec: &ModelSpec, memory: Option<u64>) -> bool {
+    match memory {
+        Some(bytes) if bytes > 0 && spec.ram_gib > 0.0 => {
+            bytes as f64 / f64::from(1u32 << 30) + 0.5 >= spec.ram_gib
+        }
+        _ => true,
+    }
 }
 
 /// One file of a model, as the catalogue names it.
@@ -1168,6 +1189,12 @@ pub async fn run<R: Runtime>(
     request: GenerateRequest,
 ) -> Result<Generated, String> {
     let spec = model_spec(&request.model)?;
+    if !fits_memory(spec, total_memory()) {
+        return Err(format!(
+            "E_TOO_BIG: {} needs {} GB of memory, more than this computer has",
+            spec.name, spec.ram_gib
+        ));
+    }
     let (path, projector) = ready_paths(app, spec)?;
     if !request.media.is_empty() && projector.is_none() {
         return Err("E_AI: this model is not one that sees or hears".to_string());
@@ -1248,6 +1275,18 @@ pub fn ai_cancel(state: State<'_, AiState>, id: String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_model_bigger_than_the_computer_is_never_run() {
+        let big = model_spec("qwen3-vl-4b").unwrap();
+        let small = model_spec("qwen2.5-1.5b").unwrap();
+        let gib = |n: u64| Some(n << 30);
+        assert!(big.ram_gib >= 12.0);
+        assert!(!fits_memory(big, gib(8)), "the 4B model froze an 8 GB Mac");
+        assert!(fits_memory(big, Some((16 << 30) - (300 << 20))));
+        assert!(fits_memory(small, gib(8)));
+        assert!(fits_memory(big, None));
+    }
 
     #[test]
     fn a_relative_redirect_stays_on_the_host_it_came_from() {

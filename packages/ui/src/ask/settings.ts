@@ -216,11 +216,23 @@ export function defaultBrainFor(memoryGiB: number | null): DeviceModel {
   return deviceModel('qwen2.5-1.5b');
 }
 
+/**
+ * Whether this computer has the memory a model needs. Unknown memory counts
+ * as enough: the host checks again before it loads anything (`ai::fits_memory`).
+ */
+export function fitsMemory(model: DeviceModel, memoryGiB: number | null): boolean {
+  return memoryGiB === null || memoryGiB + 0.5 >= model.ramGiB;
+}
+
+/**
+ * The model Ask ZOOD thinks with: the one chosen in Settings, unless this
+ * computer is too small for it. The 4B model chosen on an 8 GB Mac took so
+ * much memory that the whole Mac froze (2026-10-31), so a choice too big
+ * for the machine is set aside for the one its memory calls for.
+ */
 export function chosenBrain(prefs: AskPreferences, memoryGiB: number | null): DeviceModel {
-  return (
-    (prefs.brain && DEVICE_MODELS.find((model) => model.id === prefs.brain)) ||
-    defaultBrainFor(memoryGiB)
-  );
+  const chosen = prefs.brain ? DEVICE_MODELS.find((model) => model.id === prefs.brain) : undefined;
+  return chosen && fitsMemory(chosen, memoryGiB) ? chosen : defaultBrainFor(memoryGiB);
 }
 
 /**
