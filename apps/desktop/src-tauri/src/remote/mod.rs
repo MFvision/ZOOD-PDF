@@ -1347,6 +1347,33 @@ mod tests {
     }
 
     #[test]
+    fn a_connection_that_says_nothing_is_let_go() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let (_shared, url, _told, _stop) = serve(false);
+        let host = url
+            .split_once("/#k=")
+            .unwrap()
+            .0
+            .trim_start_matches("http://")
+            .to_string();
+        tauri::async_runtime::block_on(async {
+            // Silent from the start, and half a head then silence.
+            let mut silent = tokio::net::TcpStream::connect(&host).await.unwrap();
+            let mut half = tokio::net::TcpStream::connect(&host).await.unwrap();
+            half.write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n")
+                .await
+                .unwrap();
+            for stream in [&mut silent, &mut half] {
+                let mut byte = [0u8; 1];
+                let read = tokio::time::timeout(Duration::from_secs(12), stream.read(&mut byte))
+                    .await
+                    .expect("the PC kept a silent connection open");
+                assert!(matches!(read, Ok(0) | Err(_)), "{read:?}");
+            }
+        });
+    }
+
+    #[test]
     fn a_phone_the_person_does_not_allow_is_turned_away() {
         use futures_util::SinkExt;
         use tokio_tungstenite::tungstenite::Message;
