@@ -1227,7 +1227,7 @@ fn journal_path<R: Runtime>(app: &AppHandle<R>, label: &str) -> Result<PathBuf, 
 
 fn write_journal(file: &Path, journal: &Journal) -> Result<(), String> {
     let text = serde_json::to_string(journal).map_err(|e| e.to_string())?;
-    std::fs::write(file, text).map_err(|e| format!("E_IO: {e}"))
+    crate::save::write_whole(file, text.as_bytes()).map_err(|e| format!("E_IO: {e}"))
 }
 
 fn read_journal(file: &Path) -> Journal {

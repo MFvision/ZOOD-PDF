@@ -411,7 +411,7 @@ pub fn put_away<R: Runtime>(app: &AppHandle<R>, old_ones_too: bool) -> Batch {
     if batch.count > 0 {
         write_log(&data, &lines);
         if let Ok(text) = serde_json::to_string(&steps) {
-            let _ = std::fs::write(data.join(UNDO_FILE), text);
+            let _ = crate::save::write_whole(&data.join(UNDO_FILE), text.as_bytes());
         }
         log(&format!("put away {} files", batch.count));
     }

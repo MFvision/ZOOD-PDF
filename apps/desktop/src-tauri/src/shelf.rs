@@ -79,7 +79,7 @@ fn file<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
 
 fn save<R: Runtime>(app: &AppHandle<R>, held: &[Held]) {
     if let (Some(path), Ok(text)) = (file(app), serde_json::to_string(held)) {
-        let _ = std::fs::write(path, text);
+        let _ = crate::save::write_whole(&path, text.as_bytes());
     }
 }
 
