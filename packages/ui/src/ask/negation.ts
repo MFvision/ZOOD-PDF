@@ -1,4 +1,6 @@
 import { normalize } from '../ai/chat/commands';
+import { settingAsked, switchOf } from './settingsBook';
+import type { SettingAsk } from './settingsBook';
 
 /**
  * "Don't delete page 3", «لا تحذف الصفحة», "no dark mode": a request that
@@ -33,9 +35,14 @@ const NOT_AR_FINE = /^(?:و|ف)?لا (?:تنسي|تنسا|تنس|تنساني|ت
 const CLAUSES =
   /\s*(?:[,،;؛.!\n]|\band then\b|\bthen\b|\bbut\b|\band\b|\bafter that\b|\binstead\b|(?<=^|\s)(?:ثم|لكن|بس|وبعدين|بعدين|بعدها)(?=\s|$))\s*|\s(?=و(?:لا|ما) )/;
 
+/** A clause as compared: `normalize`d, its apostrophes spaces, the courtesies off. */
+function clauseWords(clause: string): string {
+  return `${normalize(clause.replace(/[’‘`´]/g, "'")).replace(/'/g, ' ')} `.replace(POLITE, '').trim();
+}
+
 /** Whether one clause says what not to do. */
 export function negatedClause(clause: string): boolean {
-  const said = `${normalize(clause.replace(/[’‘`´]/g, "'")).replace(/'/g, ' ')} `.replace(POLITE, '').trim();
+  const said = clauseWords(clause);
   if (!said) return false;
   if (NOT_EN.test(said) && !NOT_EN_FINE.test(said)) return said.split(' ').length > 1;
   if (NOT_AR.test(said) && !NOT_AR_FINE.test(said)) return said.split(' ').length > 1 || /^(?:و|ف)?لات\S/.test(said);
@@ -58,4 +65,28 @@ export function refusal(words: string): 'all' | 'some' | null {
   if (negated === 0) return null;
   // "No, open the settings": a bare "no" first corrects; it does not refuse what follows.
   return negated === clauses.length ? 'all' : 'some';
+}
+
+/**
+ * A "don't" that is a setting turned off: «لا ترد بالصوت» (don't answer out
+ * loud), "no dark mode", «ما ابي التوهج». It names a setting with no verb of
+ * its own, and that setting has an "off": that is what is asked. A "don't"
+ * with a verb ("don't turn off auto save", «لا تشغل الوضع الليلي») is never
+ * one; nor one that names a choice that is not the setting's "off" ("don't
+ * use purple" is not Purple). Null for anything else.
+ */
+export function settingRefused(words: string, desktop = true): SettingAsk | null {
+  if (refusal(words) !== 'all') return null;
+  const said = clauseWords(words);
+  if (/[,،;؛.!\n]/.test(words.trim().replace(/[.!؟?]+$/, '')) || said.split(' ').length > 8) return null;
+  const not = NOT_EN.exec(said) ?? NOT_AR.exec(said);
+  if (!not) return null;
+  const rest = (/^(?:و|ف)?لات/.test(said) ? said.replace(/^(?:و|ف)?لا/, '') : said.slice(not[0].length)).trim();
+  // «لا تشغّل»: the verb a «لا» goes with is said as «تشغل», not «شغل».
+  if (!rest || switchOf(rest) !== null || switchOf(rest.replace(/^ت/, '')) !== null || negatedClause(rest)) return null;
+  const asked = settingAsked(`turn off ${rest}`, desktop);
+  if (!asked || asked.value === null) return null;
+  const { entry, value } = asked;
+  const off = entry.kind === 'toggle' ? 'off' : entry.off;
+  return off !== undefined && value === off ? asked : null;
 }

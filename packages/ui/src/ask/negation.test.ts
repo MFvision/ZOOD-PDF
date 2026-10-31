@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BOOK_WORDS } from './book';
 import type { BookEntry } from './book';
 import { fuzzyPick } from './fuzzy';
-import { refusal } from './negation';
+import { refusal, settingRefused } from './negation';
 import { TOOLS } from '../tools/tools';
 
 describe('a request that says what not to do', () => {
@@ -85,6 +85,24 @@ describe('a request that says what not to do', () => {
       refusal(words);
       expect(performance.now() - start).toBeLessThan(100);
     }
+  });
+});
+
+describe('a "don\'t" that turns a setting off', () => {
+  const turnedOff = (words: string) => {
+    const asked = settingRefused(words);
+    return asked ? `${asked.entry.id}=${asked.value}` : null;
+  };
+
+  it('is the setting turned off when it names one with no verb', () => {
+    expect(turnedOff('لا ترد بالصوت')).toBe('talkBack=never');
+    expect(turnedOff('no dark mode')).toBe('theme=light');
+    expect(turnedOff('ما ابي التوهج')).toBe('glow=off');
+  });
+
+  it('is nothing when a verb or another choice is named', () => {
+    for (const words of ["don't turn off auto save", "don't turn on dark mode", 'لا تشغل الوضع الليلي', "don't delete page 3", 'لا تحذف الصفحة', 'لا تطبع', "don't use purple", 'لا تحفظ'])
+      expect(turnedOff(words), words).toBeNull();
   });
 });
 

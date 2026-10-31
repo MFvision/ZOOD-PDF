@@ -97,7 +97,7 @@ import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } fro
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
 import { namesIt, pickByWords, sayChoices } from './choices';
 import { asksBack, historyMessages, isNo, isYes, offeredUrl, safeSite, siteAsked, siteName, stillFresh } from './followUp';
-import { refusal } from './negation';
+import { refusal, settingRefused } from './negation';
 import type { LastTurn } from './followUp';
 import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
 import type { DeckLook } from './deck';
@@ -848,7 +848,12 @@ function Island() {
     // something to do ("save but don't print") is the model's to read whole,
     // never a lane's that would see only the command's name (`negation.ts`).
     const refused = !chosen && !past && !replying ? refusal(words) : null;
-    if (refused === 'all') return sayOnly(words, translate(languageOf(words), 'ask.negated'), spoken);
+    if (refused === 'all') {
+      // «لا ترد بالصوت», "no dark mode": a setting named with no verb is turned off.
+      const off = settingRefused(words, true);
+      if (off && (await settingsLane(words, spoken, false, off))) return;
+      return sayOnly(words, translate(languageOf(words), 'ask.negated'), spoken);
+    }
     // "Go to amazon dot sa", «افتح موقع نون»: opened in the browser, no model.
     const site = !chosen && !past && !replying && !refused ? siteAsked(words) : null;
     if (site) return await openSite(words, site, spoken);
