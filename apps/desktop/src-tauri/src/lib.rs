@@ -591,6 +591,7 @@ pub fn run() {
             ask::ask_hide,
             ask::ask_window_ready,
             ask::ask_stop,
+            ask::ask_listen_again,
             ask::ask_notch,
             ask::ask_type_instead,
             ask::ask_point,

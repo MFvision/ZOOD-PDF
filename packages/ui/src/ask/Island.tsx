@@ -7,6 +7,7 @@ import {
   FileText,
   FileType,
   FolderInput,
+  Globe,
   Keyboard,
   Loader,
   Mic,
@@ -37,7 +38,7 @@ import { loadWallet } from '../ai/profile/walletState';
 import { targetWords, valueOf } from '../ai/profile/wallet';
 import type { Target, WalletProfile } from '../ai/profile/wallet';
 import { getSharedCoreClient } from '../core/client';
-import { announceReady, invokeHost, isTauriHost, onHostEvent, saveDeck, sortVoice, uiLog } from '../core/host-tauri';
+import { announceReady, invokeHost, isTauriHost, onHostEvent, openExternalUrl, saveDeck, sortVoice, uiLog } from '../core/host-tauri';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { useI18n } from '../i18n/useT';
 import { translate } from '../i18n/messages';
@@ -95,6 +96,8 @@ import type { AnswerFileKind } from './answerFile';
 import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
 import { namesIt, pickByWords, sayChoices } from './choices';
+import { asksBack, historyMessages, isNo, isYes, linkIn, siteAsked, siteName, stillFresh } from './followUp';
+import type { LastTurn } from './followUp';
 import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
 import type { DeckLook } from './deck';
 import type { Shortcut } from './shortcuts';
@@ -268,6 +271,14 @@ type Phase =
 
 /** How long an answer stays once said, and a list or a question waits. */
 const SAID_STAYS_MS = 9000;
+/** The site an answer that asks back is about: what its Yes button opens. */
+function offeredSite(words: string, decision: Decision): string | null {
+  if (decision.query.startsWith(SITE_OPENED)) return null;
+  return linkIn(`${decision.say}\n${decision.text}`) ?? siteAsked(words);
+}
+
+/** Marks an answer that opened a site, so a "yes" after it does not open it again. */
+const SITE_OPENED = 'site:';
 const WAITS_MS = 25000;
 const SHORT_STAYS_MS = 2600;
 /** How long the island takes to go back into the notch. */
@@ -284,6 +295,7 @@ function errorKey(error: unknown): { message: TKey; detail: string } {
   if (text.includes('E_MODEL_MISSING')) return { message: 'ask.problem.models', detail: '' };
   if (text.includes('E_MIC')) return { message: 'ask.problem.mic', detail: '' };
   if (text.includes('E_CANCELLED')) return { message: 'ask.problem.stopped', detail: '' };
+  if (text.includes('E_TOO_BIG')) return { message: 'ask.problem.tooBig', detail: '' };
   if (text.includes('E_SCREEN')) return { message: 'ask.problem.screen', detail: '' };
   return { message: 'ask.problem.failed', detail: text.replace(/^E_[A-Z_]+:\s*/, '') };
 }
@@ -327,6 +339,8 @@ function Island() {
   const card = useRef<HTMLDivElement | null>(null);
   const field = useRef<HTMLTextAreaElement | null>(null);
   const request = useRef<string | null>(null);
+  /** The last answer, so "yes" or "and in summer?" right after it answers it (`followUp.ts`). */
+  const lastTurn = useRef<LastTurn | null>(null);
   /** The tapped window's words, read once per moment. */
   const windowText = useRef<Promise<string> | null>(null);
   /** The buttons of the window in front, as read for one request. */
@@ -426,7 +440,9 @@ function Island() {
   useEffect(() => {
     const stays =
       phase.kind === 'said'
-        ? SAID_STAYS_MS
+        ? asksBack(phase.decision.say)
+          ? WAITS_MS
+          : SAID_STAYS_MS
         : phase.kind === 'short'
           ? SHORT_STAYS_MS
           : phase.kind === 'placed'
@@ -454,6 +470,21 @@ function Island() {
   useEffect(() => {
     if (phase.kind === 'typing') field.current?.focus();
   }, [phase.kind]);
+
+  // Every answer is remembered for a few minutes: the next words may answer it back.
+  useEffect(() => {
+    if (phase.kind !== 'said' || phase.decision.act !== 'answer' || !phase.decision.say) return;
+    const { say, text, query } = phase.decision;
+    // A site just opened is not offered again by a "yes".
+    const opened = query.startsWith(SITE_OPENED);
+    lastTurn.current = {
+      words: phase.words,
+      say,
+      text,
+      url: opened ? null : linkIn(`${say}\n${text}`) ?? siteAsked(phase.words),
+      at: Date.now(),
+    };
+  }, [phase]);
 
   // Esc closes it from anywhere in the island, not only the typing box: after a
   // typed question the box is gone but the island still has the keyboard.
@@ -576,6 +607,28 @@ function Island() {
         y: -1,
         text: '',
       },
+    });
+  };
+
+  /**
+   * "Go to amazon dot sa", «افتح يوتيوب», or "yes" to an answer that named a
+   * site: the browser opens it at once, with no model (`followUp.ts`).
+   */
+  const openSite = async (words: string, url: string, spoken: boolean) => {
+    const language = languageOf(words);
+    const site = siteName(url);
+    try {
+      await openExternalUrl(url);
+    } catch (error) {
+      uiLog(`ask: opening ${url} failed: ${String(error)}`);
+      return sayOnly(words, translate(language, 'ask.site.failed', { site }), spoken);
+    }
+    const say = translate(language, 'ask.site.opening', { site });
+    aloud(say, spoken);
+    setPhase({
+      kind: 'said',
+      words,
+      decision: { say, act: 'answer', tool: null, query: `${SITE_OPENED}${url}`, fields: [], profile: '', x: -1, y: -1, text: '' },
     });
   };
 
@@ -769,6 +822,25 @@ function Island() {
     if (!chosen && !past && (await sortVoice(words))) {
       return close();
     }
+    // Words that answer the last answer back: "yes" opens the site it named, or
+    // goes to the model with that answer in front of it; "no" is only heard.
+    const last = lastTurn.current;
+    const fresh = !chosen && !past && stillFresh(last, Date.now());
+    let replying = false;
+    if (fresh && last && isNo(words)) {
+      lastTurn.current = null;
+      return sayOnly(words, translate(languageOf(words), 'ask.followUp.no'), spoken);
+    }
+    if (fresh && last && isYes(words)) {
+      if (last.url) {
+        lastTurn.current = null;
+        return await openSite(words, last.url, spoken);
+      }
+      replying = true;
+    }
+    // "Go to amazon dot sa", «افتح موقع نون»: opened in the browser, no model.
+    const site = !chosen && !past && !replying ? siteAsked(words) : null;
+    if (site) return await openSite(words, site, spoken);
     const prefs = readAskPreferences();
     const brain = chosenBrain(prefs, await machineMemoryGiB());
     asked += 1;
@@ -777,7 +849,7 @@ function Island() {
       const moment = momentOf(await invokeHost('ask_moment'));
       // A question for a general assistant ("what is the weather like in winter?", «كيف أسوي مشروع؟»):
       // answered in words by the best model, without a picture of the screen or the window's text.
-      const general = !chosen && asksAGeneralQuestion(words);
+      const general = !chosen && (replying || asksAGeneralQuestion(words));
       setPhase({ kind: 'thinking', words, screen: moment.screen && Boolean(brain.sees) && !general });
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
       // A setting named with its choice, or a page of Settings, before the menus: "keep 20 versions", "AI settings".
@@ -839,6 +911,8 @@ function Island() {
           model: model.id,
           messages: [
             { role: 'system', content: systemPrompt(context) },
+            // A reply or another general question sees the answer before it.
+            ...(replying || general ? historyMessages(fresh ? last : null, Date.now()) : []),
             { role: 'user', content: words },
           ],
           grammar: decisionGrammar(context),
@@ -2027,6 +2101,22 @@ function Island() {
       )}
       {phase.kind === 'said' && !phase.decision.text && phase.decision.act === 'answer' && phase.decision.say && (
         <div className="ask-actions">{answerButtons(phase.decision.say)}</div>
+      )}
+      {phase.kind === 'said' && phase.decision.act === 'answer' && asksBack(phase.decision.say) && (
+        <div className="ask-actions">
+          {offeredSite(phase.words, phase.decision) && (
+            <button
+              type="button"
+              className="ask-do"
+              onClick={() => void openSite(phase.words, offeredSite(phase.words, phase.decision)!, false).catch(fail)}
+            >
+              <Globe /> {t('ask.site.yes', { site: siteName(offeredSite(phase.words, phase.decision)!) })}
+            </button>
+          )}
+          <button type="button" className="ask-cancel" onClick={() => void invokeHost('ask_listen_again').catch(fail)}>
+            <Mic /> {t('ask.reply')}
+          </button>
+        </div>
       )}
       {phase.kind === 'placed' && (
         <div className="ask-plan">
