@@ -101,8 +101,20 @@ export function Popover({ anchor, open, onClose, label, className, children }: P
       if (target instanceof Element && target.closest('.guide-layer')) return;
       onClose();
     };
+    // Escape closes it wherever focus went: Tab out of it left focus on the
+    // page, and the popover stayed over everything with no key to close it.
+    const onEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (ref.current?.contains(event.target as Node)) return;
+      event.preventDefault();
+      onClose();
+    };
     document.addEventListener('pointerdown', onPointerDown, true);
-    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onEscape);
+    };
   }, [open, anchor, onClose]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

@@ -56,6 +56,18 @@ test('the tool picker’s arrows, Home and End move between its tiles, and the f
   await expect(page.locator('.pane-end .pane-header h2')).toHaveText(second);
 });
 
+test('Escape closes the tool picker even after Tab took the focus out of it', async ({ page, stayLocal: _ }) => {
+  await page.goto('/');
+  await openPdf(page, THREE_PAGES);
+  const { gallery } = await openPicker(page, /^Choose a tool/, 'All tools');
+  // Tab leaves the picker for the page behind it; it stayed open over
+  // everything, and Escape, heard only inside it, could no longer close it.
+  for (let step = 0; step < 40 && (await gallery.evaluate((box) => box.contains(document.activeElement))); step++) await page.keyboard.press('Tab');
+  await expect.poll(() => gallery.evaluate((box) => box.contains(document.activeElement))).toBe(false);
+  await page.keyboard.press('Escape');
+  await expect(gallery).toBeHidden();
+});
+
 test('in Arabic the picker’s arrows follow the reading direction', async ({ page, stayLocal: _ }) => {
   await inArabic(page);
   await page.goto('/');
