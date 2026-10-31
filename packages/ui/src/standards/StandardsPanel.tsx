@@ -38,6 +38,7 @@ import type {
   Validation,
 } from './model';
 import './standards.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 type Tab = 'archive' | 'print' | 'preflight';
 
@@ -360,7 +361,7 @@ function Standards() {
         {t('tool.standards')}
       </h3>
       {state.document === null ? (
-        <p className="tool-panel-note">{t('tool.openFirst')}</p>
+        <OpenFirst />
       ) : (
         <>
           <p className="tool-panel-note">{t('standards.intro')}</p>

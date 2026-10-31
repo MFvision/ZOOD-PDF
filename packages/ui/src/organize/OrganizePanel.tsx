@@ -25,6 +25,7 @@ import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { orderStepping, positionsAfter, selectionAfterDelete } from './selection';
 import { describeParts, splitAt, splitEvery } from './split';
+import { OpenFirst } from '../tools/OpenFirst';
 
 /** A file chosen for inserting that needs its password first. */
 interface Locked {
@@ -111,7 +112,7 @@ export function OrganizePanel() {
         <Icon of={LayoutGrid} />
         {t('tool.organize')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {state.document === null && <OpenFirst />}
       <p className="organize-count" role="status">
         {t('organize.selected', { count: pages.length, total: count })}
       </p>

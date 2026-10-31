@@ -33,6 +33,7 @@ import { PageInput } from './PageInput';
 import { RemoteButtons } from '../remote/RemoteLayer';
 import { ShareButton } from './ShareButton';
 import { ZoomControl } from './ZoomControl';
+import { documentStem } from '../state/saveFile';
 
 /**
  * The unified toolbar: the window's title bar and its toolbar in one strip,
@@ -237,7 +238,7 @@ function DocumentTitle() {
   return (
     <div className="toolbar-title">
       <span className="toolbar-title-name" dir="auto" title={document?.name}>
-        {document?.name ?? t('app.name')}
+        {document ? documentStem(document.name) : t('app.name')}
       </span>
       {document && (
         <span className="toolbar-subtitle" role="status" aria-label={t('shell.documentStatus')}>

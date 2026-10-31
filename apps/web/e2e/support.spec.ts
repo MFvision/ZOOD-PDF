@@ -175,7 +175,7 @@ test.describe('Help & Support', () => {
     await support(page).getByRole('button', { name: /Make a file smaller/ }).click();
     await support(page).getByRole('button', { name: 'Open the PDF guide' }).click();
     await expect(support(page)).toBeHidden();
-    await expect(page.locator('.toolbar-title-name')).toHaveText('Guide - Make a file smaller.pdf');
+    await expect(page.locator('.toolbar-title-name')).toHaveText('Guide - Make a file smaller');
 
     await page.getByRole('menubar').getByRole('menuitem', { name: 'Help' }).click();
     await expect(page.getByRole('menuitem', { name: /Help & Support/ })).toBeVisible();

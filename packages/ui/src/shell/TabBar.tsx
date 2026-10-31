@@ -7,6 +7,7 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { useSettings } from '../state/settings';
 import { useWorkbench } from './workbench';
 import './tabs.css';
+import { documentStem } from '../state/saveFile';
 
 /**
  * The documents open in this window, as a browser's tabs (`state/tabs.ts`).
@@ -102,7 +103,9 @@ export function TabBar() {
                   activateTab(tab.key);
                 }}
               >
-                <span dir="auto">{tab.name}</span>
+                {/* No ".pdf": every tab is one, and an Arabic name with its
+                    extension read "pdf.فاتورة" to an English reader (First Five). */}
+                <span dir="auto">{documentStem(tab.name)}</span>
                 {tab.edited ? (
                   <span className="tab-edited" role="img" aria-label={t('tabs.edited')}>
                     •

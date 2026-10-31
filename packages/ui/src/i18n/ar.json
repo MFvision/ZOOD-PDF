@@ -3694,5 +3694,7 @@
   "look.atlas": "رحلة صيف",
   "look.atlas.note": "أزرق فاتح مع أحمر وأصفر مشمس: مشرق ومبهج.",
   "compress.fileWord": "مضغوط",
-  "combine.fileWord": "دمج {count} ملفات"
+  "combine.fileWord": "دمج {count} ملفات",
+  "tool.openButton": "افتح ملف PDF…",
+  "tool.createFromOffice": "اصنع PDF من Word أو Excel أو صور…"
 }

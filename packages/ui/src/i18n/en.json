@@ -3694,5 +3694,7 @@
   "look.atlas": "Summer trip",
   "look.atlas.note": "Baby blue with red and sunshine yellow: bright and cheerful.",
   "compress.fileWord": "compressed",
-  "combine.fileWord": "{count} files combined"
+  "combine.fileWord": "{count} files combined",
+  "tool.openButton": "Open a PDF…",
+  "tool.createFromOffice": "Make a PDF from Word, Excel or pictures…"
 }

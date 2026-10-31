@@ -7,6 +7,7 @@ import { useT } from '../i18n/useT';
 import { useAppState, useServices } from '../state/AppContext';
 import { warraqOwnsDocument } from '../state/appReducer';
 import type { ToolDefinition } from './tools';
+import { OpenFirst } from './OpenFirst';
 
 /**
  * The panel of a tool that EmbedPDF implements (ADR-0007): every button runs a
@@ -27,7 +28,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
         <Icon of={tool.icon} />
         {t(tool.labelKey)}
       </h3>
-      {!ready && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {!ready && <OpenFirst />}
       {tool.id === 'fillSign' && <FormNotices />}
       {tool.id === 'fillSign' && ready && model && model.fields.length === 0 && (
         <p className="tool-panel-note" role="note">{t('tool.fillSign.noFields')}</p>

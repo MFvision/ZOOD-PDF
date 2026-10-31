@@ -30,6 +30,17 @@ const MIN_SIZE = 6;
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 36;
 
+/**
+ * Whether a sheet's first row is column titles: two or more filled cells, all
+ * words (no figures), each bold or shaded, over rows that are not the same.
+ */
+export function looksLikeHeader(rows: readonly TableCell[][]): boolean {
+  if (rows.length < 3) return false;
+  const filled = rows[0]!.filter((cell) => cell.text.trim().length > 0);
+  if (filled.length < 2) return false;
+  return filled.every((cell) => (cell.bold || cell.fill) && cell.align !== 'end' && !/^[\d\s.,%()+-]+$/.test(cell.text.trim()));
+}
+
 /** `A1`-style column letters as a zero-based index. */
 export function columnIndex(letters: string): number {
   let n = 0;
@@ -443,6 +454,10 @@ function sheetBlocks(
   const size = Math.max(MIN_SIZE, Math.round(styles.size * 0.9 * scale * 10) / 10);
   const table: Block = { type: 'table', rows, widths: relative, dir: rtl ? 'rtl' : 'ltr', size };
   if (styles.font) table.font = styles.font;
+  // A first row that reads as column titles is printed again at the top of
+  // every page, as Excel's "Print titles" does (First Five, 2026-10-31: page
+  // two of a staff list had no column names).
+  if (looksLikeHeader(rows)) table.headerRows = 1;
   return {
     blocks: [
       { type: 'text', text: name, size: 14, bold: true, keepWithNext: true, spaceAfter: 8, dir: rtl ? 'rtl' : 'auto', ...(styles.font ? { font: styles.font } : {}) },

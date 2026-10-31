@@ -15,6 +15,7 @@ import type { OcrLanguage } from './engine';
 import { readOcrOptions, writeOcrOptions } from './run';
 import type { OcrProgress, OcrScope, ReadOptions } from './run';
 import './ocr.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 const LANGUAGE_NAMES: Record<OcrLanguage, TKey> = {
   ara: 'ocr.lang.ara',
@@ -114,7 +115,7 @@ export function OcrPanel() {
         <Icon of={ScanText} />
         {t('tool.ocr')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {state.document === null && <OpenFirst />}
       <fieldset className="compress-levels" disabled={!ready || running}>
         <legend>{t('ocr.languages')}</legend>
         {OCR_LANGUAGES.map((code) => (

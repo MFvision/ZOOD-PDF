@@ -12,6 +12,7 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { DEFAULT_FORM, TOKENS, batesSample, formOf, hasContent, pageNumberSample, pagesLabel, parsePages, specOf } from './markSpec';
 import type { MarkForm, MarkKind, MarkPosition, MarkSection } from './markSpec';
 import './marks.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 /** A mark in the file, as `marks.list` answers. */
 interface ListedMark {
@@ -322,7 +323,7 @@ export function PageMarksPanel() {
         <Icon of={Layers} />
         {t('tool.pageMarks')}
       </h3>
-      <p className="tool-panel-note">{state.document === null ? t('tool.openFirst') : t('marks.intro')}</p>
+      {state.document === null ? <OpenFirst /> : <p className="tool-panel-note">{t('marks.intro')}</p>}
 
       <fieldset disabled={disabled}>
         <legend>{t('marks.kind')}</legend>

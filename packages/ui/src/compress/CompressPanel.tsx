@@ -9,6 +9,7 @@ import { compressedFileName } from '../state/saveFile';
 import { COMPRESS_LEVELS } from './levels';
 import type { CompressLevel } from './levels';
 import './compress.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 /** The three choices, from none of the images touched to the smallest file. */
 const LEVELS = COMPRESS_LEVELS;
@@ -61,7 +62,7 @@ export function CompressPanel() {
         <Icon of={Minimize2} />
         {t('tool.compress')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {state.document === null && <OpenFirst />}
       <fieldset className="compress-levels" disabled={!ready}>
         <legend>{t('compress.level')}</legend>
         {(Object.keys(LEVELS) as Level[]).map((key) => (

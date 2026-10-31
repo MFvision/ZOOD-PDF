@@ -12,6 +12,7 @@ import { exportCurrentFile } from './runExport';
 import type { SlideMode, WordMode } from './runExport';
 import type { SheetMode } from './tables';
 import './export.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 type Outcome = { kind: 'done'; name: string; reduced: boolean } | { kind: 'noText' };
 
@@ -103,7 +104,7 @@ export function ExportPanel() {
         <Icon of={FileOutput} />
         {t('tool.export')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {state.document === null && <OpenFirst create />}
       <p className="tool-panel-note">{t('export.intro')}</p>
       <fieldset className="export-formats" disabled={running}>
         <legend>{t('export.format')}</legend>
