@@ -2,7 +2,8 @@
 //! model and builds the PowerPoint file itself (`ask/deck.ts`); here it is
 //! saved in Documents › ZOOD PDF, never over a file already there, and
 //! opened in the app the system opens presentations with. An answer kept as
-//! a PDF or a Word file (`ask/answerFile.ts`) is saved the same way.
+//! a PDF, a Word file or an Excel sheet (`ask/answerFile.ts`) is saved the
+//! same way.
 
 use std::path::{Path, PathBuf};
 
@@ -12,12 +13,13 @@ use tauri::{AppHandle, Manager, Runtime};
 /// by the island are well under this.
 const MOST_BYTES: usize = 40 * 1024 * 1024;
 
-/// What the island saves: a presentation, a PDF or a Word file.
+/// What the island saves: a presentation, a PDF, a Word file or a sheet.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
     Pptx,
     Pdf,
     Docx,
+    Xlsx,
 }
 
 impl Kind {
@@ -27,6 +29,7 @@ impl Kind {
             "pptx" => Some(Kind::Pptx),
             "pdf" => Some(Kind::Pdf),
             "docx" => Some(Kind::Docx),
+            "xlsx" => Some(Kind::Xlsx),
             _ => None,
         }
     }
@@ -36,13 +39,14 @@ impl Kind {
             Kind::Pptx => "pptx",
             Kind::Pdf => "pdf",
             Kind::Docx => "docx",
+            Kind::Xlsx => "xlsx",
         }
     }
 
     fn fallback(self) -> &'static str {
         match self {
             Kind::Pptx => "Presentation",
-            Kind::Pdf | Kind::Docx => "Answer",
+            Kind::Pdf | Kind::Docx | Kind::Xlsx => "Answer",
         }
     }
 }
@@ -98,7 +102,7 @@ pub fn looks_right(bytes: &[u8]) -> bool {
 pub fn looks_like(bytes: &[u8], kind: Kind) -> bool {
     bytes.len() <= MOST_BYTES
         && match kind {
-            Kind::Pptx | Kind::Docx => bytes.starts_with(b"PK\x03\x04"),
+            Kind::Pptx | Kind::Docx | Kind::Xlsx => bytes.starts_with(b"PK\x03\x04"),
             Kind::Pdf => bytes.starts_with(b"%PDF-"),
         }
 }
@@ -119,7 +123,7 @@ pub fn ask_save_deck<R: Runtime>(
             .get("x-warraq-kind")
             .and_then(|value| value.to_str().ok()),
     )
-    .ok_or("E_ARGS: Ask ZOOD saves presentations, PDFs and Word files")?;
+    .ok_or("E_ARGS: Ask ZOOD saves presentations, PDFs, Word files and sheets")?;
     if !looks_like(bytes, kind) {
         return Err("E_ARGS: that is not the file it says it is".into());
     }
@@ -169,6 +173,7 @@ mod tests {
         assert_eq!(Kind::from_header(Some("exe")), None);
         assert_eq!(file_name_for("Company hub", Kind::Pdf), "Company hub.pdf");
         assert_eq!(file_name_for(" / ", Kind::Docx), "Answer.docx");
+        assert_eq!(file_name_for("Hubs", Kind::Xlsx), "Hubs.xlsx");
         assert!(looks_like(b"%PDF-1.7\n", Kind::Pdf));
         assert!(!looks_like(b"PK\x03\x04", Kind::Pdf));
         assert!(looks_like(b"PK\x03\x04", Kind::Docx));

@@ -3,6 +3,7 @@ import {
   Check,
   ClipboardPaste,
   Copy,
+  FileSpreadsheet,
   FileText,
   FileType,
   FolderInput,
@@ -86,6 +87,9 @@ import type { BookEntry, BookStep, Control, Intent } from './book';
 import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
 import type { SettingAsk } from './settingsBook';
 import { answerFile, answerTitle } from './answerFile';
+import { PAGES_READ, markdownTable, researchAsked, researchMessages, researchQuery, sourceLines } from './research';
+import type { WebHit, WebPage } from './research';
+import { SAFE_CHARS_PER_TOKEN, contextTokensFor, materialTokensFor, replyTokensFor } from '../ai/device/context';
 import type { AnswerFileKind } from './answerFile';
 import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
@@ -215,6 +219,7 @@ type Phase =
   | { kind: 'reading' }
   | { kind: 'drafting'; app: string }
   | { kind: 'thinking'; words: string; screen: boolean }
+  | { kind: 'researching'; words: string; step: 'search' | 'read' | 'write'; count: number }
   | {
       kind: 'confirm';
       words: string;
@@ -567,6 +572,70 @@ function Island() {
     });
   };
 
+  /**
+   * "Search the internet for…" (`research.ts`): the host searches and
+   * fetches the first pages as text (`ask/web.rs`), and the best model here
+   * writes the answer from them — a table with links for things to compare
+   * or buy, kept as an Excel sheet with one press.
+   */
+  const research = async (words: string, spoken: boolean) => {
+    const language = languageOf(words);
+    setPhase({ kind: 'researching', words, step: 'search', count: 0 });
+    const hits = ((await invokeHost('ask_web_search', { query: researchQuery(words) })) as WebHit[]).slice(0, 8);
+    if (hits.length === 0) return sayOnly(words, translate(language, 'ask.web.nothing'), spoken);
+    setPhase({ kind: 'researching', words, step: 'read', count: Math.min(PAGES_READ, hits.length) });
+    const pages = await Promise.all(
+      hits.map((hit, k) =>
+        k < PAGES_READ ? (invokeHost('ask_web_read', { url: hit.url }) as Promise<WebPage>).catch(() => null) : Promise.resolve(null),
+      ),
+    );
+    setPhase({ kind: 'researching', words, step: 'write', count: hits.length });
+    const memory = await machineMemoryGiB();
+    const model = await writerFor(chosenBrain(readAskPreferences(), memory), memory);
+    const context = contextTokensFor(memory, false);
+    const room = Math.floor(materialTokensFor(context) * SAFE_CHARS_PER_TOKEN);
+    const today = new Date().toISOString().slice(0, 10);
+    asked += 1;
+    const id = `ask-${Date.now()}-${asked}-web`;
+    request.current = id;
+    const done = (await invokeHost('ask_think', {
+      request: {
+        id,
+        model: model.id,
+        messages: researchMessages(words, hits, pages, language, room, today),
+        maxTokens: replyTokensFor(context),
+        contextTokens: context,
+        screen: false,
+      },
+    })) as { text: string };
+    request.current = null;
+    const answer = done.text.trim();
+    if (!answer) return sayOnly(words, translate(language, 'ask.web.nothing'), spoken);
+    const say = translate(language, 'ask.web.found', { count: hits.length });
+    // A table is read as its choices, one by one; other answers whole.
+    const table = markdownTable(answer);
+    const items = table ? table.slice(1).map((row) => (row[0] ?? '').replace(/\*\*|__|`/g, '').trim()).filter(Boolean) : [];
+    const heard = table
+      ? `${say} ${items.map((item, k) => `${k + 1}: ${item}.`).join(' ')}`
+      : `${say}\n${answer}`;
+    aloud(heard.slice(0, SPOKEN_MOST), spoken);
+    setPhase({
+      kind: 'said',
+      words,
+      decision: {
+        say,
+        act: 'answer',
+        tool: null,
+        query: '',
+        fields: [],
+        profile: '',
+        x: -1,
+        y: -1,
+        text: `${answer}\n\n${translate(language, 'ask.web.sources')}\n${sourceLines(hits)}`,
+      },
+    });
+  };
+
   /** The Library's files for a "find", at most five, each once. */
   const showFound = async (words: string, decision: Decision) => {
     const hits = await searchLibrary(getSharedCoreClient(), decision.query).catch(() => []);
@@ -689,6 +758,8 @@ function Island() {
       // Another app's everyday command ("print", «اطبع», "new tab"): its own shortcut, no picture.
       const shortcut = named && !moment.ours ? shortcutAsked(words) : null;
       if (shortcut) return await shortcutLane(words, shortcut, spoken);
+      // "Search the internet for…": looked up on the web, read and written here.
+      if (!chosen && !past && prefs.web && researchAsked(words)) return await research(words, spoken);
       // "Make me a presentation": a few questions, then ZOOD writes the file itself.
       if (!chosen && !past && deckAsked(words)) return startDeck(words, spoken);
       // Another app's button by its name ("archive", "click Insert", «أرشف»), before ZOOD's own settings:
@@ -1523,7 +1594,11 @@ function Island() {
       const title = answerTitle(words, translate(language, 'ask.file.untitled'));
       const bytes = await answerFile(kind, title, answer, getSharedCoreClient());
       await saveDeck(bytes, title, kind);
-      const say = translate(language, kind === 'pdf' ? 'ask.file.donePdf' : 'ask.file.doneWord', { title });
+      const say = translate(
+        language,
+        kind === 'pdf' ? 'ask.file.donePdf' : kind === 'xlsx' ? 'ask.file.doneExcel' : 'ask.file.doneWord',
+        { title },
+      );
       aloud(say, false);
       setPhase({ kind: 'decked', words, say });
     } catch (error) {
@@ -1558,6 +1633,9 @@ function Island() {
       </button>
       <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => void keepAs('docx', words, answer)}>
         {making === 'docx' ? <Loader className="spin" /> : <FileType />} Word
+      </button>
+      <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => void keepAs('xlsx', words, answer)}>
+        {making === 'xlsx' ? <Loader className="spin" /> : <FileSpreadsheet />} Excel
       </button>
       <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => deckFromAnswer(words, answer)}>
         <Presentation /> PowerPoint
@@ -1641,6 +1719,7 @@ function Island() {
     phase.kind === 'tidy' ||
     phase.kind === 'tidied' ||
     phase.kind === 'thinking' ||
+    phase.kind === 'researching' ||
     phase.kind === 'placed' ||
     phase.kind === 'deck' ||
     phase.kind === 'decked'
@@ -1650,6 +1729,7 @@ function Island() {
   const busy =
     phase.kind === 'hearing' ||
     phase.kind === 'thinking' ||
+    phase.kind === 'researching' ||
     (phase.kind === 'tidy' && phase.working) ||
     phase.kind === 'reading' ||
     phase.kind === 'drafting';
@@ -1728,6 +1808,8 @@ function Island() {
                 ? t('ask.hearing')
                 : phase.kind === 'thinking'
                   ? t(phase.screen ? 'ask.lookingAndThinking' : 'ask.thinking')
+                  : phase.kind === 'researching'
+                  ? t(`ask.web.${phase.step}`, { count: phase.count })
                   : phase.kind === 'reading'
                     ? t('ask.reading')
                     : phase.kind === 'drafting'

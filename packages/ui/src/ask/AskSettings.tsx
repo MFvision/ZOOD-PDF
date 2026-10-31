@@ -239,6 +239,12 @@ export function AskSettings() {
         checked={prefs.doForMe}
         onChange={(doForMe) => update({ doForMe })}
       />
+      <Toggle
+        label={t('ask.settings.web')}
+        hint={t('ask.settings.webHint')}
+        checked={prefs.web}
+        onChange={(web) => update({ web })}
+      />
       {bubble !== null && (
         <Toggle
           label={t('ask.settings.bubble')}

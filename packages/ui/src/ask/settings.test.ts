@@ -16,7 +16,7 @@ import {
 } from './settings';
 import type { AskPreferences } from './settings';
 
-const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true, talkBack: 'spoken', doForMe: true, words: [] as string[], microphone: null as string | null } as const;
+const TAPS = { taps: true, tapKey: 'right-main', oneTap: 'speak', glow: true, talkBack: 'spoken', doForMe: true, web: true, words: [] as string[], microphone: null as string | null } as const;
 
 /** A `localStorage` for the node test environment. */
 beforeEach(() => {
@@ -57,6 +57,7 @@ describe('Ask ZOOD settings', () => {
       glow: false,
       talkBack: 'never',
       doForMe: false,
+      web: false,
       words: ['Hostinger', 'الغماس'],
       microphone: 'wasapi:{0.0.1.00000000}.{abc}',
     };
