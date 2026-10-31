@@ -37,15 +37,24 @@ export function CompressPanel() {
   const services = useServices();
   const [level, setLevel] = useState<Level>('balanced');
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<CompressResult | null>(null);
-  const name = state.document?.name ?? 'document.pdf';
+  // The smaller copy, with the document it was made from: shown and saved
+  // for that document only. Kept bare, it stayed on screen when another tab
+  // was chosen, and "Save the smaller copy" saved the first file's pages
+  // under the second one's name (break-zood, files-ui).
+  const [made, setMade] = useState<{ documentId: number; name: string; result: CompressResult } | null>(null);
+  const documentId = state.document?.id ?? null;
+  const result = made && made.documentId === documentId ? made.result : null;
+  const name = made?.name ?? state.document?.name ?? 'document.pdf';
   const ready = state.view === 'viewer' && state.document !== null && !busy && state.switching === null;
 
   const run = async () => {
+    const from = state.document;
+    if (!from) return;
     setBusy(true);
-    setResult(null);
+    setMade(null);
     try {
-      setResult(await services.compressFile(LEVELS[level]));
+      const result = await services.compressFile(LEVELS[level]);
+      setMade({ documentId: from.id, name: from.name, result });
     } catch {
       dispatch({ type: 'DOCUMENT_FAILED', error: 'compress.failed' });
     } finally {

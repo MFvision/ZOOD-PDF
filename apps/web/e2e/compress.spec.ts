@@ -42,4 +42,24 @@ test.describe('Compress makes a smaller copy and leaves the open file alone', ()
     // A small text file is rebuilt tighter, or said to be as small as it gets.
     await expect(panel(page).locator('.compress-result')).toContainText(/% smaller|already as small/);
   });
+
+  // The result stayed on screen when another tab was chosen, and "Save the
+  // smaller copy" saved the scan's pages as "invoice (compressed).pdf"
+  // (break-zood, files-ui).
+  test("one document's smaller copy is never offered for another", async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, SCAN);
+    await chooseTool(page, 'Compress');
+    await panel(page).getByRole('button', { name: 'Compress', exact: true }).click();
+    await expect(panel(page).locator('.compress-result')).toContainText('% smaller');
+
+    // Another document, with Compress still open.
+    await page.locator('input[type="file"]').first().setInputFiles(INVOICE);
+    const tabs = page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab');
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(async () => (await embedDocument(page)).pages).toBeGreaterThan(0);
+    await expect(panel(page).locator('.compress-result')).toHaveCount(0);
+    await expect(panel(page).getByRole('button', { name: 'Save the smaller copy…' })).toHaveCount(0);
+  });
 });
