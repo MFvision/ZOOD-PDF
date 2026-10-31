@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { test } from './helpers';
+import { INVOICE, openPdf, test } from './helpers';
 
 /**
  * What the app finds kept in the browser can be anything: a value an older
@@ -108,4 +108,21 @@ test('offers only recovery copies that can be opened, over damaged ones', async 
   await expect(banner).toBeVisible();
   await expect(banner).toContainText('كشف الرواتب.pdf');
   await expect(banner).not.toContainText(/undefined|object Object|no bytes|number key|\+/);
+});
+
+test('says so, with Reload, when a part of the app cannot be fetched (offline, or a new version published)', async ({ page, stayLocal: _ }) => {
+  // The page viewer's engine is fetched the first time a file opens. Lost,
+  // the viewer once said "Initializing PDF engine…" for ever, and every file
+  // opened after it stayed on "Opening…", even back online, until a reload.
+  const engine = /\/assets\/worker-engine-[^/]*\.js$/;
+  await page.route(engine, (route) => route.abort('internetdisconnected'));
+  await page.goto('/');
+  await expect(page.locator('.home')).toBeVisible();
+  await page.locator('input[type="file"]').setInputFiles(INVOICE);
+  const alert = page.getByRole('alert').filter({ hasText: 'could not be loaded' });
+  await expect(alert).toBeVisible();
+  await page.unroute(engine);
+  await alert.getByRole('button', { name: 'Reload' }).click();
+  await expect(alert).toHaveCount(0);
+  await openPdf(page, INVOICE);
 });

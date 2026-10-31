@@ -27,6 +27,7 @@ import { SettingsEffects } from '../settings/SettingsEffects';
 import { UpdateBanner } from '../updates/UpdateBanner';
 import { useSettings } from '../state/settings';
 import { HistoryEffects } from '../history/HistoryEffects';
+import { useLoadFailed } from './loadFailure';
 import { VersionsDialog } from '../history/VersionsDialog';
 import { WelcomeTour } from '../tour/Tour';
 import { useLiquidGlass } from '../styles/liquidGlass';
@@ -68,6 +69,7 @@ export function Shell() {
   const dispatch = useAppDispatch();
   const services = useServices();
   const settings = useSettings();
+  const loadFailed = useLoadFailed();
   const { t, lang } = useI18n();
   const nativeMenu = hasNativeMenuBar();
   const glass = useLiquidGlass<HTMLDivElement>();
@@ -164,6 +166,15 @@ export function Shell() {
             <Icon of={CircleAlert} />
             <span>{t(state.error, state.errorName !== null ? { name: documentStem(state.errorName) } : undefined)}</span>
             <IconButton label={t('error.dismiss')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'ERROR_DISMISSED' })} />
+          </div>
+        )}
+        {loadFailed && (
+          <div className="banner banner-error" role="alert">
+            <Icon of={CircleAlert} />
+            <span>{t('loadFailed.body')}</span>
+            <button type="button" className="prefs-button" onClick={() => globalThis.location.reload()}>
+              {t('loadFailed.reload')}
+            </button>
           </div>
         )}
         <HistoryEffects />
