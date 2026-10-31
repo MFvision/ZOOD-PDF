@@ -44,11 +44,11 @@ pub struct Metadata {
 /// The most a page's content (all its streams together) may decode to when
 /// the engine reads or edits it: a hostile file can make a few kilobytes
 /// inflate to gigabytes, which in WebAssembly ends the engine.
-pub(crate) const MAX_PAGE_CONTENT: usize = 32 << 20;
+pub(crate) const MAX_PAGE_CONTENT: usize = 64 << 20;
 
 /// The most any other stream (a form's appearance, a script, a picture's
 /// pixels) may decode to; as the rasterizer's limit.
-pub(crate) const MAX_STREAM: usize = 64 << 20;
+pub(crate) const MAX_STREAM: usize = 128 << 20;
 
 /// A page's content, decoded within `MAX_PAGE_CONTENT`. Past it the page is
 /// refused rather than cut short: an edit written back from a truncated

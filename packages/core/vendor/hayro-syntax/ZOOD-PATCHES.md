@@ -12,10 +12,10 @@ allocation is a trap, not an error):
    (`src/reader.rs`, `src/object/{mod,array,dict,ref}.rs`).
 2. **Decoded size cap.** Flate, LZW and RunLength decoded without bound, so a
    1 MiB stream inflated to 1 GiB. Each now stops at `MAX_DECODED_LEN`
-   (64 MiB, `src/filter/mod.rs`) and fails the stream instead
+   (128 MiB, `src/filter/mod.rs`) and fails the stream instead
    (`src/filter/{lzw_flate,run_length}.rs`).
 3. **Picture size cap.** hayro-interpret pads a short picture to the size its
    dictionary claims, so `/Width 4294967295` asked for 12 GB. `Stream::decoded_image`
-   now refuses a picture past `MAX_IMAGE_PIXELS` (2^26, `src/object/stream.rs`).
+   now refuses a picture past `MAX_IMAGE_PIXELS` (2^27, `src/object/stream.rs`).
 
 Tests: `packages/core/warraq-core/tests/hostile.rs`.

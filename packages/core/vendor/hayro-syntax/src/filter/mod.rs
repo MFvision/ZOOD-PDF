@@ -2,12 +2,12 @@
 
 /// The most one stream may decode to (ZOOD PDF): a hostile file can make a
 /// few kilobytes inflate to gigabytes, which in WebAssembly ends the engine.
-/// An A4 page scanned at 300 dpi in colour is about 25 MiB.
-pub(crate) const MAX_DECODED_LEN: usize = 64 << 20;
+/// An A4 page scanned at 600 dpi in colour is about 100 MiB, so it still fits.
+pub(crate) const MAX_DECODED_LEN: usize = 128 << 20;
 
-/// The most pixels one picture may have (ZOOD PDF): 8192 × 8192, past an
-/// A3 page scanned at 600 dpi.
-pub(crate) const MAX_IMAGE_PIXELS: u64 = 1 << 26;
+/// The most pixels one picture may have (ZOOD PDF): about 134 million, past an
+/// A3 page scanned at 600 dpi (70 million).
+pub(crate) const MAX_IMAGE_PIXELS: u64 = 1 << 27;
 
 /// `data`, unless it is past `MAX_DECODED_LEN`.
 #[allow(dead_code)]
