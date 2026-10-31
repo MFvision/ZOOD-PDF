@@ -3,6 +3,7 @@
 [workspace]
 resolver = "2"
 members = ["warraq-text", "warraq-pdf", "warraq-render", "warraq-sign", "warraq-core"]
+exclude = ["vendor"]
 
 [workspace.package]
 version = "0.1.0"
@@ -25,6 +26,14 @@ thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
+
+# hayro-syntax 0.7.2 and hayro-interpret 0.7.0 with hardening for hostile
+# files (vendor/*/ZOOD-PATCHES.md): nesting, decoded-size, picture-size and
+# work limits, and bounded CID width ranges. Apache-2.0 OR MIT, as upstream.
+# Drop each patch once the release it moves to carries the same limits.
+[patch.crates-io]
+hayro-syntax = { path = "vendor/hayro-syntax" }
+hayro-interpret = { path = "vendor/hayro-interpret" }
 
 [profile.release]
 opt-level = 3

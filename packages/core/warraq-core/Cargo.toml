@@ -53,6 +53,10 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 # Tests edit a file the way another program would (already in the graph
 # through warraq-pdf).
 lopdf.workspace = true
+# The hostile-input tests (tests/hostile.rs) build decompression bombs with
+# these; both are already in the graph through warraq-pdf. MIT/Apache-2.0.
+flate2 = "1"
+weezl = "0.2"
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--all-features"]
