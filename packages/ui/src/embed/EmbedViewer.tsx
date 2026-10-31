@@ -166,7 +166,18 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       // policy allows that too (Chrome 153, checked by e2e/extension.spec.ts).
       worker: true,
       fontFallback: { fonts: { [ARABIC_CHARSET]: ARABIC_FALLBACK_FONT } },
-      fonts: { ui: null, signature: null },
+      // The signature "Type" tab, in faces the app already ships (styles/fonts.css):
+      // nothing is fetched from Google Fonts, and an Arabic name joins properly.
+      fonts: {
+        ui: null,
+        signature: {
+          stylesheetUrl: null,
+          fonts: [
+            { name: 'أميري · Amiri', family: 'Amiri' },
+            { name: 'القاهرة · Cairo', family: 'Cairo' },
+          ],
+        },
+      },
       // Out of the box the stamp manifests come from jsDelivr, which the strict
       // CSP blocked in the first run; no manifests, one bundled library instead.
       stamp: { manifests: [], libraries: [STANDARD_STAMPS] },
@@ -185,7 +196,13 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       // Nobody signs in to Warraq, so a comment has no author to record —
       // not EmbedPDF's "Guest", in English, in every file. Its comments
       // sidebar says so in the language on screen (vite/embedPatches.ts).
-      annotations: { autoOpenLinks: false, annotationAuthor: '' },
+      // Text typed on a page is how most people fill a flat form, so it is
+      // black like the form's own words, not EmbedPDF's red.
+      annotations: {
+        autoOpenLinks: false,
+        annotationAuthor: '',
+        tools: [{ id: 'freeText', defaults: { fontColor: '#1B1B1B', fontSize: 12 } }],
+      },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

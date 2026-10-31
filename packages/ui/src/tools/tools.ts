@@ -117,6 +117,9 @@ export const TOOLS: readonly ToolDefinition[] = [
     implemented: true,
     mode: 'mode:form',
     actions: [
+      // Most forms staff get are flat (drawn lines, no fields): writing on the
+      // page comes first, in black (EmbedViewer's freeText defaults).
+      { command: 'annotation:add-text', labelKey: 'action.addText', icon: Type },
       { command: 'form:toggle-fill-mode', labelKey: 'action.fillForm', icon: TextCursorInput },
       { command: 'signature:create', labelKey: 'action.createSignature', icon: FileSignature },
       { command: 'insert:add-signature', labelKey: 'action.placeSignature', icon: PenLine },

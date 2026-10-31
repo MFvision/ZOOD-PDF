@@ -1,5 +1,6 @@
 import { Icon } from '../components/Icon';
 import { FormNotices } from '../forms/FormNotices';
+import { useFormRuntime } from '../forms/FormRuntime';
 import { WalletFill } from '../ai/profile/WalletFill';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
@@ -16,6 +17,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
   const t = useT();
   const state = useAppState();
   const { runEmbedCommand } = useServices();
+  const { model } = useFormRuntime();
   const ready =
     state.view === 'viewer' && state.document !== null && !warraqOwnsDocument(state) && state.switching === null;
 
@@ -27,6 +29,9 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
       </h3>
       {!ready && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
       {tool.id === 'fillSign' && <FormNotices />}
+      {tool.id === 'fillSign' && ready && model && model.fields.length === 0 && (
+        <p className="tool-panel-note" role="note">{t('tool.fillSign.noFields')}</p>
+      )}
       <div className="tool-actions">
         {(tool.actions ?? []).map((action) => (
           <IconButton
