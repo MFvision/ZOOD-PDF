@@ -96,7 +96,8 @@ import type { AnswerFileKind } from './answerFile';
 import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
 import { namesIt, pickByWords, sayChoices } from './choices';
-import { asksBack, historyMessages, isNo, isYes, linkIn, siteAsked, siteName, stillFresh } from './followUp';
+import { asksBack, historyMessages, isNo, isYes, offeredUrl, safeSite, siteAsked, siteName, stillFresh } from './followUp';
+import { refusal } from './negation';
 import type { LastTurn } from './followUp';
 import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
 import type { DeckLook } from './deck';
@@ -274,7 +275,7 @@ const SAID_STAYS_MS = 9000;
 /** The site an answer that asks back is about: what its Yes button opens. */
 function offeredSite(words: string, decision: Decision): string | null {
   if (decision.query.startsWith(SITE_OPENED)) return null;
-  return linkIn(`${decision.say}\n${decision.text}`) ?? siteAsked(words);
+  return offeredUrl(words, decision.say, decision.text);
 }
 
 /** Marks an answer that opened a site, so a "yes" after it does not open it again. */
@@ -481,7 +482,7 @@ function Island() {
       words: phase.words,
       say,
       text,
-      url: opened ? null : linkIn(`${say}\n${text}`) ?? siteAsked(phase.words),
+      url: opened ? null : offeredUrl(phase.words, say, text),
       at: Date.now(),
     };
   }, [phase]);
@@ -617,6 +618,11 @@ function Island() {
   const openSite = async (words: string, url: string, spoken: boolean) => {
     const language = languageOf(words);
     const site = siteName(url);
+    // Only a named web site, never a file, a script, or this computer's network (`safeSite`).
+    if (!safeSite(url)) {
+      uiLog(`ask: not opening ${url}: not a web site`);
+      return sayOnly(words, translate(language, 'ask.site.refused', { site }), spoken);
+    }
     try {
       await openExternalUrl(url);
     } catch (error) {
@@ -838,8 +844,13 @@ function Island() {
       }
       replying = true;
     }
+    // "Don't delete page 3", «لا تحذف الصفحة»: nothing is done. A "don't" beside
+    // something to do ("save but don't print") is the model's to read whole,
+    // never a lane's that would see only the command's name (`negation.ts`).
+    const refused = !chosen && !past && !replying ? refusal(words) : null;
+    if (refused === 'all') return sayOnly(words, translate(languageOf(words), 'ask.negated'), spoken);
     // "Go to amazon dot sa", «افتح موقع نون»: opened in the browser, no model.
-    const site = !chosen && !past && !replying ? siteAsked(words) : null;
+    const site = !chosen && !past && !replying && !refused ? siteAsked(words) : null;
     if (site) return await openSite(words, site, spoken);
     const prefs = readAskPreferences();
     const brain = chosenBrain(prefs, await machineMemoryGiB());
@@ -849,7 +860,7 @@ function Island() {
       const moment = momentOf(await invokeHost('ask_moment'));
       // A question for a general assistant ("what is the weather like in winter?", «كيف أسوي مشروع؟»):
       // answered in words by the best model, without a picture of the screen or the window's text.
-      const general = !chosen && (replying || asksAGeneralQuestion(words));
+      const general = !chosen && (replying || refused !== null || asksAGeneralQuestion(words));
       setPhase({ kind: 'thinking', words, screen: moment.screen && Boolean(brain.sees) && !general });
       // Inside ZOOD PDF its own commands come first: no picture, no wait.
       // A setting named with its choice, or a page of Settings, before the menus: "keep 20 versions", "AI settings".
@@ -862,9 +873,9 @@ function Island() {
       const shortcut = named && !moment.ours ? shortcutAsked(words) : null;
       if (shortcut) return await shortcutLane(words, shortcut, spoken);
       // "Search the internet for…": looked up on the web, read and written here.
-      if (!chosen && !past && prefs.web && researchAsked(words)) return await research(words, spoken);
+      if (!chosen && !past && !refused && prefs.web && researchAsked(words)) return await research(words, spoken);
       // "Make me a presentation": a few questions, then ZOOD writes the file itself.
-      if (!chosen && !past && deckAsked(words)) return startDeck(words, spoken);
+      if (!chosen && !past && !refused && deckAsked(words)) return startDeck(words, spoken);
       // Another app's button by its name ("archive", "click Insert", «أرشف»), before ZOOD's own settings:
       // there, "new message" is the app's button, not ZOOD's greeting.
       if (named && !moment.ours && (await controlsLane(words, spoken, 'bare'))) return;
@@ -873,7 +884,7 @@ function Island() {
       if (named && moment.ours && (await bookLane(words, spoken))) return;
       // "How do I add a signature?" in ZOOD PDF is still shown on the screen, when a command is
       // named outright; a general "how do I …" is never guessed into one of ZOOD's commands.
-      if (general && moment.ours && intentOf(words) === 'show' && (await bookLane(words, spoken, false))) return;
+      if (general && !refused && moment.ours && intentOf(words) === 'show' && (await bookLane(words, spoken, false))) return;
       // A setting, by its name, from anywhere: Settings opens at it.
       if (setting && (await settingsLane(words, spoken))) return;
       // Named by its words, not as a phrase: done when one is clearly meant, offered when a few could be.

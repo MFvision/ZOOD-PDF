@@ -9,6 +9,8 @@
  * short "yes" / «إيه» right after an answer acts on that answer.
  */
 
+import { isOpenableUrl } from '../links/openLink';
+
 /** How long an answer can still be answered back: "yes" a few minutes later still means it. */
 export const FOLLOW_UP_MS = 4 * 60_000;
 
@@ -91,15 +93,19 @@ function writtenAddresses(said: string): string {
   return out.replace(SPOKEN_DOT, '.');
 }
 
+// A name starts only after something that is not part of one: without this, a
+// long "a.a.a.a…" or "www.www.…" was tried again from every letter, and a
+// 10 000-letter answer took a quarter of a second to read (40 000: four).
 const DOMAIN = new RegExp(
-  `(?:https?:\\/\\/)?((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+(?:${ENDINGS}))(?=$|[\\s/?؟.!,،:)])(\\/[^\\s]*)?`,
+  `(?<![a-z0-9.-])(?:https?:\\/\\/)?((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+(?:${ENDINGS}))(?=$|[\\s/?؟.!,،:)])(\\/[^\\s]*)?`,
   'gi',
 );
 
 /** Every web address in some words, as https addresses, in the order they come. */
 export function addressesIn(text: string): string[] {
   const out: string[] = [];
-  for (const match of writtenAddresses(text.toLowerCase()).matchAll(DOMAIN)) {
+  // Spaces made one first: `SPOKEN_DOT` tried every one of a long run of them again.
+  for (const match of writtenAddresses(text.toLowerCase().replace(/\s+/g, ' ')).matchAll(DOMAIN)) {
     const host = match[1]!.replace(/^\.+/, '');
     if (!host.includes('.')) continue;
     const path = (match[2] ?? '').replace(/[).,،!?؟]+$/, '');
@@ -153,6 +159,53 @@ export function siteAsked(words: string): string | null {
 }
 
 /** The host of an address, as people say it: "amazon.sa". */
+/** Hosts that are never a website out on the internet: this computer, its network, a printer, a router. */
+const LOCAL_HOST = /^(?:localhost|.*\.(?:localhost|local|lan|home|internal|intranet|corp|arpa|test|invalid|example))$/;
+
+/**
+ * Whether Ask ZOOD may open `url` with no question asked: a web address
+ * (http or https) of a named site out on the internet. Never `file:`,
+ * `javascript:` or anything else, never an address with a name and password
+ * in it, a port, a number for a host (192.168.1.1, 169.254.169.254) or a
+ * host of this computer or its network, never one with characters that hide
+ * where it goes. A page or a PDF can put words in an answer; it must not be
+ * able to send a "yes" to the router or to a file on the disk.
+ */
+export function safeSite(url: string): boolean {
+  if (!isOpenableUrl(url) || !/^https?:\/\//i.test(url.trim())) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return false;
+  }
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  if (parsed.username || parsed.password || parsed.port) return false;
+  if (!host.includes('.') || host.startsWith('[') || /^[\d.]+$/.test(host) || /^0x/i.test(host)) return false;
+  return !LOCAL_HOST.test(host);
+}
+
+/**
+ * The site a "yes" to an answer opens, or null. Only an answer that asks
+ * back has one, and only an address it asks about out loud (in `say`), a
+ * well-known site, or one the person named themselves: the answer's longer
+ * text can come from the page, the PDF or a web page, and "Visit
+ * http://evil.example" written there must not open when the person says
+ * "okay" to something else.
+ */
+export function offeredUrl(words: string, say: string, text: string): string | null {
+  if (!asksBack(say)) return null;
+  const asked = siteAsked(words);
+  const inText = linkIn(text);
+  const named = (url: string | null) => {
+    if (!url) return false;
+    const host = siteName(url).toLowerCase();
+    return Object.values(KNOWN_SITES).includes(host) || plain(words).includes(host);
+  };
+  const url = linkIn(say) ?? (named(inText) ? inText : null) ?? asked;
+  return url && safeSite(url) ? url : null;
+}
+
 export function siteName(url: string): string {
   try {
     const host = new URL(url).hostname.replace(/^www\./, '');

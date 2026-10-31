@@ -1,3 +1,5 @@
+import { refusal } from './negation';
+
 /**
  * Choices said aloud, and chosen by voice.
  *
@@ -68,6 +70,8 @@ const FILLER = /\b(?:the|one|please|option|choice|i mean|i meant|i want|go with|
 export function pickByWords(words: string, names: readonly string[]): number | null {
   const said = plain(words);
   if (!said || said.split(' ').length > 6) return null;
+  // "Not the second", «لا تضغطه»: a choice turned down is never the one run.
+  if (refusal(words) !== null) return null;
   const bare = said.replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
   for (let i = 0; i < Math.min(names.length, PLACES.length); i += 1) {
     if (PLACES[i]!.some((way) => bare === way || said === way)) return i;
