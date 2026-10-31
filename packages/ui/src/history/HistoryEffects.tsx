@@ -56,8 +56,11 @@ export function HistoryEffects() {
       const { activeTab, canUndo, bytesForSave } = servicesRef.current;
       if (!document || activeTab === null) return;
       const name = document.name;
-      const path = servicesRef.current.tabs.find((tab) => tab.key === activeTab)?.path;
-      const changed = hasUnsavedEdits(stateRef.current) || canUndo;
+      const tab = servicesRef.current.tabs.find((each) => each.key === activeTab);
+      const path = tab?.path;
+      // A tab can be unsaved with nothing to undo: work brought back from a
+      // recovery copy, a combined or extracted file not saved anywhere yet.
+      const changed = hasUnsavedEdits(stateRef.current) || canUndo || tab?.edited === true;
       void (async () => {
         if (!changed) return dropRecovery(recoveryKey(activeTab));
         const bytes = await bytesForSave();
@@ -103,7 +106,13 @@ export function HistoryEffects() {
   const first = offers[0]!;
   const restore = async () => {
     setOffers((list) => list.slice(1));
-    await services.openFile(keepNativePath(new File([first.bytes], first.name, { type: 'application/pdf' }), first.path), undefined, { recent: false });
+    // Unsaved work, brought back: its tab says so and closing it asks first.
+    // Opened as if saved, it closed without a word and the work was gone for
+    // good, its copy already dropped below (break-zood, files-ui).
+    await services.openFile(keepNativePath(new File([first.bytes], first.name, { type: 'application/pdf' }), first.path), undefined, {
+      recent: false,
+      unsaved: true,
+    });
     await dropRecovery(first.tab);
   };
   const discard = async () => {
