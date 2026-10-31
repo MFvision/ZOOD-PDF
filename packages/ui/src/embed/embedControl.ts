@@ -425,6 +425,12 @@ export function embedSearchField(): HTMLInputElement | null {
  * used to open the panel and leave the keyboard nowhere: a keyboard-only
  * reader took 28 Tabs to reach the field.
  */
+/** Focus the search field once the viewer has drawn it (a few tries). */
+export function reachEmbedSearch(tries = 20): void {
+  if (focusEmbedSearch() || tries <= 0) return;
+  window.setTimeout(() => reachEmbedSearch(tries - 1), 50);
+}
+
 export function focusEmbedSearch(): boolean {
   const field = embedSearchField();
   if (!field) return false;

@@ -166,7 +166,7 @@ export function ReadAloudBar() {
           <option value="">{t('readAloud.sleepOff')}</option>
           {SLEEP_MINUTES.map((minutes) => (
             <option key={minutes} value={String(minutes)}>
-              {t('readAloud.sleepMinutes', { count: minutes })}
+              {t(minutes <= 10 ? 'readAloud.sleepMinutesFew' : 'readAloud.sleepMinutes', { count: minutes })}
             </option>
           ))}
         </select>

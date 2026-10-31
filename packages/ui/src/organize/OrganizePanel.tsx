@@ -1,6 +1,8 @@
 import {
   ArrowDown,
+  ArrowDownToLine,
   ArrowUp,
+  ArrowUpToLine,
   Check,
   CheckCheck,
   Crop,
@@ -24,7 +26,7 @@ import { Stepper } from '../components/Stepper';
 import type { TKey } from '../i18n/messages';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { orderStepping, positionsAfter, selectionAfterDelete } from './selection';
+import { orderMovingTo, orderStepping, positionsAfter, selectionAfterDelete } from './selection';
 import { describeParts, splitAt, splitEvery } from './split';
 import { OpenFirst } from '../tools/OpenFirst';
 
@@ -56,6 +58,12 @@ export function OrganizePanel() {
 
   const move = (step: -1 | 1) => {
     const order = orderStepping(count, pages, step);
+    if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, pages));
+  };
+  // To the start or the end in one press: the last of 1320 pages to the front
+  // took 1319 presses of Move earlier (First Five, Yousef).
+  const moveTo = (target: number) => {
+    const order = orderMovingTo(count, pages, target);
     if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, pages));
   };
 
@@ -140,6 +148,13 @@ export function OrganizePanel() {
           onClick={() => void services.organizePages('rotate', { pages, quarterTurns: 1 }, () => pages)}
         />
         <IconButton
+          label={t('organize.moveFirst')}
+          icon={<Icon of={ArrowUpToLine} />}
+          showLabel
+          disabled={!ready || orderMovingTo(count, pages, 0) === null}
+          onClick={() => moveTo(0)}
+        />
+        <IconButton
           label={t('organize.moveEarlier')}
           icon={<Icon of={ArrowUp} />}
           showLabel
@@ -152,6 +167,13 @@ export function OrganizePanel() {
           showLabel
           disabled={!ready || orderStepping(count, pages, 1) === null}
           onClick={() => move(1)}
+        />
+        <IconButton
+          label={t('organize.moveLast')}
+          icon={<Icon of={ArrowDownToLine} />}
+          showLabel
+          disabled={!ready || orderMovingTo(count, pages, count) === null}
+          onClick={() => moveTo(count)}
         />
         <IconButton
           label={t('organize.insertBlank')}

@@ -303,6 +303,11 @@ export function PageMarksPanel() {
     </Field>
   );
 
+  const textColorField = (
+    <Field label={t('marks.color')}>
+      <input className="marks-color" type="color" value={form.textColor} onChange={(e) => set('textColor', e.target.value)} />
+    </Field>
+  );
   const fontSelect = (
     <Field label={t('marks.font')}>
       <select className="select" value={form.font} onChange={(e) => set('font', e.target.value as EditFontId)}>
@@ -470,6 +475,7 @@ export function PageMarksPanel() {
               </Field>
               {numeralsSelect}
               {fontSelect}
+              {textColorField}
               {numberField('size', 'marks.size', 5, 72)}
               {numberField('margin', 'marks.margin', 0, 200)}
             </div>
@@ -496,6 +502,7 @@ export function PageMarksPanel() {
             {numberField('size', 'marks.size', 5, 72)}
             {numberField('margin', 'marks.margin', 0, 200)}
             {fontSelect}
+            {textColorField}
           </div>
           <label>
             <input type="checkbox" checked={form.skipFirst} onChange={(e) => set('skipFirst', e.target.checked)} />
@@ -520,6 +527,7 @@ export function PageMarksPanel() {
             {numberField('size', 'marks.size', 5, 72)}
             {numberField('margin', 'marks.margin', 0, 200)}
             {fontSelect}
+            {textColorField}
           </div>
         </fieldset>
       )}
