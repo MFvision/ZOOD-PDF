@@ -13,7 +13,8 @@ import type { Plugin } from 'vite';
  * their disk and never goes through the network, so it never passes the
  * worker; requests to anywhere else (the AI tool's providers) are not
  * touched at all. OCR's language models and Tesseract are kept the first
- * time Scan & OCR fetches them, since not everyone needs 20 MB of them.
+ * time Scan & OCR fetches them, since not everyone needs 20 MB of them; the
+ * line finder (its model, ONNX Runtime and its worker) too.
  *
  * The list is the build's own output, so a new build is a new worker: it
  * installs beside the old one, and replaces it (and its files) once no
@@ -21,7 +22,7 @@ import type { Plugin } from 'vite';
  */
 
 /** Kept when first used, not when the worker installs (Help & Support's PDF guides and their pictures too: each is fetched when it is shown). */
-const ON_FIRST_USE = [/^ocr\//, /^assets\/[a-z-]+-(ar|en)-[^/]+\.(pdf|jpg|webp)$/, /^assets\/tesseract-core-/, /^assets\/worker\.min-/, /^licenses\//];
+const ON_FIRST_USE = [/^ocr\//, /^assets\/[a-z-]+-(ar|en)-[^/]+\.(pdf|jpg|webp)$/, /^assets\/tesseract-core-/, /^assets\/worker\.min-/, /^assets\/ort-wasm-/, /^assets\/detect\.worker-/, /^licenses\//];
 /** Never kept: the worker itself, and the welcome tour's film (8 MB, watched once, played by ranges). */
 const NEVER = [/^sw\.js$/, /\.mp4$/];
 

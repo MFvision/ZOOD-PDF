@@ -53,6 +53,15 @@ test.describe('Scan & OCR gives scanned pages a text layer, on this device', () 
     const text = await recognize(page, name);
     // Measured 130 of 138 (94 %); diacritics are what it misses.
     expect(share(text, name)).toBeGreaterThan(0.85);
+    // Arabic and English are both ticked (the default): English is only read
+    // where the Arabic reading failed, so the page's English words (PDF,
+    // Acrobat…) are read and Arabic words no longer come back as English
+    // nonsense (read with both models at once, Arabic pages got words like
+    // "gull" and "LIA"); a misread "PDE" or so at most.
+    const truth = readFileSync(`../../tests/corpus/arabic/truth/${name}.txt`, 'utf8');
+    const english = (t: string) => t.match(/[A-Za-z][A-Za-z0-9.-]*/g) ?? [];
+    const made = english(text).filter((w) => !english(truth).some((t) => t.includes(w.replace(/[.-]+$/, ''))));
+    expect(made.length).toBeLessThanOrEqual(3);
 
     // Saved, and read back from the file: the layer is in it.
     const saved = await saveAs(page, 'test-results/ocr-saved.pdf');
@@ -84,11 +93,16 @@ test.describe('Scan & OCR gives scanned pages a text layer, on this device', () 
 
   test('a 200 dpi black-and-white scan of an invoice', async ({ page, stayLocal: _ }) => {
     const name = 'scan-arial-200dpi-bilevel';
-    // Measured 20 of 30: Tesseract's layout analysis skips the table rows.
-    expect(share(await recognize(page, name), name)).toBeGreaterThan(0.55);
+    // Measured 20 of 30 when Tesseract found the lines itself (its layout
+    // analysis skipped the table rows); found by the line finder, every row is read.
+    const text = await recognize(page, name);
+    console.log(`invoice: ${Math.round(share(text, name) * 100)} %`);
+    expect(share(text, name)).toBeGreaterThan(0.8);
+    // Its English is still read: in place of what the Arabic model could not read.
+    expect(text).toContain('INV-2026-0042');
   });
 
-  test('a shadowed, stained scan reads far better cleaned up, and the cleaned picture can take its place', async ({
+  test('a shadowed, stained scan reads well as it is, and the cleaned picture can take its place', async ({
     page,
     stayLocal: _,
   }) => {
@@ -126,7 +140,9 @@ test.describe('Scan & OCR gives scanned pages a text layer, on this device', () 
     const first = await enterEditText(page);
     const cleaned = share((await first.locator('.text-layer').textContent()) ?? '', name);
     console.log(`shadowed and stained scan, page 1: ${Math.round(plain * 100)} % plain, ${Math.round(cleaned * 100)} % cleaned up`);
-    expect(plain).toBeLessThan(0.8);
+    // Read as it was, it used to give 59 %: Tesseract's one threshold for the
+    // page lost the shadowed lines. Each line is evened out on its own now.
+    expect(plain).toBeGreaterThan(0.8);
     expect(cleaned).toBeGreaterThan(0.85);
 
     // Saved: the original bytes first, the cleaned pages at one bit a pixel after them.
