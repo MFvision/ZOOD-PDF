@@ -97,10 +97,13 @@ export type QuickOutcome =
 /** What to do with the decider's ranking. */
 export function readQuick(ranked: readonly Ranked[]): QuickOutcome {
   const [top, second] = ranked;
-  if (!top || !(top.key in QUICK_OPTIONS)) return { kind: 'model' };
+  // The decider's own keys only: never one of every object's ("constructor"), nor a key or a share of the wrong kind.
+  const known = (one: Ranked | undefined): one is Ranked =>
+    !!one && typeof one.key === 'string' && Object.hasOwn(QUICK_OPTIONS, one.key) && Number.isFinite(one.p);
+  if (!known(top)) return { kind: 'model' };
   const key = top.key as QuickKey;
   if (!isQuick(key)) return { kind: 'model' };
-  if (top.p >= SURE || !second || !(second.key in QUICK_OPTIONS))
+  if (top.p >= SURE || !known(second))
     return { kind: 'act', key, p: top.p };
   return { kind: 'choose', keys: [key, second.key as QuickKey] };
 }
