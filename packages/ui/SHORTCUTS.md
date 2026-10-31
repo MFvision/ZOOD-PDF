@@ -15,7 +15,7 @@ the editor (`setKeyboard` in `embed/embedControl.ts`).
 | `Mod+O` | Open a file | Warraq's picker (the native panel on desktop). EmbedPDF's own Open is switched off: a file opened there was one Warraq did not know it had. A protected file asks for its password. |
 | `Mod+S` | Save | Whichever view is showing holds the latest file: EmbedPDF's copy carries comments, fields, redactions and protection; Warraq's its text edits. Native save panel on desktop, a download in a browser. Always prevents the browser's own save dialog. |
 | `Mod+P` | Print | The file itself: EmbedPDF's print dialog in a browser and the extension; on macOS the system print sheet through PDFKit, and on Windows and Linux the pages drawn at 300 dpi for the webview's dialog. A file that forbids printing is refused. |
-| `Mod+F` | Find | EmbedPDF's search panel; Warraq's find bar in Edit text. `Esc` closes it. |
+| `Mod+F` | Find | EmbedPDF's search panel, with the cursor in its field and the last words selected to type over (pressed again it stays open); Warraq's find bar in Edit text. `Esc` closes it. |
 | `Mod+Z` | Undo the last change | EmbedPDF's history (comments, fields, redaction marks); Warraq's edit stack in Edit text. |
 | `Mod+Shift+Z` | Redo | Also `Ctrl+Y` on Windows and Linux while EmbedPDF is showing. |
 | `Mod+=` / `Mod++` | Zoom in | |
@@ -23,9 +23,19 @@ the editor (`setKeyboard` in `embed/embedControl.ts`).
 | `Mod+0` | Fit page | |
 | `Mod+1` | Fit width | EmbedPDF's meaning for the key, now Warraq's too, so it does the same in both views. Actual size is in the View menu. |
 | `Mod+Shift+N` | Go to page | Opens the "Go to page" dialog, which scrolls the view on screen. Chrome and Edge reserve this combination for a new private window, so the toolbar's page field takes a page number typed into it, and Edit › Go to page opens the same dialog. |
+| `Ctrl+G` | Go to page | Windows and Linux, as in Word. On a Mac `⌘G` is Find's next match instead. |
+| `F3` / `Shift+F3` | Next / previous match | Windows and Linux; `⌘G` / `⇧⌘G` on a Mac. `Enter` again in the search field, once it has searched, also goes to the next match. A first `F3` with no search yet opens Find. |
+| `Mod+W` / `Ctrl+F4` | Close the document | Windows and Linux (`⌘W` stays the Mac menu bar's Close Window). A document with unsaved changes asks first: Save, Close without saving, or Cancel. A browser keeps `Ctrl+W` for its own tab. |
+| `F10` | Go to the menu bar | Windows and Linux: the keyboard goes to the first menu; the arrows move from there. |
 | `F4` | Toggle the page thumbnails | EmbedPDF's sidebar, or Warraq's navigation pane in Edit text. Only while a document is open. |
 | `Shift+F4` | Toggle the tools pane | |
 | `Esc` | Close the find bar or the open dialog/menu | |
+
+Taken before EmbedPDF sees them (`useKeyboardShortcuts`, capture phase): `Mod+F`,
+`F3`, `Enter` in the search field, `Ctrl+G`, `Mod+W`/`Ctrl+F4` and `F10`. A
+keyboard-only reader found each of these dead (First Five, 2026-10-31). After a
+file opens, the keyboard is on its pages when nothing else has it, so `Page Down`
+and `End` read on at once.
 
 While EmbedPDF is showing it also has keys of its own: `←`/`→` and `Mod+[`/`Mod+]`
 turn the page, `H` and `P` switch between the hand and the pointer, `Mod+C` copies

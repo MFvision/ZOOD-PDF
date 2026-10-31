@@ -6,6 +6,8 @@ import { isApplePlatform, useMenuModel } from './menuModel';
 import type { MenuItemModel } from './menuModel';
 import { isEditable } from './typing';
 import { openSupportAt } from '../support/open';
+import { warraqOwnsDocument } from '../state/appReducer';
+import { commandActive, EMBED_COMMANDS, embedSearchField, focusEmbedSearch, runCommand, searchState, searchStep } from '../embed/embedControl';
 
 const isZoomInKey = (event: KeyboardEvent) =>
   event.key === '=' || event.key === '+' || event.code === 'Equal' || event.code === 'NumpadAdd';
@@ -140,5 +142,91 @@ export function useKeyboardShortcuts(): void {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, [dispatch, services]);
+
+  // Before EmbedPDF sees them (the capture phase): the keys a reader who
+  // uses only the keyboard reached for and found dead (First Five, Abu Fahad,
+  // 2026-10-31). Each one taken here stops there, so it never runs twice.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      // Keys the person gave to another command (Settings › Keyboard), or took
+      // away from one, are the other handler's to run or to swallow.
+      if (reboundRef.current.length > 0 && !['Control', 'Meta', 'Alt', 'Shift'].includes(event.key)) {
+        const combo = normalizeKeys(comboOf(event, isApplePlatform()));
+        const rebound = (keys?: string) => keys !== undefined && normalizeKeys(keys) === combo;
+        if (reboundRef.current.some((item) => rebound(item.keys) || rebound(item.defaultKeys))) return;
+      }
+      const current = stateRef.current;
+      const hasDocument = current.view === 'viewer' && current.document !== null;
+      const registry = services.embedRegistry;
+      const mod = event.metaKey || event.ctrlKey;
+      const take = () => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      const inSearch = (event.composedPath()[0] as Element | undefined) === embedSearchField();
+      // F10, as in every Windows program: the keyboard to the menu bar.
+      if (event.key === 'F10' && !mod && !event.altKey && !event.shiftKey) {
+        const first = document.querySelector<HTMLElement>('.menubar [role="menuitem"]');
+        if (first) {
+          take();
+          first.focus();
+        }
+        return;
+      }
+      if (!hasDocument || !registry) return;
+      const searching = commandActive(registry, EMBED_COMMANDS.find);
+      // Ctrl+F: the search field, ready to type in; pressed again, it stays open.
+      if (mod && !event.altKey && !event.shiftKey && shortcutLetter(event) === 'f' && !warraqOwnsDocument(current)) {
+        take();
+        if (!searching) runCommand(registry, EMBED_COMMANDS.find);
+        let tries = 0;
+        const reach = () => {
+          if (focusEmbedSearch() || (tries += 1) > 20) return;
+          setTimeout(reach, 50);
+        };
+        reach();
+        return;
+      }
+      // F3 and Shift+F3, and Enter again in the field once it has searched: the next or previous place.
+      const again = inSearch && event.key === 'Enter' && !mod && !event.altKey;
+      if ((event.key === 'F3' && !mod && !event.altKey) || again) {
+        const state = searchState(registry);
+        const field = embedSearchField();
+        const sameWords = state !== null && field !== null && field.value.trim() === state.query.trim();
+        if (event.key === 'F3' || (sameWords && state!.total > 0)) {
+          if (searchStep(registry, !event.shiftKey)) take();
+          else if (event.key === 'F3') {
+            take();
+            if (!searching) runCommand(registry, EMBED_COMMANDS.find);
+            setTimeout(() => focusEmbedSearch(), 50);
+          }
+        }
+        return;
+      }
+      if (!mod || event.altKey) return;
+      const key = shortcutLetter(event);
+      if (key === 'g') {
+        // ⌘G and ⇧⌘G on a Mac: the next and previous match, as in every Mac app.
+        if (isApplePlatform()) {
+          if (event.metaKey && !event.ctrlKey && searchStep(registry, !event.shiftKey)) take();
+          return;
+        }
+        // Ctrl+G elsewhere: Go to page, as in Word; Ctrl+Shift+N still works too.
+        if (!event.shiftKey && event.ctrlKey) {
+          take();
+          dispatch({ type: 'DIALOG', dialog: 'goto' });
+        }
+        return;
+      }
+      // Ctrl+W or Ctrl+F4 closes the document, not the program (Alt+F4 stays
+      // the window's). On a Mac ⌘W is the menu bar's Close Window.
+      if ((key === 'w' && !event.shiftKey && !isApplePlatform()) || (event.key === 'F4' && event.ctrlKey && !event.metaKey)) {
+        take();
+        services.closeDocument();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [dispatch, services]);
 }

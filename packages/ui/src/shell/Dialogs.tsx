@@ -14,7 +14,8 @@ import { UpdateCheck } from '../updates/UpdateBanner';
 import { appVersion, canUpdate } from '../updates/updates';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { formatShortcut } from './menuModel';
+import { formatShortcut, isApplePlatform } from './menuModel';
+import { documentStem } from '../state/saveFile';
 
 function GoToPageForm({ total, initialPage, onGo, onCancel }: { total: number; initialPage: number; onGo: (page: number) => void; onCancel: () => void }) {
   const t = useT();
@@ -114,6 +115,35 @@ function PasswordForm({ wrong, onOpen, onCancel }: { wrong: boolean; onOpen: (pa
 }
 
 /**
+ * Closing a document with changes not saved: Save, Close without saving, or
+ * Cancel. Cancel comes first, so Enter on a question nobody read keeps the work.
+ */
+export function CloseUnsavedDialog() {
+  const { closeQuestion, answerClose } = useServices();
+  const t = useT();
+  return (
+    <Dialog open={closeQuestion !== null} title={t('close.unsavedTitle')} onClose={() => answerClose('cancel')}>
+      {closeQuestion && (
+        <>
+          <p>{t('close.unsavedBody', { name: documentStem(closeQuestion.name) })}</p>
+          <div className="dialog-actions">
+            <button type="button" className="icon-btn icon-btn-labeled" onClick={() => answerClose('cancel')}>
+              {t('confirm.cancel')}
+            </button>
+            <button type="button" className="icon-btn icon-btn-labeled" onClick={() => answerClose('discard')}>
+              {t('close.discard')}
+            </button>
+            <button type="button" className="icon-btn icon-btn-labeled icon-btn-primary" onClick={() => answerClose('save')}>
+              {t(isTauriHost() ? 'close.save' : 'close.download')}
+            </button>
+          </div>
+        </>
+      )}
+    </Dialog>
+  );
+}
+
+/**
  * A protected file asks for its password instead of failing to open. Warraq's
  * core and EmbedPDF both get it, so it is asked for once; it lives in memory
  * only, for as long as the file is open.
@@ -135,10 +165,16 @@ export function PasswordDialog() {
   );
 }
 
-const SHORTCUT_ROWS: ReadonlyArray<{ keys: string; labelKey: TKey }> = [
+/** `only`: a row for a Mac only, or for every other computer only. */
+const SHORTCUT_ROWS: ReadonlyArray<{ keys: string; labelKey: TKey; only?: 'apple' | 'other' }> = [
   { keys: 'Mod+O', labelKey: 'shortcuts.open' },
   { keys: 'Mod+S', labelKey: 'shortcuts.save' },
+  { keys: 'Mod+W', labelKey: 'shortcuts.close', only: 'other' },
   { keys: 'Mod+F', labelKey: 'shortcuts.find' },
+  { keys: 'F3', labelKey: 'shortcuts.findNext', only: 'other' },
+  { keys: 'Shift+F3', labelKey: 'shortcuts.findPrevious', only: 'other' },
+  { keys: 'Mod+G', labelKey: 'shortcuts.findNext', only: 'apple' },
+  { keys: 'Mod+Shift+G', labelKey: 'shortcuts.findPrevious', only: 'apple' },
   { keys: 'Mod+Z', labelKey: 'shortcuts.undo' },
   { keys: 'Mod+Shift+Z', labelKey: 'shortcuts.redo' },
   { keys: 'Mod+=', labelKey: 'shortcuts.zoomIn' },
@@ -146,7 +182,9 @@ const SHORTCUT_ROWS: ReadonlyArray<{ keys: string; labelKey: TKey }> = [
   { keys: 'Mod+0', labelKey: 'shortcuts.fitPage' },
   { keys: 'Mod+1', labelKey: 'shortcuts.fitWidth' },
   { keys: 'Mod+P', labelKey: 'shortcuts.print' },
+  { keys: 'Ctrl+G', labelKey: 'shortcuts.goToPage', only: 'other' },
   { keys: 'Mod+Shift+N', labelKey: 'shortcuts.goToPage' },
+  { keys: 'F10', labelKey: 'shortcuts.menuBar', only: 'other' },
   { keys: 'F4', labelKey: 'shortcuts.leftPane' },
   { keys: 'Shift+F4', labelKey: 'shortcuts.rightPane' },
   { keys: 'Esc', labelKey: 'shortcuts.escape' },
@@ -157,7 +195,10 @@ export function ShortcutsDialog() {
   const dispatch = useAppDispatch();
   const { canPrint } = useServices();
   const t = useT();
-  const rows = SHORTCUT_ROWS.filter((row) => row.labelKey !== 'shortcuts.print' || canPrint);
+  const apple = isApplePlatform();
+  const rows = SHORTCUT_ROWS.filter(
+    (row) => (row.labelKey !== 'shortcuts.print' || canPrint) && (row.only === undefined || (row.only === 'apple') === apple),
+  );
   return (
     <Dialog open={dialog === 'shortcuts'} title={t('shortcuts.title')} onClose={() => dispatch({ type: 'DIALOG', dialog: null })}>
       <table className="shortcuts-table">

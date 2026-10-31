@@ -234,7 +234,8 @@ function DocumentTitle() {
   const state = useAppState();
   const { t } = useI18n();
   const { document, currentPage, core } = state;
-  const edited = document !== null && hasUnsavedEdits(state);
+  const { liveEdited } = useServices();
+  const edited = document !== null && (hasUnsavedEdits(state) || liveEdited);
   return (
     <div className="toolbar-title">
       <span className="toolbar-title-name" dir="auto" title={document?.name}>

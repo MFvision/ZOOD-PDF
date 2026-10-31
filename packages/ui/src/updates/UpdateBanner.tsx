@@ -6,6 +6,7 @@ import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
 import { hasUnsavedEdits } from '../state/appReducer';
 import { useAppState, useServices } from '../state/AppContext';
+import { isTauriHost } from '../core/host-tauri';
 import { reportOpen, reportUnsaved, unsavedEverywhere, unsavedHere } from './unsaved';
 import {
   checkForUpdate,
@@ -44,9 +45,20 @@ export function useInstallUpdate(): { install: () => void; dialog: ReactNode } {
 /** Tells the host how many of this window's documents are open, and how many have unsaved changes. */
 function useReportUnsaved(): void {
   const state = useAppState();
-  const { tabs, activeTab } = useServices();
-  const count = unsavedHere(tabs, activeTab, state.document !== null && hasUnsavedEdits(state));
+  const { tabs, activeTab, liveEdited } = useServices();
+  const count = unsavedHere(tabs, activeTab, state.document !== null && (hasUnsavedEdits(state) || liveEdited));
   useEffect(() => reportUnsaved(count), [count]);
+  // A browser tab closed or reloaded with unsaved work asks first, as the
+  // desktop's window does (`updates.rs`): the browser shows its own question.
+  useEffect(() => {
+    if (isTauriHost() || count === 0) return;
+    const hold = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', hold);
+    return () => window.removeEventListener('beforeunload', hold);
+  }, [count]);
   const open = Math.max(tabs.length, state.document !== null ? 1 : 0);
   useEffect(() => reportOpen(open), [open]);
 }

@@ -299,10 +299,14 @@ export interface EmbedWatchers {
   /** The page at the top of the view, one-based. */
   onPage: (page: number) => void;
   onHistory: (history: { canUndo: boolean; canRedo: boolean }) => void;
+  /** Each change to the file: a drawing, a comment, a field filled, an undo or a redo. */
+  onChange?: () => void;
+  /** Another file became the one on screen, with nothing changed in it yet. */
+  onDocument?: () => void;
 }
 
 /** Follows the page on screen and what can be undone. Returns the unsubscribe. */
-export function watch(registry: PluginRegistry, { onPage, onHistory }: EmbedWatchers): Unsubscribe {
+export function watch(registry: PluginRegistry, { onPage, onHistory, onChange, onDocument }: EmbedWatchers): Unsubscribe {
   const history = capability<History>(registry, 'history');
   const readHistory = () => {
     // With no document active — between closing one file and opening the
@@ -318,9 +322,15 @@ export function watch(registry: PluginRegistry, { onPage, onHistory }: EmbedWatc
   };
   const subscriptions = [
     capability<Scroll>(registry, 'scroll')?.onPageChange(({ pageNumber }) => onPage(pageNumber)),
-    history?.onHistoryChange(readHistory),
+    history?.onHistoryChange(() => {
+      readHistory();
+      onChange?.();
+    }),
     // A newly opened file starts with nothing to undo.
-    capability<DocumentManager>(registry, 'document-manager')?.onActiveDocumentChanged(readHistory),
+    capability<DocumentManager>(registry, 'document-manager')?.onActiveDocumentChanged(() => {
+      readHistory();
+      onDocument?.();
+    }),
   ];
   readHistory();
   return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
@@ -378,4 +388,151 @@ export function watchPendingRedactions(registry: PluginRegistry, onCount: (count
   ];
   read();
   return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
+}
+
+/* ---- The keyboard in the viewer (First Five, 2026-10-31) ------------------ */
+
+/** EmbedPDF's own shadow root, where its search field and page scroller live. */
+function embedRoot(): ShadowRoot | null {
+  return globalThis.document?.querySelector('.embed-viewer embedpdf-container')?.shadowRoot ?? null;
+}
+
+const shown = (element: HTMLElement) => element.offsetParent !== null && !element.hidden;
+
+/** EmbedPDF's search field, when its panel is showing. */
+export function embedSearchField(): HTMLInputElement | null {
+  const root = embedRoot();
+  if (!root) return null;
+  return (
+    [...root.querySelectorAll<HTMLInputElement>('input[type="text"], input[type="search"]')].find(
+      (field) => shown(field) && !field.readOnly && !field.disabled,
+    ) ?? null
+  );
+}
+
+/**
+ * The cursor into the search field, its words selected to type over. Ctrl+F
+ * used to open the panel and leave the keyboard nowhere: a keyboard-only
+ * reader took 28 Tabs to reach the field.
+ */
+export function focusEmbedSearch(): boolean {
+  const field = embedSearchField();
+  if (!field) return false;
+  field.focus();
+  field.select();
+  return true;
+}
+
+interface Search {
+  nextResult?: () => unknown;
+  previousResult?: () => unknown;
+  getState?: () => { query?: string; total?: number; results?: unknown[] };
+}
+
+/** The search's words and how many places they were found, or null before a search. */
+export function searchState(registry: PluginRegistry): { query: string; total: number } | null {
+  try {
+    const state = capability<Search>(registry, 'search')?.getState?.();
+    if (!state) return null;
+    return { query: state.query ?? '', total: state.total ?? state.results?.length ?? 0 };
+  } catch {
+    return null;
+  }
+}
+
+/** To the next (or previous) place the search found: F3, Shift+F3, Enter again. */
+export function searchStep(registry: PluginRegistry, forward: boolean): boolean {
+  const search = capability<Search>(registry, 'search');
+  const state = searchState(registry);
+  if (!search || !state || state.total === 0) return false;
+  try {
+    if (forward) search.nextResult?.();
+    else search.previousResult?.();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The element that scrolls the pages: the biggest scroller in EmbedPDF's root. */
+export function embedScroller(): HTMLElement | null {
+  const root = embedRoot();
+  if (!root) return null;
+  let best: HTMLElement | null = null;
+  for (const element of root.querySelectorAll<HTMLElement>('div')) {
+    const style = getComputedStyle(element);
+    if (!/(auto|scroll)/.test(style.overflowY + style.overflowX)) continue;
+    if (!best || element.clientWidth * element.clientHeight > best.clientWidth * best.clientHeight) best = element;
+  }
+  return best;
+}
+
+/**
+ * The keyboard on the pages, so Page Down, End and the arrows read on, when
+ * nothing else has it: after a file opened, focus was nowhere and those keys
+ * did nothing until the reader tabbed into the page.
+ */
+export function focusPagesIfIdle(): boolean {
+  const active = globalThis.document?.activeElement;
+  if (active && active !== globalThis.document.body) return false;
+  const scroller = embedScroller();
+  if (!scroller) return false;
+  if (!scroller.hasAttribute('tabindex')) scroller.tabIndex = -1;
+  scroller.focus({ preventScroll: true });
+  return true;
+}
+
+/**
+ * In a right-to-left interface the pages keep their right edge, where Arabic
+ * lines start. EmbedPDF's scroller is laid out left to right, so when the
+ * view narrowed (the search or thumbnails panel opening, a smaller window) it
+ * kept its left edge and cut the start of every line: «حكمة» for «المحكمة»
+ * (First Five, Abu Fahad, 2026-10-31). `show()` also brings a page that is
+ * wider than the view to its right edge when it first comes on screen.
+ */
+export function holdReadingEdge(rtl: () => boolean): { show: () => void; stop: () => void } {
+  let scroller: HTMLElement | null = null;
+  let fromRight = 0;
+  let width = -1;
+  const room = (element: HTMLElement) => Math.max(0, element.scrollWidth - element.clientWidth);
+  const onScroll = () => {
+    if (scroller) fromRight = Math.max(0, room(scroller) - scroller.scrollLeft);
+  };
+  const observer =
+    typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => {
+          if (!scroller || scroller.clientWidth === width) return;
+          width = scroller.clientWidth;
+          const max = room(scroller);
+          if (!rtl() || max <= 1 || getComputedStyle(scroller).direction === 'rtl') return;
+          scroller.scrollLeft = Math.min(max, Math.max(0, max - fromRight));
+        });
+  const bind = () => {
+    const found = embedScroller();
+    if (found === scroller) return;
+    if (scroller) {
+      scroller.removeEventListener('scroll', onScroll);
+      observer?.unobserve(scroller);
+    }
+    scroller = found;
+    if (!scroller) return;
+    width = scroller.clientWidth;
+    onScroll();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    observer?.observe(scroller);
+  };
+  return {
+    show: () => {
+      bind();
+      if (!scroller || !rtl() || getComputedStyle(scroller).direction === 'rtl') return;
+      const max = room(scroller);
+      if (max > 1 && scroller.scrollLeft < 2) scroller.scrollLeft = max;
+    },
+    stop: () => {
+      scroller?.removeEventListener('scroll', onScroll);
+      observer?.disconnect();
+      scroller = null;
+    },
+  };
 }

@@ -116,7 +116,7 @@ export function CompressPanel() {
                   showLabel
                   onClick={() => {
                     dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
-                    void services.openFile(new File([done.bytes], compressedFileName(name, t('compress.fileWord')), { type: 'application/pdf' }));
+                    void services.openFile(new File([done.bytes], compressedFileName(name, t('compress.fileWord')), { type: 'application/pdf' }), undefined, { unsaved: true });
                   }}
                 />
               </div>

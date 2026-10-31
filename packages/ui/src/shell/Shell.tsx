@@ -20,7 +20,8 @@ import { EmbedReadAloudHighlight } from '../speech/EmbedReadAloudHighlight';
 import { ReadAloudBar } from '../speech/ReadAloudBar';
 import { useReadAloud } from '../speech/readAloud';
 import { Viewer } from '../viewer/Viewer';
-import { AboutDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
+import { documentStem } from '../state/saveFile';
+import { AboutDialog, CloseUnsavedDialog, GoToPageDialog, PasswordDialog, ShortcutsDialog } from './Dialogs';
 import { SettingsWindow } from '../settings/SettingsWindow';
 import { SettingsEffects } from '../settings/SettingsEffects';
 import { UpdateBanner } from '../updates/UpdateBanner';
@@ -161,7 +162,7 @@ export function Shell() {
         {state.error && (
           <div className="banner banner-error" role="alert">
             <Icon of={CircleAlert} />
-            <span>{t(state.error)}</span>
+            <span>{t(state.error, state.errorName !== null ? { name: documentStem(state.errorName) } : undefined)}</span>
             <IconButton label={t('error.dismiss')} icon={<Icon of={X} />} onClick={() => dispatch({ type: 'ERROR_DISMISSED' })} />
           </div>
         )}
@@ -212,7 +213,7 @@ export function Shell() {
                   lang={lang}
                   markupBar={markupOn}
                   onRegistry={services.attachEmbed}
-                  onError={() => dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' })}
+                  onError={services.viewFailed}
                   onOpened={services.embedOpened}
                 />
               </div>
@@ -251,6 +252,7 @@ export function Shell() {
         </div>
         <GoToPageDialog />
         <PasswordDialog />
+        <CloseUnsavedDialog />
         <ShortcutsDialog />
         <AboutDialog />
         <SettingsWindow />

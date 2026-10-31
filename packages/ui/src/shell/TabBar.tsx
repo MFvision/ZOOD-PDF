@@ -26,7 +26,7 @@ export function TabBar() {
   const dispatch = useAppDispatch();
   const workbench = useWorkbench();
   const onHome = state.view !== 'viewer' || state.homeShown;
-  const { tabs, activeTab, activateTab, closeTab } = services;
+  const { tabs, activeTab, activateTab, closeTab, liveEdited } = services;
   const listRef = useRef<HTMLDivElement>(null);
 
   // Ctrl+Tab, as in a browser.
@@ -87,7 +87,7 @@ export function TabBar() {
               className={['tab', live && 'is-live'].filter(Boolean).join(' ')}
               data-tab-drop={live ? undefined : tab.key}
               onAuxClick={(event) => {
-                if (event.button === 1) closeTab(tab.key);
+                if (event.button === 1) void closeTab(tab.key);
               }}
             >
               <button
@@ -106,7 +106,7 @@ export function TabBar() {
                 {/* No ".pdf": every tab is one, and an Arabic name with its
                     extension read "pdf.فاتورة" to an English reader (First Five). */}
                 <span dir="auto">{documentStem(tab.name)}</span>
-                {tab.edited ? (
+                {tab.edited || (tab.key === activeTab && liveEdited) ? (
                   <span className="tab-edited" role="img" aria-label={t('tabs.edited')}>
                     •
                   </span>
@@ -117,7 +117,7 @@ export function TabBar() {
                 className="tab-close"
                 aria-label={t('tabs.close', { name: tab.name })}
                 title={t('tabs.close', { name: tab.name })}
-                onClick={() => closeTab(tab.key)}
+                onClick={() => void closeTab(tab.key)}
               >
                 <Icon of={X} size={14} />
               </button>

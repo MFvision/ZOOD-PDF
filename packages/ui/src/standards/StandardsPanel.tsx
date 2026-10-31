@@ -167,7 +167,7 @@ function ConversionResult({
           showLabel
           onClick={() => {
             dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
-            void services.openFile(new File([result.bytes], fileName, { type: 'application/pdf' }));
+            void services.openFile(new File([result.bytes], fileName, { type: 'application/pdf' }), undefined, { unsaved: true });
           }}
         />
       </div>

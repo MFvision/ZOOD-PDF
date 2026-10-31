@@ -17,7 +17,10 @@ import { OpenFirst } from './OpenFirst';
 export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
   const t = useT();
   const state = useAppState();
-  const { runEmbedCommand } = useServices();
+  const { runEmbedCommand, documentPassword } = useServices();
+  // A file that opened with a password: Protect's one button also takes it
+  // off, which nothing said; it read "Set a password" (First Five, Rami).
+  const locked = tool.id === 'protect' && documentPassword !== undefined && documentPassword !== '';
   const { model } = useFormRuntime();
   const ready =
     state.view === 'viewer' && state.document !== null && !warraqOwnsDocument(state) && state.switching === null;
@@ -37,7 +40,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
         {(tool.actions ?? []).map((action) => (
           <IconButton
             key={action.command}
-            label={t(action.labelKey)}
+            label={t(locked && action.command === 'document:protect' ? 'action.changePassword' : action.labelKey)}
             icon={<Icon of={action.icon} />}
             showLabel
             disabled={!ready}
@@ -45,6 +48,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
           />
         ))}
       </div>
+      {locked && ready && <p className="tool-panel-note">{t('tool.protect.removeNote')}</p>}
       {(tool.id === 'comment' || tool.id === 'fillSign') && (
         <p className="tool-panel-note">{t('tool.arabicDrawNote')}</p>
       )}

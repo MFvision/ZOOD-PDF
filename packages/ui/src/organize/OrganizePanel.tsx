@@ -16,6 +16,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { splitArchiveName } from '../state/saveFile';
 import type { ChangeEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
@@ -62,6 +63,11 @@ export function OrganizePanel() {
   const chooser = useRef<HTMLInputElement>(null);
   const [locked, setLocked] = useState<Locked | null>(null);
   const [insertNote, setInsertNote] = useState<TKey | null>(null);
+  // One split at a time, and what it saved said where it stays: a double
+  // click saved the zip twice, and the 3-second toast was gone before anyone
+  // read it (First Five, Rami).
+  const [splitting, setSplitting] = useState(false);
+  const [splitSaved, setSplitSaved] = useState<{ name: string; count: number } | null>(null);
   const insertAt = pages.length > 0 ? last + 1 : count;
   const insert = async (file: { name: string; bytes: ArrayBuffer }, at: number, password?: string) => {
     setInsertNote(null);
@@ -342,9 +348,23 @@ export function OrganizePanel() {
           label={t('organize.splitRun')}
           icon={<Icon of={Scissors} />}
           showLabel
-          disabled={!ready || parts.length < 2}
-          onClick={() => void services.splitDocument(parts, t('organize.splitWord'))}
+          disabled={!ready || parts.length < 2 || splitting}
+          onClick={() => {
+            if (splitting || !state.document) return;
+            const name = splitArchiveName(state.document.name, t('organize.splitWord'));
+            setSplitting(true);
+            setSplitSaved(null);
+            void services
+              .splitDocument(parts, t('organize.splitWord'))
+              .then((saved) => saved && setSplitSaved({ name, count: parts.length }))
+              .finally(() => setSplitting(false));
+          }}
         />
+        {splitSaved && (
+          <p className="tool-panel-note" role="status">
+            {t('organize.splitSaved', { name: splitSaved.name, count: splitSaved.count })}
+          </p>
+        )}
       </fieldset>
       {pages.length > 0 && pages.length >= count && <p className="tool-panel-note">{t('organize.keepOne')}</p>}
       <p className="tool-panel-note">{t('organize.hint')}</p>

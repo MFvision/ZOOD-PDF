@@ -8,7 +8,7 @@ import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
 import { pageRequests } from '../home/pendingPage';
 import { requestOpenLink } from '../links/openLink';
-import { capability, disabledCategories, scrollToStart, setZoom, watchZoom } from './embedControl';
+import { capability, disabledCategories, focusPagesIfIdle, holdReadingEdge, scrollToStart, setZoom, watchZoom } from './embedControl';
 import { applyOpenSettings, applyOpenZoom, pagePanelOpen, rememberedZoom, rememberZoom, setNightReading, setPagePanel, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
 import { useSettings } from '../state/settings';
 import { setEmbedLanguage, setEmbedStrings } from './embedLanguage';
@@ -72,14 +72,15 @@ export interface EmbedViewerProps {
   /** The plugin registry, once the viewer is ready — Warraq's hook into it. */
   onRegistry?: (registry: PluginRegistry) => void;
   /** EmbedPDF could not open the bytes: the view would otherwise sit empty, silently. */
-  onError?: () => void;
+  onError?: (firstOpen: boolean) => void;
   /** EmbedPDF has opened the bytes it was given (these, by identity). */
   onOpened?: (bytes: ArrayBuffer) => void;
 }
 
 interface DocumentManager {
   openDocumentBuffer(options: { buffer: ArrayBuffer; name: string; password?: string; autoActivate?: boolean }): {
-    toPromise(): Promise<{ documentId: string }>;
+    /** Resolves once loading has started; `task` is the load itself, which fails on a file PDFium cannot read. */
+    toPromise(): Promise<{ documentId: string; task?: { toPromise(): Promise<unknown> } }>;
   };
   closeDocument(documentId: string): { toPromise(): Promise<void> };
 }
@@ -148,6 +149,8 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
   /** The file on screen by name, and the files already shown once while the app is open. */
   const shownRef = useRef<string | null>(null);
   const seenRef = useRef(new Set<string>());
+  const edgeRef = useRef<ReturnType<typeof holdReadingEdge> | null>(null);
+  useEffect(() => () => edgeRef.current?.stop(), []);
   const shadowRef = useRef<ShadowRoot | null>(null);
   const settings = useSettings();
   const night = useNight(theme, settings.nightReading);
@@ -226,13 +229,22 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         .openDocumentBuffer({ buffer: current.slice(0), name: currentName, password: currentPassword, autoActivate: true })
         .toPromise();
       openedRef.current = response.documentId;
+      // The load itself, which can still fail after it started: PDFium could
+      // not read a file cut short by a download ("FPDF_LoadMemDocument failed,
+      // Error Code: 3") and EmbedPDF drew that over an open tab (First Five,
+      // Rami). Not awaited: the rest goes on as before for a file that loads.
+      void response.task?.toPromise().catch((error: unknown) => {
+        if (openedRef.current !== response.documentId) return;
+        uiLog(`embedpdf could not load ${currentName}: ${String(error)}`);
+        onError?.(!same);
+      });
       showMarkupBar(registry, markupRef.current);
       uiLog(`embedpdf opened ${currentName}`);
       reportDrawn(currentName);
       onOpened?.(current);
     } catch (error) {
       uiLog(`embedpdf could not open ${currentName}: ${JSON.stringify(error)}`);
-      onError?.();
+      onError?.(!same);
       return;
     }
     if (previous) await manager.closeDocument(previous).toPromise().catch(() => undefined);
@@ -267,6 +279,14 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
           uiLog(`view settings not applied to ${currentName}: ${String(error)}`);
         }
       }, OPEN_SETTLE_MS);
+      // Once its zoom and start are set: in Arabic a page wider than the view
+      // from its right edge, and the keyboard on the pages, so Page Down and
+      // End read on without a Tab into them first.
+      setTimeout(() => {
+        if (shownRef.current !== currentName) return;
+        edgeRef.current?.show();
+        focusPagesIfIdle();
+      }, OPEN_SETTLE_MS + 160);
       setSpreadDirection(shadowRef.current, spreadsRightToLeft(current));
     }
   };
@@ -327,6 +347,8 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
         watchZoom(registry, (zoom) => {
           if (shownRef.current) rememberZoom(shownRef.current, zoom);
         });
+        edgeRef.current?.stop();
+        edgeRef.current = holdReadingEdge(() => globalThis.document?.documentElement.dir === 'rtl');
         onRegistry?.(registry);
         void open(registry, bytes, name, password);
       }}
