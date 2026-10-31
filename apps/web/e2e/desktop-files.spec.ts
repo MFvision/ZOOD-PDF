@@ -62,7 +62,7 @@ async function desktopPage(page: Page) {
           }
           case 'plugin:dialog|save':
             return Promise.resolve(w.savePath);
-          case 'plugin:fs|write_file':
+          case 'save_file':
             return Promise.resolve(null);
           default:
             return Promise.reject(new Error(`unexpected ${cmd}`));
@@ -190,7 +190,7 @@ test('a download whose blob: URL is revoked at once is still saved through the s
   });
   await expect
     .poll(async () => (await calls(page)).map((c) => c.cmd))
-    .toEqual(['plugin:dialog|save', 'plugin:fs|write_file']);
+    .toEqual(['plugin:dialog|save', 'save_file']);
   const [save, write] = await calls(page);
   expect(save?.args).toEqual({
     options: {
@@ -199,7 +199,7 @@ test('a download whose blob: URL is revoked at once is still saved through the s
     },
   });
   expect(write?.args).toEqual([7, 8, 9]);
-  expect(write?.headers).toEqual({ path: encodeURIComponent('/Users/me/حفظ.png') });
+  expect(write?.headers).toEqual({ 'x-warraq-path': encodeURIComponent('/Users/me/حفظ.png') });
 });
 
 test('a data: URL download is saved too, and a cancelled save writes nothing', async ({ page }) => {
