@@ -121,6 +121,23 @@ describe('trust kept on the device', () => {
     expect(readTrusted(storage)).toEqual([]);
   });
 
+  it('starts with no trust when the browser blocks site data (reading localStorage throws)', () => {
+    const had = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('The operation is insecure.', 'SecurityError');
+      },
+    });
+    try {
+      expect(readTrusted()).toEqual([]);
+      expect(() => writeTrusted([{ name: 'Root', der: 'MAA=' }])).not.toThrow();
+    } finally {
+      if (had) Object.defineProperty(globalThis, 'localStorage', had);
+      else delete (globalThis as { localStorage?: unknown }).localStorage;
+    }
+  });
+
   it('encodes certificates as base64 both ways', () => {
     const bytes = new Uint8Array([0x30, 0x82, 0xff, 0x00, 0x10]);
     expect(new Uint8Array(fromBase64(toBase64(bytes.buffer)))).toEqual(bytes);

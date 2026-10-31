@@ -25,11 +25,24 @@ export interface Preferences {
 
 const PREFERENCES_KEY = 'warraq.preferences';
 
-/** Storage can throw (private mode, disabled, quota); every access is guarded. */
+/** `null`, `array`, or `typeof` — the shape of a stored value, for `readJson`. */
+function kindOf(value: unknown): string {
+  return value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value;
+}
+
+/**
+ * Storage can throw (private mode, disabled, quota); every access is guarded.
+ * A stored value of another shape than `fallback` (a `null`, a list where an
+ * object was kept, another app's or an old version's entry) gives `fallback`,
+ * so `readJson(key, {}).field` can never throw. A `null` fallback takes any
+ * stored value, and its caller checks the value itself.
+ */
 export function readJson<T>(key: string, fallback: T): T {
   try {
     const raw = globalThis.localStorage?.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    if (!raw) return fallback;
+    const value: unknown = JSON.parse(raw);
+    return fallback === null || kindOf(value) === kindOf(fallback) ? (value as T) : fallback;
   } catch {
     return fallback;
   }
