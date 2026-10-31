@@ -46,6 +46,12 @@ function openDatabase(name: string): Promise<IDBDatabase> {
   });
 }
 
+function isEntry(entry: unknown): boolean {
+  if (!entry || typeof entry !== 'object') return false;
+  const { key, at } = entry as Partial<Entry<unknown>>;
+  return typeof key === 'string' && typeof at === 'number' && Number.isFinite(at);
+}
+
 export function memoryStore<T>(): KeyValueStore<T> {
   const map = new Map<string, Entry<T>>();
   return {
@@ -96,7 +102,8 @@ export function keyValueStore<T>(name: string): KeyValueStore<T> {
     },
     list: async (prefix = '') => {
       const all = await run<Entry<T>[]>((store) => store.getAll() as IDBRequest<Entry<T>[]>, 'readonly', (mem) => mem.list(prefix));
-      return all.filter((entry) => entry.key.startsWith(prefix)).sort((a, b) => b.at - a.at);
+      // An entry this code did not write (another version's, a damaged one) is passed over, never thrown on.
+      return all.filter((entry) => isEntry(entry) && entry.key.startsWith(prefix)).sort((a, b) => b.at - a.at);
     },
     clear: async () => {
       await run((store) => store.clear(), 'readwrite', (mem) => mem.clear());

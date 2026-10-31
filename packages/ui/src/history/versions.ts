@@ -52,13 +52,21 @@ export async function keepVersion(key: string, name: string, bytes: ArrayBuffer)
   for (const old of kept.slice(limit)) await versions.delete(old.key);
 }
 
+/** A kept copy that can be opened: a damaged or foreign entry in the store is passed over. */
+function isCopy(value: unknown): value is Version {
+  if (!value || typeof value !== 'object') return false;
+  const { name, bytes } = value as Partial<Version>;
+  return typeof name === 'string' && bytes instanceof ArrayBuffer && bytes.byteLength > 0;
+}
+
 export async function listVersions(key: string): Promise<VersionInfo[]> {
-  const kept: Entry<Version>[] = await versions.list(`${key}\u0000`);
+  const kept: Entry<Version>[] = (await versions.list(`${key}\u0000`)).filter((entry) => isCopy(entry.value));
   return kept.map((entry) => ({ key: entry.key, name: entry.value.name, at: entry.at, size: entry.value.bytes.byteLength }));
 }
 
-export function readVersion(versionKey: string): Promise<Version | null> {
-  return versions.get(versionKey);
+export async function readVersion(versionKey: string): Promise<Version | null> {
+  const kept = await versions.get(versionKey);
+  return isCopy(kept) ? kept : null;
 }
 
 export function deleteVersion(versionKey: string): Promise<void> {
@@ -80,8 +88,8 @@ export function dropRecovery(tab: string): Promise<void> {
 
 /** What a run that did not end well left behind, newest first. */
 export async function pendingRecoveries(): Promise<(Recovery & { tab: string; at: number })[]> {
-  const kept = await recovery.list();
-  return kept.map((entry) => ({ ...entry.value, tab: entry.key, at: entry.at }));
+  const kept = (await recovery.list()).filter((entry) => isCopy(entry.value));
+  return kept.map((entry) => ({ name: entry.value.name, bytes: entry.value.bytes, path: typeof entry.value.path === 'string' ? entry.value.path : undefined, tab: entry.key, at: entry.at }));
 }
 
 export function clearRecovery(): Promise<void> {
