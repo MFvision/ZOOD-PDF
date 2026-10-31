@@ -30,16 +30,30 @@ pub fn safe_name(name: &str) -> String {
         })
         .collect();
     let trimmed = cleaned.trim().trim_matches('.');
-    let stem = if trimmed.is_empty() {
-        "document"
-    } else {
-        trimmed
+    // The name's own ".pdf" (as it was written), or ".pdf".
+    let cut = trimmed.len().saturating_sub(4);
+    let (body, extension) = match trimmed.get(cut..) {
+        Some(ext) if ext.eq_ignore_ascii_case(".pdf") => (&trimmed[..cut], ext),
+        _ => (trimmed, ".pdf"),
     };
-    if stem.to_lowercase().ends_with(".pdf") {
-        stem.to_string()
-    } else {
-        format!("{stem}.pdf")
+    // A Mac's names are 255 bytes: a long Arabic or emoji title is cut,
+    // never left to fail the write.
+    let mut stem = String::new();
+    for c in body.chars() {
+        if stem.len() + c.len_utf8() > 200 {
+            break;
+        }
+        stem.push(c);
     }
+    let mut stem = stem.trim_end_matches(['.', ' ']).to_string();
+    if stem.trim().is_empty() {
+        stem = "document".into();
+    }
+    if crate::remote::transfer::is_reserved(&stem) {
+        let at = stem.find('.').unwrap_or(stem.len());
+        stem.insert(at, '_');
+    }
+    format!("{stem}{extension}")
 }
 
 /// Writes the document (the raw body; its name percent-encoded in
@@ -176,5 +190,16 @@ mod tests {
             "Report_ final_.PDF"
         );
         assert_eq!(safe_name("..."), "document.pdf");
+    }
+
+    #[test]
+    fn a_long_or_device_like_title_still_makes_a_copy() {
+        for raw in ["😀".repeat(300), "ع".repeat(300) + ".pdf"] {
+            let name = safe_name(&raw);
+            assert!(name.len() <= 255, "{} bytes", name.len());
+            assert!(name.ends_with(".pdf"));
+        }
+        assert_eq!(safe_name("CON.pdf"), "CON_.pdf");
+        assert_eq!(safe_name("nul"), "nul_.pdf");
     }
 }
