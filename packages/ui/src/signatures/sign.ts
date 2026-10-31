@@ -1,5 +1,6 @@
 import type { CoreClient } from '../core/client';
 import { isTauriHost, netExchange } from '../core/host-tauri';
+import { tooManyPixels } from '../create/pictureSize';
 
 /**
  * The steps of signing that talk to the core and, only when the person asks
@@ -24,6 +25,9 @@ const IMAGE_MAX = 800;
 
 /** Decodes an image file (PNG, JPEG…) the browser can read into RGBA, transparency kept. */
 export async function decodeSignatureImage(file: Blob): Promise<SignatureImage> {
+  // The header first: a small file saying 65,535 × 65,535 would have the
+  // browser decode gigabytes of pixels before it is scaled to 800.
+  if (tooManyPixels(new Uint8Array(await file.slice(0, 1 << 20).arrayBuffer()))) throw new Error('E_IMAGE: the picture is too large');
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, IMAGE_MAX / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));

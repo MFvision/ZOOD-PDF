@@ -1,9 +1,10 @@
 import { loadEditFont } from '../edit/editFont';
 import { invokeHost, isTauriHost } from '../core/host-tauri';
 import type { CreateEnvironment } from './createPdf';
+import { MAX_DECODED_PIXELS, tooManyPixels } from './pictureSize';
 
 /** The most pixels a picture the browser decodes may have: as for pictures the core reads. */
-const MAX_PIXELS = 40_000_000;
+const MAX_PIXELS = MAX_DECODED_PIXELS;
 
 /**
  * A picture only the browser can read — HEIC in Safari and the macOS app,
@@ -12,6 +13,9 @@ const MAX_PIXELS = 40_000_000;
  */
 export async function decodeInBrowser(bytes: Uint8Array, mime: string): Promise<Uint8Array | null> {
   if (typeof createImageBitmap !== 'function') return null;
+  // Asked of the header before the browser decodes it all: a few kilobytes
+  // saying 65,535 × 65,535 would otherwise take gigabytes, and the tab.
+  if (tooManyPixels(bytes, MAX_PIXELS)) return null;
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(new Blob([bytes.slice()], { type: mime }), { imageOrientation: 'from-image' });
