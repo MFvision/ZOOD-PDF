@@ -1,17 +1,78 @@
 import { strFromU8, unzipSync } from 'fflate';
 
 /**
- * The parts of an Office file (a zip), read with limits: a part larger than
- * this once inflated is not read at all, so a hostile file cannot fill the
- * memory, and parts the caller did not ask for are never inflated.
+ * The parts of an Office file (a zip), read with limits, so that a small
+ * hostile file (a "zip bomb") cannot fill the memory: a part larger than
+ * `MAX_PART` once inflated is not read, nor more than `MAX_TOTAL` of parts
+ * in all, and parts the caller did not ask for are never inflated. The sizes
+ * are the ones the zip declares; a part that lies about its size is cut to
+ * it when inflated, never grown past it.
  */
 const MAX_PART = 96 * 1024 * 1024;
+const MAX_TOTAL = 256 * 1024 * 1024;
 
 export type Parts = Record<string, Uint8Array>;
 
-export function readParts(bytes: Uint8Array, wanted: (name: string) => boolean): Parts {
+/** A document too large to read here: its text parts alone are past the limits. */
+export class TooLargeError extends Error {
+  readonly code = 'E_TOO_LARGE';
+  constructor() {
+    super('E_TOO_LARGE: the file is too large to read once uncompressed');
+  }
+}
+
+/** The names and declared sizes of a zip's entries, without inflating any of them. */
+export function zipEntries(bytes: Uint8Array): { name: string; size: number }[] {
+  const entries: { name: string; size: number }[] = [];
+  unzipSync(bytes, {
+    filter: (file) => {
+      entries.push({ name: file.name, size: file.originalSize });
+      return false;
+    },
+  });
+  return entries;
+}
+
+/** Whether a zip has an entry called `name` (nothing is inflated); false for what is no zip. */
+export function hasPart(bytes: Uint8Array, name: string): boolean {
+  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return false;
+  try {
+    return zipEntries(bytes).some((entry) => entry.name === name);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The parts `wanted` asks for. `optional` ones — pictures — are taken only
+ * while there is room once the others are in, and simply left out past it
+ * (the document then counts them as pictures left out). Throws
+ * `TooLargeError` when the parts that are not optional do not fit.
+ */
+export function readParts(bytes: Uint8Array, wanted: (name: string) => boolean, optional: (name: string) => boolean = () => false): Parts {
+  const entries = zipEntries(bytes).filter((entry) => wanted(entry.name));
+  const take = new Set<string>();
+  let total = 0;
+  for (const pass of [false, true]) {
+    for (const entry of entries) {
+      if (optional(entry.name) !== pass || take.has(entry.name)) continue;
+      const fits = entry.size <= MAX_PART && total + entry.size <= MAX_TOTAL;
+      if (!fits) {
+        if (pass) continue;
+        throw new TooLargeError();
+      }
+      total += entry.size;
+      take.add(entry.name);
+    }
+  }
+  // A name the zip holds twice is inflated once: the first, as the sizes were counted.
+  const seen = new Set<string>();
   return unzipSync(bytes, {
-    filter: (file) => file.originalSize <= MAX_PART && wanted(file.name),
+    filter: (file) => {
+      if (!take.has(file.name) || seen.has(file.name)) return false;
+      seen.add(file.name);
+      return true;
+    },
   });
 }
 

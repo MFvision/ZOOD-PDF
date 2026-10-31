@@ -8,6 +8,7 @@ import { readMarkdown } from './markdown';
 import { isPptx, readPptx } from './pptx';
 import { readText } from './text';
 import { isXlsx, readXlsx } from './xlsx';
+import { TooLargeError } from './zip';
 
 /**
  * Create PDF: files of other kinds made into one new PDF, entirely on this
@@ -126,6 +127,22 @@ export interface CreateReport {
   truncated: boolean;
   /** Files that could not be read at all. */
   unreadable: string[];
+  /** Files too large to read here once uncompressed (a zip bomb, or near enough). */
+  tooLarge: string[];
+}
+
+type PartReport = Omit<CreateReport, 'unreadable' | 'tooLarge'>;
+
+/** Nothing could be made: which files could not be read, and which were too large to. */
+export class CreateError extends Error {
+  readonly code = 'E_CREATE';
+  constructor(
+    message: string,
+    readonly unreadable: string[] = [],
+    readonly tooLarge: string[] = [],
+  ) {
+    super(`E_CREATE: ${message}`);
+  }
 }
 
 export interface CreateResult {
@@ -201,7 +218,7 @@ async function createDocument(
   kind: CreateKind,
   options: CreateOptions,
   env: CreateEnvironment,
-): Promise<{ bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'> }> {
+): Promise<{ bytes: ArrayBuffer; report: PartReport }> {
   const { bytes: pictures, leftOut } = await readablePictures(read.pictures, env);
   const missing = new Set(pictures.flatMap((p, k) => (p ? [] : [k])));
   const faces = await documentFaces(env, dropMissing(read.blocks, missing), read.header ?? [], read.footer ?? []);
@@ -251,7 +268,7 @@ async function createFromPictures(
   files: readonly CreateFile[],
   options: CreateOptions,
   env: CreateEnvironment,
-): Promise<{ bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'>; unreadable: string[] } | null> {
+): Promise<{ bytes: ArrayBuffer; report: PartReport; unreadable: string[] } | null> {
   const unreadable: string[] = [];
   const blobs: ArrayBuffer[] = [];
   const kept: string[] = [];
@@ -297,9 +314,9 @@ function mimeOf(name: string): string {
  */
 export async function createPdf(files: readonly CreateFile[], options: CreateOptions, env: CreateEnvironment): Promise<CreateResult> {
   const parts: ArrayBuffer[] = [];
-  const report: CreateReport = { pages: 0, missingGlyphs: 0, picturesLeftOut: 0, truncated: false, unreadable: [] };
+  const report: CreateReport = { pages: 0, missingGlyphs: 0, picturesLeftOut: 0, truncated: false, unreadable: [], tooLarge: [] };
   let pictures: CreateFile[] = [];
-  const add = (made: { bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'> }) => {
+  const add = (made: { bytes: ArrayBuffer; report: PartReport }) => {
     parts.push(made.bytes);
     report.pages += made.report.pages;
     report.missingGlyphs += made.report.missingGlyphs;
@@ -334,18 +351,19 @@ export async function createPdf(files: readonly CreateFile[], options: CreateOpt
         continue;
       }
       add(await createDocument(file, read, kind, options, env));
-    } catch {
-      report.unreadable.push(file.name);
+    } catch (error) {
+      if (error instanceof TooLargeError) report.tooLarge.push(file.name);
+      else report.unreadable.push(file.name);
     }
   }
   await flushPictures();
-  if (parts.length === 0) throw new Error('E_CREATE: none of the files could be made into a PDF');
+  if (parts.length === 0) throw new CreateError('none of the files could be made into a PDF', report.unreadable, report.tooLarge);
   let bytes = parts[0]!;
   if (parts.length > 1) {
     const { blobs } = await env.callStatic<{ pageCount: number }>('pages.combine', { passwords: parts.map(() => null) }, parts);
     if (!blobs[0]) throw new Error('E_CREATE: the parts could not be joined');
     bytes = blobs[0];
   }
-  const named = files.filter((f) => !report.unreadable.includes(f.name)).map((f) => f.name);
+  const named = files.filter((f) => !report.unreadable.includes(f.name) && !report.tooLarge.includes(f.name)).map((f) => f.name);
   return { bytes, name: createdFileName(named.length > 0 ? named : files.map((f) => f.name)), report };
 }

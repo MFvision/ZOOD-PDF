@@ -68,6 +68,8 @@ export interface HtmlElement {
   name: string;
   attrs: Record<string, string>;
   children: HtmlNode[];
+  /** On the root: the page had more elements than are read, and the rest was left out. */
+  truncated?: boolean;
 }
 export type HtmlNode = HtmlElement | string;
 
@@ -166,6 +168,7 @@ export function parseHtml(source: string): HtmlElement {
     }
     if (!VOID.has(name) && !inside.trimEnd().endsWith('/') && stack.length < MAX_DEPTH) stack.push(element);
   }
+  if (nodes >= MAX_NODES && at < source.length) root.truncated = true;
   return root;
 }
 
@@ -566,6 +569,6 @@ export function readHtml(bytes: Uint8Array): ReadDocument {
     pictures: reader.pictures,
     title: title ? textOfNode(title).trim() || undefined : undefined,
     picturesLeftOut: reader.leftOut,
-    truncated: false,
+    truncated: root.truncated === true,
   };
 }

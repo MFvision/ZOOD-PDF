@@ -230,6 +230,7 @@
   "create.portrait": "عمودي",
   "create.remove": "إزالة {name}",
   "create.truncated": "كان أحد الملفات أكبر من أن يؤخذ كاملًا، فتُركت صفوفه البعيدة أو شرائحه الأخيرة.",
+  "create.tooLarge": "أكبر من أن يُقرأ هنا بعد فكّ ضغطه، فتُرك: {names}. افتحه في تطبيقه واحفظه بصيغة PDF من هناك.",
   "create.unreadable": "تعذّرت قراءة: {names}.",
   "create.working": "جارٍ إنشاء ملف PDF…",
   "compare.choose": "اختيار ملف PDF…",

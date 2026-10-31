@@ -18,8 +18,92 @@ import { decodeText } from './text';
 const HEADING = [22, 18, 15, 13, 12, 11];
 const CODE_SHADE = '#f2f2f4';
 
+const SPACE = /\s/;
+
+/** For each place in `source`, the first place at or after it where `stop` holds (the length where it never does). */
+function nextWhere(source: string, stop: (k: number) => boolean): Int32Array {
+  const out = new Int32Array(source.length + 1);
+  let next = source.length;
+  out[source.length] = next;
+  for (let k = source.length - 1; k >= 0; k -= 1) {
+    if (stop(k)) next = k;
+    out[k] = next;
+  }
+  return out;
+}
+
+/**
+ * Finds links, pictures and web addresses in a paragraph in time that grows
+ * with its length, not its square. Regular expressions tried at every `[`
+ * read on to the paragraph's end each time: a page of brackets (or of
+ * `[x](`, or of `<http://`) froze the app for minutes. Here each "where is
+ * the next…" is looked up in a table built once, in one pass.
+ */
+class LinkScanner {
+  private tables = new Map<string, Int32Array>();
+  constructor(private readonly source: string) {}
+
+  private table(name: string, stop: (k: number) => boolean): Int32Array {
+    let table = this.tables.get(name);
+    if (!table) {
+      table = nextWhere(this.source, stop);
+      this.tables.set(name, table);
+    }
+    return table;
+  }
+
+  private nonSpace(k: number): number {
+    return this.table('nonSpace', (p) => !SPACE.test(this.source[p]!))[Math.min(k, this.source.length)]!;
+  }
+
+  /** `[text](address "title")` (or, for a picture, `![text](…)`) starting at `at`: its text, its address, and where it ends. */
+  bracketed(at: number, picture: boolean): { text: string; href: string; end: number } | null {
+    const s = this.source;
+    const open = at + (picture ? 2 : 1);
+    // A picture's description holds no `]`; a link's may hold an escaped one.
+    const close = picture
+      ? this.table('close', (p) => s[p] === ']')[open]!
+      : this.table('closeUnescaped', (p) => s[p] === ']' && backslashesBefore(s, p) % 2 === 0)[open]!;
+    if (close >= s.length || s[close + 1] !== '(') return null;
+    let k = this.nonSpace(close + 2);
+    if (s[k] === '<') k += 1;
+    const stop = this.table('addressEnd', (p) => s[p] === ')' || s[p] === '>' || SPACE.test(s[p]!))[k]!;
+    const href = s.slice(k, stop);
+    let m = stop;
+    if (s[m] === '>') m += 1;
+    const titled = this.nonSpace(m);
+    if (titled > m && s[titled] === '"') {
+      const quote = this.table('quote', (p) => s[p] === '"')[titled + 1]!;
+      if (quote < s.length) {
+        const after = this.nonSpace(quote + 1);
+        if (s[after] === ')') return { text: s.slice(open, close), href, end: after + 1 };
+      }
+    }
+    const after = this.nonSpace(m);
+    return s[after] === ')' ? { text: s.slice(open, close), href, end: after + 1 } : null;
+  }
+
+  /** `<https://…>` or `<mailto:…>` starting at `at`: the address and where it ends. */
+  autolink(at: number): { href: string; end: number } | null {
+    const s = this.source;
+    const scheme = /^(?:https?:\/\/|mailto:)/i.exec(s.slice(at + 1, at + 9));
+    if (!scheme) return null;
+    const from = at + 1 + scheme[0].length;
+    const end = this.table('autolinkEnd', (p) => s[p] === '>' || SPACE.test(s[p]!))[from]!;
+    if (end === from || s[end] !== '>') return null;
+    return { href: s.slice(at + 1, end), end: end + 1 };
+  }
+}
+
+function backslashesBefore(source: string, at: number): number {
+  let n = 0;
+  while (at - n - 1 >= 0 && source[at - n - 1] === '\\') n += 1;
+  return n;
+}
+
 /** Inline Markdown — emphasis, code, links, pictures' descriptions — as runs. */
 export function inlineRuns(source: string, base: Omit<TextRun, 'text'> = {}, pictures?: (alt: string, src: string) => void): TextRun[] {
+  const scanner = new LinkScanner(source);
   const runs: TextRun[] = [];
   const push = (text: string, style: Omit<TextRun, 'text'>) => {
     if (text.length > 0) runs.push({ ...style, text });
@@ -51,31 +135,31 @@ export function inlineRuns(source: string, base: Omit<TextRun, 'text'> = {}, pic
       }
     }
     if (c === '!' && source[i + 1] === '[') {
-      const m = /^!\[([^\]]*)\]\(\s*<?([^)\s>]*)>?(?:\s+"[^"]*")?\s*\)/.exec(source.slice(i));
+      const m = scanner.bracketed(i, true);
       if (m) {
         flush();
-        if (pictures) pictures(m[1]!, m[2]!);
-        i += m[0].length;
+        if (pictures) pictures(m.text, m.href);
+        i = m.end;
         continue;
       }
     }
     if (c === '[') {
-      const m = /^\[((?:[^\]\\]|\\.)*)\]\(\s*<?([^)\s>]*)>?(?:\s+"[^"]*")?\s*\)/.exec(source.slice(i));
+      const m = scanner.bracketed(i, false);
       if (m) {
         flush();
-        const href = m[2]!;
+        const href = m.href;
         const linked = /^(https?:|mailto:)/i.test(href) ? { link: href, underline: true, color: '#1a56b8' } : {};
-        runs.push(...inlineRuns(m[1]!, { ...style, ...linked }));
-        i += m[0].length;
+        runs.push(...inlineRuns(m.text, { ...style, ...linked }));
+        i = m.end;
         continue;
       }
     }
     if (c === '<') {
-      const m = /^<((?:https?:\/\/|mailto:)[^>\s]+)>/i.exec(source.slice(i));
+      const m = scanner.autolink(i);
       if (m) {
         flush();
-        push(m[1]!.replace(/^mailto:/i, ''), { ...style, link: m[1]!, underline: true, color: '#1a56b8' });
-        i += m[0].length;
+        push(m.href.replace(/^mailto:/i, ''), { ...style, link: m.href, underline: true, color: '#1a56b8' });
+        i = m.end;
         continue;
       }
     }

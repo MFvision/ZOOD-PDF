@@ -230,6 +230,7 @@
   "create.portrait": "Portrait",
   "create.remove": "Remove {name}",
   "create.truncated": "A file was too large to take whole; its far rows or last slides were left out.",
+  "create.tooLarge": "Too large to read here once unpacked, so left out: {names}. Open it in its own app and save it as a PDF from there.",
   "create.unreadable": "Could not be read: {names}.",
   "create.working": "Making the PDF…",
   "compare.choose": "Choose a PDF…",

@@ -50,10 +50,56 @@ function splitName(name: string): [string, string] {
   return colon < 0 ? ['', name] : [name.slice(0, colon), name.slice(colon + 1)];
 }
 
-const ATTRIBUTE = /([^\s=/>]+)\s*=\s*("([^"]*)"|'([^']*)')/g;
+const isSpace = (c: string | undefined) => c === ' ' || c === '\n' || c === '\r' || c === '\t';
 
-/** The root element of `source`, or null if it has none that can be read. */
-export function parseXml(source: string): XmlElement | null {
+/**
+ * `name="value"` pairs of a tag's body, in one pass. A regular expression
+ * here took minutes on a tag left open with a long value (`<a b="xxx…`): it
+ * tried again from every letter of it.
+ */
+export function readAttributes(body: string): [string, string][] {
+  const out: [string, string][] = [];
+  const n = body.length;
+  let k = 0;
+  while (k < n) {
+    while (k < n && isSpace(body[k])) k += 1;
+    const start = k;
+    while (k < n && !isSpace(body[k]) && body[k] !== '=' && body[k] !== '/' && body[k] !== '>') k += 1;
+    if (k === start) {
+      k += 1;
+      continue;
+    }
+    const name = body.slice(start, k);
+    while (k < n && isSpace(body[k])) k += 1;
+    if (body[k] !== '=') continue;
+    k += 1;
+    while (k < n && isSpace(body[k])) k += 1;
+    const quote = body[k];
+    if (quote !== '"' && quote !== "'") continue;
+    const end = body.indexOf(quote, k + 1);
+    // A value never closed: the rest of the tag is no attributes.
+    if (end < 0) break;
+    out.push([name, decodeEntities(body.slice(k + 1, end))]);
+    k = end + 1;
+  }
+  return out;
+}
+
+/**
+ * The most elements one part is read into: past it the rest is left out and
+ * the root says `truncated`. A worksheet of a million rows would otherwise
+ * take gigabytes as a tree, from a file of a few megabytes.
+ */
+export const MAX_ELEMENTS = 1_000_000;
+
+/**
+ * The root element of `source`, or null if it has none that can be read.
+ * Past `maxElements` elements the rest is not read, and the root has
+ * `truncated` set.
+ */
+export function parseXml(source: string, maxElements = MAX_ELEMENTS): (XmlElement & { truncated?: boolean }) | null {
+  let elements = 0;
+  let truncated = false;
   const root: XmlElement = { ns: '', local: '#document', attrs: {}, children: [] };
   const stack: Open[] = [{ element: root, scope: new Map([['xml', 'http://www.w3.org/XML/1998/namespace']]), name: '' }];
   let at = 0;
@@ -120,11 +166,16 @@ export function parseXml(source: string): XmlElement | null {
     const nameEnd = body.search(/[\s/]|$/);
     const name = body.slice(0, nameEnd);
     if (!name) continue;
-    const written: [string, string][] = [];
-    for (const match of body.slice(nameEnd).matchAll(ATTRIBUTE)) {
-      written.push([match[1]!, decodeEntities(match[3] ?? match[4] ?? '')]);
+    if (elements >= maxElements) {
+      truncated = true;
+      break;
     }
-    const scope = new Map(top().scope);
+    elements += 1;
+    const written = readAttributes(body.slice(nameEnd));
+    // The scope is copied only where the element declares a namespace: a
+    // copy for every element was quadratic under a root declaring many.
+    const declares = written.some(([key]) => key === 'xmlns' || key.startsWith('xmlns:'));
+    const scope = declares ? new Map(top().scope) : top().scope;
     for (const [key, value] of written) {
       if (key === 'xmlns') scope.set('', value);
       else if (key.startsWith('xmlns:')) scope.set(key.slice(6), value);
@@ -140,7 +191,9 @@ export function parseXml(source: string): XmlElement | null {
     top().element.children.push(element);
     if (!selfClosing && stack.length < MAX_DEPTH) stack.push({ element, scope, name });
   }
-  return root.children.find((c): c is XmlElement => typeof c !== 'string') ?? null;
+  const first: (XmlElement & { truncated?: boolean }) | null = root.children.find((c): c is XmlElement => typeof c !== 'string') ?? null;
+  if (first && truncated) first.truncated = true;
+  return first;
 }
 
 /** The element's children that are elements, optionally only those called `local` (in `ns`). */
