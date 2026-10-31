@@ -2,12 +2,13 @@ import { strToU8, zipSync } from 'fflate';
 import type { Zippable } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { blockText } from './blocks';
-import type { Block, TableBlock } from './blocks';
-import { createKind, createPdf } from './createPdf';
+import type { Block, TableBlock, TextBlock } from './blocks';
+import { MAX_BLOCKS, MAX_LETTERS, createKind, createPdf, withinLimits } from './createPdf';
 import type { CreateEnvironment } from './createPdf';
 import { readDocx } from './docx';
 import { inlineRuns, readMarkdown } from './markdown';
 import { readPptx } from './pptx';
+import { readText } from './text';
 import { parseXml, readAttributes } from './xml';
 import { firstRows, readXlsx } from './xlsx';
 import { TooLargeError, hasPart, readParts } from './zip';
@@ -265,6 +266,43 @@ describe('making the PDF', () => {
     },
     fonts: async () => [],
   };
+
+  it('cuts a document of hundreds of thousands of lines to some two thousand pages, and says so', () => {
+    const log = readText(u8('سطر\n\n'.repeat(300_000)));
+    const cut = withinLimits(log);
+    expect(cut.blocks).toHaveLength(MAX_BLOCKS);
+    expect(cut.truncated).toBe(true);
+    const word = withinLimits(readText(u8('ب'.repeat(MAX_LETTERS + 10))));
+    expect(word.blocks).toHaveLength(1);
+    expect(blockText(word.blocks[0] as TextBlock)).toHaveLength(MAX_LETTERS);
+    expect(word.truncated).toBe(true);
+    const small = readText(u8('سطر'));
+    expect(withinLimits(small)).toBe(small);
+  });
+
+  it('makes the document when the pictures beside it are all broken (one bad picture lost the whole PDF)', async () => {
+    const pdf = new TextEncoder().encode('%PDF-1.7').buffer as ArrayBuffer;
+    const core: CreateEnvironment = {
+      async callStatic<T>(op: string) {
+        // What the core answers when it can read none of the pictures.
+        if (op === 'create.images') throw new Error('E_EDIT: E_IMAGE: none of the pictures could be read');
+        return { result: { pages: 1, missingGlyphs: 0, picturesLeftOut: 0 } as T, blobs: [pdf] };
+      },
+      fonts: async () => [],
+    };
+    const broken = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 0, 0, 0]).buffer as ArrayBuffer;
+    const result = await createPdf(
+      [
+        { name: 'broken.png', bytes: broken },
+        { name: 'notes.txt', bytes: u8('ملاحظات').buffer as ArrayBuffer },
+      ],
+      { paper: 'auto', orientation: 'auto', margin: 'small' },
+      core,
+    );
+    expect(result.report.pages).toBe(1);
+    expect(result.report.unreadable).toEqual(['broken.png']);
+    expect(result.name).toBe('notes.pdf');
+  });
 
   it('names a file too large to read, and does not call it unreadable', async () => {
     const bomb = bombFile();

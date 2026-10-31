@@ -78,6 +78,54 @@ export function createKind(name: string, bytes: Uint8Array): CreateKind | null {
   return null;
 }
 
+/** The most blocks, and letters, one document is made of: some two thousand pages. */
+export const MAX_BLOCKS = 60_000;
+export const MAX_LETTERS = 3_000_000;
+
+function lettersOf(block: Block): number {
+  if (block.type === 'text') return block.runs ? block.runs.reduce((sum, run) => sum + run.text.length, 0) : block.text.length;
+  if (block.type === 'table') return block.rows.reduce((sum, row) => sum + row.reduce((s, cell) => s + cell.text.length, 0), 0);
+  if (block.type === 'frame') return block.blocks.reduce((sum, inner) => sum + lettersOf(inner), 0);
+  return 0;
+}
+
+/**
+ * A document cut to `MAX_BLOCKS` blocks and `MAX_LETTERS` letters, and said
+ * to be cut. A text log of a megabyte (300,000 short lines) took the core 17
+ * seconds and 650 MB to lay out on 11,000 pages; ten megabytes would never
+ * have finished.
+ */
+export function withinLimits(read: ReadDocument): ReadDocument {
+  let letters = 0;
+  let k = 0;
+  for (; k < read.blocks.length && k < MAX_BLOCKS; k += 1) {
+    letters += lettersOf(read.blocks[k]!);
+    if (letters > MAX_LETTERS) break;
+  }
+  if (k === read.blocks.length) return read;
+  if (k > 0) return { ...read, blocks: read.blocks.slice(0, k), truncated: true };
+  // One paragraph past the limit on its own: its first letters.
+  const first = read.blocks[0]!;
+  const cut: Block =
+    first.type !== 'text'
+      ? first
+      : first.runs
+        ? { ...first, runs: cutRuns(first.runs, MAX_LETTERS) }
+        : { ...first, text: first.text.slice(0, MAX_LETTERS) };
+  return { ...read, blocks: [cut], truncated: true };
+}
+
+function cutRuns<T extends { text: string }>(runs: readonly T[], letters: number): T[] {
+  const out: T[] = [];
+  let left = letters;
+  for (const run of runs) {
+    if (left <= 0) break;
+    out.push(run.text.length <= left ? run : { ...run, text: run.text.slice(0, left) });
+    left -= run.text.length;
+  }
+  return out;
+}
+
 export function readSource(kind: Exclude<CreateKind, 'image'>, bytes: Uint8Array): ReadDocument {
   switch (kind) {
     case 'docx':
@@ -325,7 +373,9 @@ export async function createPdf(files: readonly CreateFile[], options: CreateOpt
   };
   const flushPictures = async () => {
     if (pictures.length === 0) return;
-    const made = await createFromPictures(pictures, options, env);
+    // The core refuses a set of pictures none of which it can read (E_IMAGE):
+    // those are unreadable, and the documents beside them are still made.
+    const made = await createFromPictures(pictures, options, env).catch(() => null);
     if (made) {
       add(made);
       report.unreadable.push(...made.unreadable);
@@ -345,7 +395,7 @@ export async function createPdf(files: readonly CreateFile[], options: CreateOpt
       continue;
     }
     try {
-      const read = readSource(kind, bytes);
+      const read = withinLimits(readSource(kind, bytes));
       if (read.blocks.length === 0) {
         report.unreadable.push(file.name);
         continue;
