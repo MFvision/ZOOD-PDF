@@ -170,7 +170,11 @@ pub(crate) fn subset_name(font: &[u8], fallback: &str) -> String {
 /// clip path still in effect — undoing the transform alone is not enough, and
 /// text appended to a clipped page was invisible until this was fixed.
 pub(crate) fn reset_state_ops(pdf: &PdfDocument, page_id: ObjectId) -> Vec<Operation> {
-    let Ok(content) = Content::decode(&pdf.doc.get_page_content(page_id)) else {
+    let Some(content) = pdf
+        .page_content(page_id)
+        .ok()
+        .and_then(|c| Content::decode(&c).ok())
+    else {
         return vec![];
     };
     let depth = crate::text_walk::unbalanced_q(&content.operations);
@@ -279,7 +283,7 @@ pub fn append_line_in_color(
     );
     ops.push(Operation::new("ET", vec![]));
     ops.push(Operation::new("Q", vec![]));
-    let mut content = pdf.doc.get_page_content(page_id);
+    let mut content = pdf.page_content(page_id)?;
     content.push(b'\n');
     content.extend(
         Content { operations: ops }
@@ -340,7 +344,7 @@ fn first_font_map(
         .and_then(|o| o.as_reference().ok())
         .and_then(|id| pdf.doc.get_object(id).ok())
         .and_then(|o| o.as_stream().ok())
-        .and_then(|s| s.decompressed_content().ok())
+        .and_then(|s| crate::document::decoded(s).ok())
         .map(|b| crate::tounicode::parse(&b))
         .unwrap_or_default();
     Ok((name, tu))
@@ -358,8 +362,8 @@ pub fn replace_word(
 ) -> Result<()> {
     let page_id = pdf.page_id(page_index)?;
     let (font_name, tu) = first_font_map(pdf, page_id)?;
-    let content = Content::decode(&pdf.doc.get_page_content(page_id))
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    let content =
+        Content::decode(&pdf.page_content(page_id)?).map_err(|e| Error::Edit(e.to_string()))?;
     let ops = content.operations;
     let mut flat: Vec<(usize, usize, usize, u16)> = vec![];
     let items_of = |op: &Operation| -> Vec<Object> {
@@ -576,7 +580,7 @@ pub fn cover_area(
     ));
     ops.push(Operation::new("f", vec![]));
     ops.push(Operation::new("Q", vec![]));
-    let mut content = pdf.doc.get_page_content(page_id);
+    let mut content = pdf.page_content(page_id)?;
     content.push(b'\n');
     content.extend(
         Content { operations: ops }
@@ -598,8 +602,8 @@ pub fn erase_area_keeping_fill(
     rect: (f32, f32, f32, f32),
 ) -> Result<(usize, Vec<Operation>)> {
     let page_id = pdf.page_id(page_index)?;
-    let content = Content::decode(&pdf.doc.get_page_content(page_id))
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    let content =
+        Content::decode(&pdf.page_content(page_id)?).map_err(|e| Error::Edit(e.to_string()))?;
     let mut ops = content.operations;
     let runs = crate::text_walk::locate_show_runs(&ops);
     let (x0, y0, w, h) = rect;
@@ -649,8 +653,8 @@ pub fn erase_area_keeping_fill(
 /// of a line are drawn by runs of their own.
 pub fn show_run_origins(pdf: &PdfDocument, page_index: usize) -> Result<Vec<(f32, f32, f32)>> {
     let page_id = pdf.page_id(page_index)?;
-    let content = Content::decode(&pdf.doc.get_page_content(page_id))
-        .map_err(|e| Error::Edit(e.to_string()))?;
+    let content =
+        Content::decode(&pdf.page_content(page_id)?).map_err(|e| Error::Edit(e.to_string()))?;
     Ok(crate::text_walk::locate_show_runs(&content.operations)
         .into_iter()
         .map(|r| (r.x, r.y, r.size))
@@ -770,7 +774,7 @@ pub fn replace_paragraph(
     }
     ops.push(Operation::new("ET", vec![]));
     ops.push(Operation::new("Q", vec![]));
-    let mut content = pdf.doc.get_page_content(page_id);
+    let mut content = pdf.page_content(page_id)?;
     content.push(b'\n');
     content.extend(
         Content { operations: ops }

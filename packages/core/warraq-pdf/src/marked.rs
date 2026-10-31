@@ -134,9 +134,7 @@ fn draw_form<'a>(
     if depth + 1 >= MAX_DEPTH || is_optional_content(&form.dict) {
         return None;
     }
-    let content = form
-        .decompressed_content()
-        .unwrap_or_else(|_| form.content.clone());
+    let content = crate::document::decoded(form).ok()?;
     let resources: Resources<'a> = match form
         .dict
         .get(b"Resources")
@@ -167,7 +165,8 @@ impl PdfDocument {
             )
             .collect();
         let mut out = Vec::new();
-        walk(doc, &doc.get_page_content(page_id), &resources, 0, &mut out)?;
+        let content = crate::document::page_content_of(doc, page_id).ok()?;
+        walk(doc, &content, &resources, 0, &mut out)?;
         let page = doc.get_dictionary(page_id).ok()?;
         let annots = page
             .get(b"Annots")

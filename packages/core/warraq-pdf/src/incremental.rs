@@ -175,6 +175,13 @@ impl PdfDocument {
                 "this encrypted document can only be saved as a full rewrite".into(),
             ));
         }
+        if self.renumbered {
+            return Err(Error::Edit(
+                "this document numbers its objects past what PDF allows; \
+                 it can only be saved as a full rewrite"
+                    .into(),
+            ));
+        }
         let (prev, style) = previous_xref(self.original_bytes())
             .ok_or_else(|| Error::Edit("no startxref in the original".into()))?;
         let dirty: BTreeSet<u32> = self.dirty_ids();

@@ -19,7 +19,17 @@ pub struct PdfDocument {
     /// Writes updates to an encrypted file that stay encrypted; `None` for a
     /// plaintext file, or one only `lopdf`'s own handler could open.
     pub(crate) sealer: Option<crypt::Sealer>,
+    /// The file numbered its objects past what PDF allows, so they were
+    /// numbered again from 1 when it was read: the original's numbers no
+    /// longer match, and it can only be saved as a full rewrite.
+    pub(crate) renumbered: bool,
 }
+
+/// The highest object number PDF allows (ISO 32000-1, Annex C). Every save
+/// writes one cross-reference entry per number up to the highest, so a file
+/// of five objects numbered from 2147483647 would take minutes and gigabytes
+/// to save.
+pub(crate) const MAX_OBJECT_NUMBER: u32 = 8_388_607;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Metadata {
@@ -29,6 +39,28 @@ pub struct Metadata {
     pub creator: Option<String>,
     pub pages: usize,
     pub encrypted: bool,
+}
+
+/// The most a page's content (all its streams together) may decode to when
+/// the engine reads or edits it: a hostile file can make a few kilobytes
+/// inflate to gigabytes, which in WebAssembly ends the engine.
+pub(crate) const MAX_PAGE_CONTENT: usize = 32 << 20;
+
+/// The most any other stream (a form's appearance, a script, a picture's
+/// pixels) may decode to; as the rasterizer's limit.
+pub(crate) const MAX_STREAM: usize = 64 << 20;
+
+/// A page's content, decoded within `MAX_PAGE_CONTENT`. Past it the page is
+/// refused rather than cut short: an edit written back from a truncated
+/// content would lose the rest of the page.
+pub(crate) fn page_content_of(doc: &Document, page_id: ObjectId) -> Result<Vec<u8>> {
+    doc.get_page_content_with_limit(page_id, MAX_PAGE_CONTENT)
+        .map_err(|e| Error::Parse(format!("the page's content is too large to read: {e}")))
+}
+
+/// A stream, decoded within `MAX_STREAM`.
+pub(crate) fn decoded(stream: &lopdf::Stream) -> lopdf::Result<Vec<u8>> {
+    stream.decompressed_content_with_limit(MAX_STREAM)
 }
 
 /// Decode a PDF text string (UTF-16BE with BOM, UTF-8 BOM, or PDFDocEncoding≈Latin-1).
@@ -77,6 +109,11 @@ impl PdfDocument {
                 sealer = None;
             }
         }
+        // Numbered again only after decryption, whose keys are per number.
+        let renumbered = doc.max_id > MAX_OBJECT_NUMBER;
+        if renumbered {
+            doc.renumber_objects();
+        }
         let pages: Vec<ObjectId> = doc.get_pages().into_values().collect();
         let base_max_id = doc.max_id;
         Ok(Self {
@@ -88,6 +125,7 @@ impl PdfDocument {
             was_encrypted: encrypted,
             protection,
             sealer,
+            renumbered,
         })
     }
 
@@ -104,6 +142,7 @@ impl PdfDocument {
             was_encrypted: false,
             protection: None,
             sealer: None,
+            renumbered: false,
         }
     }
 
@@ -218,6 +257,11 @@ impl PdfDocument {
         self.pages.len()
     }
 
+    /// A page's content, decoded within `MAX_PAGE_CONTENT` (see `page_content_of`).
+    pub(crate) fn page_content(&self, page_id: ObjectId) -> Result<Vec<u8>> {
+        page_content_of(&self.doc, page_id)
+    }
+
     pub fn page_id(&self, index: usize) -> Result<ObjectId> {
         self.pages.get(index).copied().ok_or(Error::Page(index))
     }
@@ -329,6 +373,59 @@ impl PdfDocument {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Three objects numbered from 2147483647 (a cross-reference section that
+    /// starts there): saving wrote one entry per number up to 2^31, minutes of
+    /// work and gigabytes of output for a 300-byte file.
+    fn numbered_past_the_limit() -> Vec<u8> {
+        let first = 2_147_483_645u32;
+        let bodies = [
+            format!("<< /Type /Catalog /Pages {} 0 R >>", first + 1),
+            format!("<< /Type /Pages /Kids [{} 0 R] /Count 1 >>", first + 2),
+            format!(
+                "<< /Type /Page /Parent {} 0 R /MediaBox [0 0 595 842] >>",
+                first + 1
+            ),
+        ];
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = vec![];
+        for (i, body) in bodies.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(
+                format!("{} 0 obj\n{body}\nendobj\n", first + i as u32).as_bytes(),
+            );
+        }
+        let xref = out.len();
+        out.extend_from_slice(format!("xref\n0 1\n0000000000 65535 f \n{first} 3\n").as_bytes());
+        for o in offsets {
+            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(
+            format!(
+                "trailer\n<< /Size {} /Root {first} 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+                first + 3
+            )
+            .as_bytes(),
+        );
+        out
+    }
+
+    #[test]
+    fn a_file_numbering_objects_past_the_limit_saves_quickly() {
+        let mut doc = PdfDocument::open(numbered_past_the_limit(), None).unwrap();
+        assert_eq!(doc.page_count(), 1);
+        let started = std::time::Instant::now();
+        let saved = doc.save_to_vec().unwrap();
+        assert!(
+            started.elapsed().as_secs() < 2,
+            "took {:?}",
+            started.elapsed()
+        );
+        assert!(saved.len() < 4096, "{} bytes", saved.len());
+        assert_eq!(PdfDocument::open(saved, None).unwrap().page_count(), 1);
+        // The original's numbers no longer match ours: no incremental update.
+        assert!(doc.save_incremental().is_err());
+    }
     fn corpus(name: &str) -> Vec<u8> {
         std::fs::read(format!(
             "{}/../../../tests/corpus/arabic/generated/{name}",

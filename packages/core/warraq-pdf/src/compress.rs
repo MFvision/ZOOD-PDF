@@ -241,7 +241,7 @@ fn only_filter(dict: &Dictionary) -> Option<Option<Vec<u8>>> {
 fn recompress(stream: &mut Stream) -> bool {
     let plain = match only_filter(&stream.dict) {
         Some(None) => stream.content.clone(),
-        Some(Some(name)) if name == b"FlateDecode" => match stream.decompressed_content() {
+        Some(Some(name)) if name == b"FlateDecode" => match crate::document::decoded(stream) {
             Ok(bytes) => bytes,
             Err(_) => return false,
         },
@@ -305,7 +305,7 @@ fn downsample_image(stream: &mut Stream, limit: (u32, u32), quality: u8) -> bool
             }
         }
         Some(Some(name)) if name == b"FlateDecode" => {
-            let Ok(pixels) = stream.decompressed_content() else {
+            let Ok(pixels) = crate::document::decoded(stream) else {
                 return false;
             };
             let expected = (width * height * channels) as usize;
