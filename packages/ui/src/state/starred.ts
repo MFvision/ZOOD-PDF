@@ -32,20 +32,39 @@ const isItem = (value: unknown): value is StarredItem => {
 };
 
 let cache: StarredItem[] | null = null;
+/** What storage held when `cache` was read: another tab of the app may have starred since. */
+let cacheRaw: string | null | undefined;
 const listeners = new Set<() => void>();
 
+function storedRaw(): string | null | undefined {
+  try {
+    return globalThis.localStorage?.getItem(STARRED_KEY) ?? null;
+  } catch {
+    return undefined;
+  }
+}
+
 export function readStarred(): StarredItem[] {
-  if (cache) return cache;
+  const raw = storedRaw();
+  if (cache && (raw === undefined || raw === cacheRaw)) return cache;
   const stored = readJson<unknown>(STARRED_KEY, []);
   cache = Array.isArray(stored) ? stored.filter(isItem).slice(0, LIMIT) : [];
+  cacheRaw = raw;
   return cache;
 }
 
 function write(next: StarredItem[]): void {
   cache = next;
   writeJson(STARRED_KEY, next);
+  cacheRaw = storedRaw();
   for (const listener of listeners) listener();
 }
+
+// Another tab of the app starred or unstarred: this one shows it too.
+globalThis.addEventListener?.('storage', (event: StorageEvent) => {
+  if (event.key !== STARRED_KEY && event.key !== null) return;
+  for (const listener of listeners) listener();
+});
 
 export function isStarred(id: string): boolean {
   return readStarred().some((item) => item.id === id);

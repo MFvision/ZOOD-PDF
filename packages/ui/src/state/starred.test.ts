@@ -51,4 +51,24 @@ describe('starred documents', () => {
     );
     expect(readStarred()).toEqual([{ id: 'recent:x.pdf', name: 'x.pdf', source: 'recent' }]);
   });
+  it('keeps a star made in another tab of the app when this one stars too', () => {
+    const a = { id: starId('recent', 'a.pdf'), name: 'a.pdf', source: 'recent' as const };
+    const b = { id: starId('recent', 'b.pdf'), name: 'b.pdf', source: 'recent' as const };
+    expect(readStarred()).toEqual([]);
+    // The other tab stars a.pdf: it writes the same key, this tab's memory is not told.
+    items.set('warraq.starred', JSON.stringify([a]));
+    toggleStarred(b);
+    expect(readStarred().map((one) => one.id)).toEqual([b.id, a.id]);
+    expect(JSON.parse(items.get('warraq.starred') ?? '[]')).toHaveLength(2);
+  });
+
+  it('keeps stars in memory when storage refuses the write', () => {
+    const a = { id: starId('recent', 'a.pdf'), name: 'a.pdf', source: 'recent' as const };
+    const storage = globalThis.localStorage as unknown as { setItem: () => void };
+    storage.setItem = () => {
+      throw new DOMException('full', 'QuotaExceededError');
+    };
+    expect(toggleStarred(a)).toBe(true);
+    expect(isStarred(a.id)).toBe(true);
+  });
 });
