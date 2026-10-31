@@ -69,6 +69,19 @@ pub fn file_name_for(title: &str, kind: Kind) -> String {
     } else {
         clean
     };
+    // Windows keeps CON, NUL, COM1… for its devices, whatever follows the dot:
+    // an answer to "con" was written to the console, and reported saved.
+    let reserved = {
+        let upper = stem.to_ascii_uppercase();
+        let base = upper.split('.').next().unwrap_or_default().trim_end();
+        matches!(base, "CON" | "PRN" | "AUX" | "NUL")
+            || ((base.starts_with("COM") || base.starts_with("LPT"))
+                && base.len() == 4
+                && base[3..].chars().all(|c| c.is_ascii_digit()))
+    };
+    if reserved {
+        return format!("{stem} ({}).{}", kind.fallback(), kind.extension());
+    }
     format!("{stem}.{}", kind.extension())
 }
 
@@ -164,6 +177,15 @@ mod tests {
         assert_eq!(file_name("  ..  "), "Presentation.pptx");
         assert_eq!(file_name("خطة المشروع"), "خطة المشروع.pptx");
         assert_eq!(file_name("../../etc/passwd"), "etcpasswd.pptx");
+        // Windows' device names are never a file's.
+        assert_eq!(file_name_for("Con", Kind::Pdf), "Con (Answer).pdf");
+        assert_eq!(
+            file_name_for("nul.txt", Kind::Docx),
+            "nul.txt (Answer).docx"
+        );
+        assert_eq!(file_name("COM1"), "COM1 (Presentation).pptx");
+        assert_eq!(file_name("Console"), "Console.pptx");
+        assert_eq!(file_name("COMA"), "COMA.pptx");
     }
 
     #[test]
