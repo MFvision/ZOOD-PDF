@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findRevisions, revisionEnds } from './revisions';
+import { MAX_REVISIONS, findRevisions, revisionEnds } from './revisions';
 
 const bytes = (text: string) => Uint8Array.from(text, (char) => char.charCodeAt(0));
 
@@ -77,5 +77,22 @@ describe('earlier revisions', () => {
       return 1;
     });
     expect(buffers.every((buffer) => buffer !== file.buffer)).toBe(true);
+  });
+
+  // 300 trailers on a 17 MB file kept the core busy for a minute and a half
+  // the moment Compare opened (break-zood, files-ui).
+  it('open only the latest revisions of a file with thousands, numbered as the file counts them', async () => {
+    const trailers = Array.from({ length: 3000 }, (_, i) => `% save ${i}\nstartxref\n52\n%%EOF\n`).join('');
+    const file = bytes(ORIGINAL + trailers);
+    let opened = 0;
+    const found = await findRevisions(file, async () => {
+      opened += 1;
+      return 1;
+    });
+    expect(opened).toBe(MAX_REVISIONS + 1);
+    expect(found).toHaveLength(MAX_REVISIONS + 1);
+    // 3,001 trailers: 3,000 earlier revisions and the file itself.
+    expect(found[0]!.number).toBe(3001 - MAX_REVISIONS);
+    expect(found.at(-1)).toEqual({ number: 3001, length: file.length, pages: 1 });
   });
 });

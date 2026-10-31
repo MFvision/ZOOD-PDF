@@ -65,21 +65,33 @@ export function revisionEnds(bytes: Uint8Array): number[] {
 }
 
 /**
+ * How many earlier revisions are looked at, the latest ones. Each is opened
+ * by the core in full: a 17 MB file carrying 300 trailers kept the core busy
+ * for a minute and a half as soon as Compare was opened, and everything else
+ * waited behind it (break-zood, files-ui).
+ */
+export const MAX_REVISIONS = 40;
+
+/**
  * Every revision of the file that opens, oldest first, with its page count;
  * `pagesOf` opens a prefix with the core and answers null when it does not.
- * The file as it stands is always the last.
+ * The file as it stands is always the last. Of many, only the latest
+ * `MAX_REVISIONS` are tried, still numbered as the file counts them.
  */
 export async function findRevisions(
   bytes: Uint8Array,
   pagesOf: (prefix: ArrayBuffer) => Promise<number | null>,
+  limit = MAX_REVISIONS,
 ): Promise<Revision[]> {
+  const ends = revisionEnds(bytes);
+  const skipped = Math.max(0, ends.length - limit);
   const revisions: Revision[] = [];
-  for (const end of revisionEnds(bytes)) {
+  for (const end of ends.slice(skipped)) {
     // A copy: the core takes the buffer it is given.
     const pages = await pagesOf(bytes.slice(0, end).buffer);
-    if (pages !== null && pages > 0) revisions.push({ number: revisions.length + 1, length: end, pages });
+    if (pages !== null && pages > 0) revisions.push({ number: skipped + revisions.length + 1, length: end, pages });
   }
   const pages = await pagesOf(bytes.slice().buffer);
-  revisions.push({ number: revisions.length + 1, length: bytes.length, pages });
+  revisions.push({ number: skipped + revisions.length + 1, length: bytes.length, pages });
   return revisions;
 }
