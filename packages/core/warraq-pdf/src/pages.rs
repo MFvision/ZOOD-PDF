@@ -478,6 +478,14 @@ impl PdfDocument {
         if at > before {
             return Err(Error::Page(at));
         }
+        // A cut-off or broken file can open with no page this layer can
+        // read (while the rasterizer finds one): inserting it would add
+        // nothing and say it worked.
+        if other.page_count() == 0 {
+            return Err(Error::Edit(
+                "the file to insert has no pages that can be read".into(),
+            ));
+        }
         self.append_document(other)?;
         let added = self.pages.len() - before;
         let order: Vec<usize> = (0..at)
@@ -700,8 +708,16 @@ pub fn combine(inputs: Vec<(Vec<u8>, Option<String>)>) -> Result<Vec<u8>> {
         return Err(Error::Edit("choose at least two files to combine".into()));
     }
     let mut opened = Vec::with_capacity(inputs.len());
-    for (bytes, password) in inputs {
-        opened.push(PdfDocument::open(bytes, password.as_deref())?);
+    for (i, (bytes, password)) in inputs.into_iter().enumerate() {
+        let doc = PdfDocument::open(bytes, password.as_deref())?;
+        // A file with no readable page would be left out without a word.
+        if doc.page_count() == 0 {
+            return Err(Error::Edit(format!(
+                "file {} has no pages that can be read",
+                i + 1
+            )));
+        }
+        opened.push(doc);
     }
     let mut out = opened[0].detached_copy();
     for other in &opened[1..] {

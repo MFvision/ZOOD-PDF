@@ -318,6 +318,50 @@ fn unknown_operations_and_bad_arguments_say_so() {
     assert!(range.to_string().starts_with("E_PAGE"), "{range}");
 }
 
+/// A file whose page tree holds no page this engine can read — what a
+/// cut-off download often is — was inserted or combined as nothing, with a
+/// reply that it worked.
+fn file_with_no_pages() -> Vec<u8> {
+    let objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [] /Count 0 >>",
+    ];
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = vec![];
+    for (i, body) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{body}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(b"xref\n0 3\n0000000000 65535 f \n");
+    for offset in offsets {
+        out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(
+        format!("trailer\n<< /Size 3 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n").as_bytes(),
+    );
+    out
+}
+
+#[test]
+fn a_file_with_no_readable_page_is_refused_by_insert_and_combine() {
+    let mut doc = Document::open(corpus(THREE), None).unwrap();
+    let inserted = doc.call(
+        "pages.insert_file",
+        r#"{"at":1}"#,
+        vec![file_with_no_pages()],
+    );
+    assert!(inserted.is_err(), "inserting nothing must not succeed");
+    assert_eq!(doc.page_count(), 3);
+    let combined = call_static(
+        "pages.combine",
+        "{}",
+        vec![corpus(THREE), file_with_no_pages()],
+    );
+    let error = combined.err().map(|e| e.to_string()).unwrap_or_default();
+    assert!(error.contains("file 2"), "{error}");
+}
+
 #[test]
 fn forms_fix_appearances_draws_arabic_values_and_keeps_protection() {
     let font = std::fs::read(format!(
