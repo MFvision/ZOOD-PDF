@@ -89,7 +89,7 @@ const sheet = (page: Page) => page.getByRole('dialog');
 const cloudSection = (page: Page) => page.locator('section', { has: page.getByRole('heading', { name: 'Cloud drives' }) });
 const oneDriveRow = (page: Page) => cloudSection(page).locator('.cloud-drive', { hasText: 'OneDrive' });
 
-async function fileMenu(page: Page, item: string): Promise<void> {
+async function fileMenu(page: Page, item: string | RegExp): Promise<void> {
   await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
   await page.getByRole('menuitem', { name: item, exact: true }).click();
 }
@@ -199,7 +199,8 @@ test.describe('OneDrive in the browser', () => {
     expect(download?.headers.authorization).toBeUndefined();
 
     // Home again: the file is listed with its drive, and reopens from it without a sign-in.
-    await fileMenu(page, 'Close document');
+    // Its name carries its shortcut (Ctrl+W) where it has one.
+    await fileMenu(page, /^Close document/);
     const tile = cloudSection(page).getByRole('button', { name: /فاتورة ٢٠٢٦/ });
     await expect(tile).toBeVisible();
     await expect(page.locator('section', { has: page.getByRole('heading', { name: 'Recent' }) })).not.toContainText('فاتورة ٢٠٢٦');
