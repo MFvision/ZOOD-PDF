@@ -48,6 +48,15 @@ fn temp_beside(target: &Path) -> std::io::Result<PathBuf> {
 /// Writes `bytes` to `path` whole or not at all: into a file beside it,
 /// flushed, then renamed over it. A read-only file is refused, as the
 /// system would refuse writing into it.
+///
+/// Where that cannot be done, the file is written in place, as every save
+/// was before this writer, so a save that used to work is never refused:
+/// a folder where the chosen file may be written but no file added beside
+/// it (a Mac's Desktop, Documents or Downloads before ZOOD is let into the
+/// folder, since the save panel opens the file and not the folder; a shared
+/// folder that allows changes but not new files), and a file another
+/// program keeps from being replaced. A write that fails halfway (a full
+/// disk) is never tried again in place: that is the case this writer is for.
 pub fn write_whole(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let target = landing(path);
     let before = std::fs::metadata(&target).ok();
@@ -66,27 +75,60 @@ pub fn write_whole(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
         }
     }
     let temp = temp_beside(&target)?;
-    let written = (|| {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temp)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
-        drop(file);
-        // The new file keeps who may read the old one (Unix modes).
-        #[cfg(unix)]
-        if let Some(meta) = &before {
-            std::fs::set_permissions(&temp, meta.permissions())?;
+    let mut file = match OpenOptions::new().write(true).create_new(true).open(&temp) {
+        Ok(file) => file,
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            debug_log(format!(
+                "save {}: no file may be made beside it ({e}); written in place",
+                target.display()
+            ));
+            return std::fs::write(&target, bytes);
         }
-        // Windows renames over a file with `MoveFileEx(REPLACE_EXISTING)`;
-        // a file another program holds open is refused, and left as it was.
-        std::fs::rename(&temp, &target)
-    })();
-    if written.is_err() {
+        Err(e) => return Err(e),
+    };
+    let flushed = file.write_all(bytes).and_then(|()| file.sync_all());
+    drop(file);
+    // The new file keeps who may read the old one (Unix modes).
+    #[cfg(unix)]
+    let flushed = flushed.and_then(|()| match &before {
+        Some(meta) => std::fs::set_permissions(&temp, meta.permissions()),
+        None => Ok(()),
+    });
+    if let Err(e) = flushed {
         let _ = std::fs::remove_file(&temp);
+        return Err(e);
     }
-    written
+    match rename_over(&temp, &target) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            // The new bytes fitted on the disk; only the swap was refused.
+            let _ = std::fs::remove_file(&temp);
+            debug_log(format!(
+                "save {}: could not take the file's place ({e}); written in place",
+                target.display()
+            ));
+            std::fs::write(&target, bytes)
+        }
+    }
+}
+
+/// Puts `temp` in `target`'s place. Windows renames over a file with
+/// `MoveFileEx(REPLACE_EXISTING)` and refuses while another program holds
+/// either file without letting it be replaced (an antivirus reading the new
+/// file, a sync client), often only for a moment, so there the rename is
+/// tried again for about a second.
+fn rename_over(temp: &Path, target: &Path) -> std::io::Result<()> {
+    let mut tries = 0;
+    loop {
+        match std::fs::rename(temp, target) {
+            Ok(()) => return Ok(()),
+            Err(_) if cfg!(windows) && tries < 10 => {
+                tries += 1;
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => return Err(e),
+        }
+    }
 }
 
 /// The largest file the app opens whole: past this a webview cannot hold it
@@ -200,6 +242,49 @@ mod tests {
         assert!(taken.is_dir());
         // A folder that is not there: nothing is written anywhere.
         assert!(write_whole(&dir.join("gone").join("x.pdf"), b"new").is_err());
+        assert!(leftovers(&dir).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_that_takes_no_new_file_still_saves_the_chosen_one() {
+        // As a Mac's Desktop before ZOOD is let into it: the chosen file may
+        // be written, nothing may be added beside it. (Run as root, the
+        // folder takes the file anyway, and the save is whole as usual.)
+        use std::os::unix::fs::PermissionsExt;
+        let dir = folder("closed");
+        let file = dir.join("chosen.pdf");
+        std::fs::write(&file, b"old").unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let saved = write_whole(&file, b"new and longer");
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        saved.unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), b"new and longer");
+        assert!(leftovers(&dir).is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_file_another_program_keeps_from_being_replaced_is_still_saved() {
+        // Open as a program that lets others write the file but not replace
+        // it: the rename is refused, and the save is written in place, as
+        // saves always were.
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_SHARE_READ: u32 = 0x1;
+        const FILE_SHARE_WRITE: u32 = 0x2;
+        let dir = folder("held");
+        let file = dir.join("held.pdf");
+        std::fs::write(&file, b"old").unwrap();
+        let held = OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+            .open(&file)
+            .unwrap();
+        write_whole(&file, b"new and longer").unwrap();
+        drop(held);
+        assert_eq!(std::fs::read(&file).unwrap(), b"new and longer");
         assert!(leftovers(&dir).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
