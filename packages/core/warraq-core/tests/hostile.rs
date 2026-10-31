@@ -939,6 +939,16 @@ fn nasties() -> Vec<(String, Vec<u8>)> {
             &[s("<< /Type /Font /Subtype /TrueType /BaseFont /Arial /FirstChar 300 /LastChar 2 /Widths [1 2 3] /Encoding << /Differences [-5 /a 9999999 /b 255 /c /d /e] >> >>")],
         ),
     );
+    // Found by the fuzzer: a paragraph a billion points wide made editing it
+    // walk the edge of its box pixel by pixel (gigabytes).
+    add(
+        "a word stretched a billion points wide",
+        page_with(
+            b"BT /F1 12 Tf 72 700 Td 1000000000 Tz (abc) Tj ET",
+            "<< /Font << /F1 5 0 R >> >>",
+            &[s("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")],
+        ),
+    );
     add(
         "text operators with absurd numbers",
         page_with(
