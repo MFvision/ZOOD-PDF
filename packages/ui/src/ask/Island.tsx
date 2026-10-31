@@ -87,7 +87,8 @@ import type { BookEntry, BookStep, Control, Intent } from './book';
 import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
 import type { SettingAsk } from './settingsBook';
 import { answerFile, answerTitle } from './answerFile';
-import { PAGES_READ, markdownTable, researchAsked, researchMessages, researchQuery, sourceLines } from './research';
+import { AnswerText } from './AnswerText';
+import { PAGES_READ, cellText, markdownTable, researchAsked, researchMessages, researchQuery, sourceLines } from './research';
 import type { WebHit, WebPage } from './research';
 import { SAFE_CHARS_PER_TOKEN, contextTokensFor, materialTokensFor, replyTokensFor } from '../ai/device/context';
 import type { AnswerFileKind } from './answerFile';
@@ -541,6 +542,11 @@ function Island() {
         if (shouldTalk(prefs.talkBack, false)) void talk(result.say);
         return await place('', result.say, result.text, moment.app, documents.length > 0);
       }
+      // The ideas are said with the question, so someone listening can answer one.
+      if (shouldTalk(prefs.talkBack, false)) {
+        const language = languageOf(`${result.say} ${result.ideas.join(' ')}`);
+        void talk(sayChoices(result.say || translate(language, 'ask.ideas.question'), result.ideas, language));
+      }
       setPhase({ kind: 'ideas', draft: result });
     } catch (error) {
       request.current = null;
@@ -582,7 +588,13 @@ function Island() {
   const research = async (words: string, spoken: boolean) => {
     const language = languageOf(words);
     setPhase({ kind: 'researching', words, step: 'search', count: 0 });
-    const hits = ((await invokeHost('ask_web_search', { query: researchQuery(words) })) as WebHit[]).slice(0, 8);
+    let hits: WebHit[];
+    try {
+      hits = ((await invokeHost('ask_web_search', { query: researchQuery(words) })) as WebHit[]).slice(0, 8);
+    } catch (error) {
+      uiLog(`ask: web search failed: ${String(error)}`);
+      return sayOnly(words, translate(language, 'ask.web.offline'), spoken);
+    }
     if (hits.length === 0) return sayOnly(words, translate(language, 'ask.web.nothing'), spoken);
     setPhase({ kind: 'researching', words, step: 'read', count: Math.min(PAGES_READ, hits.length) });
     const pages = await Promise.all(
@@ -615,7 +627,7 @@ function Island() {
     const say = translate(language, 'ask.web.found', { count: hits.length });
     // A table is read as its choices, one by one; other answers whole.
     const table = markdownTable(answer);
-    const items = table ? table.slice(1).map((row) => (row[0] ?? '').replace(/\*\*|__|`/g, '').trim()).filter(Boolean) : [];
+    const items = table ? table.slice(1).map((row) => cellText(row[0] ?? '')).filter(Boolean) : [];
     const heard = table
       ? `${say} ${items.map((item, k) => `${k + 1}: ${item}.`).join(' ')}`
       : `${say}\n${answer}`;
@@ -735,6 +747,11 @@ function Island() {
 
   /** A request, spoken or typed: decide, then do or show. */
   const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false): Promise<void> => {
+    // The ideas a double tap offered were read out: "the second", «الأول» or an idea's words runs it.
+    if (!chosen && !past && phase.kind === 'ideas') {
+      const i = pickByWords(words, phase.draft.ideas);
+      if (i !== null) return respond(phase.draft.ideas[i]!, spoken);
+    }
     // Choices were just read out: "the second", «الأول» or a choice's name answers them.
     if (!chosen && !past && (phase.kind === 'choose' || phase.kind === 'pick')) {
       const language = languageOf(phase.words);
@@ -1992,9 +2009,7 @@ function Island() {
         )}
       {phase.kind === 'said' && phase.decision.text && (
         <div className="ask-plan">
-          <p className="ask-text" dir="auto">
-            {phase.decision.text}
-          </p>
+          <AnswerText text={phase.decision.text} />
           <div className="ask-actions">
             <button
               type="button"

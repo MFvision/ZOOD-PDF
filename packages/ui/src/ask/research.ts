@@ -131,21 +131,35 @@ export function sourceLines(hits: readonly WebHit[]): string {
   return hits.map((hit, k) => `${k + 1}. ${hit.title} — ${hit.url}`).join('\n');
 }
 
-/** The rows of the first Markdown table in `text`; null when there is none. */
-export function markdownTable(text: string): string[][] | null {
+/** The first Markdown table in `text`, with the text before and after it; null when there is none. */
+export function splitTable(text: string): { before: string; rows: string[][]; after: string } | null {
+  const lines = text.replace(/\r\n?/g, '\n').split('\n');
+  const start = lines.findIndex((line) => line.trim().startsWith('|'));
+  if (start < 0) return null;
+  let end = start;
+  while (end < lines.length && lines[end]!.trim().startsWith('|')) end += 1;
   const rows: string[][] = [];
-  for (const raw of text.replace(/\r\n?/g, '\n').split('\n')) {
+  for (const raw of lines.slice(start, end)) {
     const line = raw.trim();
-    if (!line.startsWith('|')) {
-      if (rows.length > 0) break;
-      continue;
-    }
     // The line under the header: | --- | :---: |
     if (/^\|?(?:\s*:?-{2,}:?\s*\|)+\s*:?-{0,}:?\s*$/.test(line)) continue;
-    const cells = line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
-    rows.push(cells);
+    rows.push(line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim()));
   }
-  return rows.length >= 2 ? rows : null;
+  if (rows.length < 2) return null;
+  return { before: lines.slice(0, start).join('\n').trim(), rows, after: lines.slice(end).join('\n').trim() };
+}
+
+/** The rows of the first Markdown table in `text`; null when there is none. */
+export function markdownTable(text: string): string[][] | null {
+  return splitTable(text)?.rows ?? null;
+}
+
+/** A cell's words without Markdown's marks: **bold**, `code`, and [a link](address) as its address. */
+export function cellText(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g, '$2')
+    .replace(/\*\*|__|`/g, '')
+    .trim();
 }
 
 const ARABIC = /[؀-ۿ]/;
@@ -153,10 +167,8 @@ const ADDRESS = /https?:\/\/[^\s)<>\]]+/;
 
 /** A cell of the sheet: a number as a number, an address as a link. */
 function cellOf(text: string): SheetCell | null {
-  const plain = text.replace(/\*\*|__|`/g, '').trim();
+  const plain = cellText(text);
   if (!plain) return null;
-  const markdownLink = plain.match(/^\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)$/);
-  if (markdownLink) return { value: { kind: 'text', text: markdownLink[2]! }, link: markdownLink[2]! };
   const address = plain.match(ADDRESS)?.[0];
   if (address && address.length >= plain.length - 2) return { value: { kind: 'text', text: address }, link: address };
   return { value: valueOf(plain) };
