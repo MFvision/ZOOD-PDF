@@ -54,6 +54,15 @@ describe("Ask ZOOD's command book", () => {
     expect(partsOf('zoom in, then go to page 4 and read aloud')).toEqual(['zoom in', 'go to page 4', 'read aloud']);
   });
 
+  it('keeps a page number as said, so one that is not there is refused, not another page shown', () => {
+    expect(stepOf('go to page ١٢', BOOK)?.page).toBe(12);
+    expect(stepOf('روح للصفحة ۴', BOOK)?.page).toBe(4);
+    expect(stepOf('go to page -1', BOOK)?.page).toBe(-1);
+    expect(stepOf('go to page 0', BOOK)?.page).toBe(0);
+    // Not 12345 of a 20 000-page file: the whole number, which no file has.
+    expect(stepOf('go to page 1234567', BOOK)?.page).toBe(1234567);
+  });
+
   it('matches each part without any model', () => {
     expect(stepOf('go to page 12', BOOK)).toEqual({ id: 'goto', label: 'Go to page…', page: 12 });
     expect(stepOf('dark mode', BOOK)?.id).toBe('theme-dark');

@@ -41,7 +41,8 @@ const startsAny = (token: string, list: readonly string[]) => forms(token).some(
 const isAny = (token: string, list: readonly string[]) => forms(token).some((form) => list.some((word) => form === lower(word)));
 
 export function readAnswer(said: string): SortAnswer {
-  const text = lower(said).replace(/\b(do not|don't)\b/g, 'dont').replace(/\b(put back|never mind)\b/g, (m) => m.replace(' ', ''));
+  // An answer to a Sort window is a few words: a page of them is read no further.
+  const text = lower(said.slice(0, 1000)).replace(/\b(do not|don't)\b/g, 'dont').replace(/\b(put back|never mind)\b/g, (m) => m.replace(' ', ''));
   const tokens = text.split(/[\s,.!?؟،:;]+/).filter(Boolean);
   if (tokens.length === 0) return { kind: 'unknown' };
   const only = new Set<SuggestionKind>();

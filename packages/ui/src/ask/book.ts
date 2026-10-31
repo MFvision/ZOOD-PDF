@@ -227,9 +227,16 @@ export function stepOfCommand(command: Command, entries: readonly BookEntry[]): 
 
 /** A page number in the words: "page 5", "الصفحه ٣". */
 export function pageIn(part: string): number | undefined {
-  const page = /(\d{1,5})/.exec(normalize(part));
-  return page ? Number(page[1]) : undefined;
+  // The whole number, with its sign: "page -1" was page 1 and "page 1234567"
+  // page 12345. A page the file does not have is refused by the editor.
+  const page = /([-−]\s?)?(\d+)/.exec(normalize(part));
+  if (!page) return undefined;
+  const number = Number(page[2]!.slice(0, 12));
+  return page[1] ? -number : number;
 }
+
+/** Longer than this, a part of a request names no command or button: it is a message. */
+const LONGEST_PART = 400;
 
 /** The names an entry is asked by, as compared. */
 export function namesOf(entry: BookEntry): string[] {
@@ -242,9 +249,28 @@ export function namesOf(entry: BookEntry): string[] {
 /** `name` is in `text` as whole words: as said, or with the little words ("the", "a", "ال") left out of both. */
 function hasWords(text: string, name: string): boolean {
   if (` ${text} `.includes(` ${name} `) || ` ${text} `.includes(` ال${name} `)) return true;
-  const bare = (words: string) => ` ${words.split(' ').filter((word) => !LITTLE.has(word)).map((word) => (word.length > 4 ? word.replace(/^ال/, '') : word)).join(' ')} `;
-  const plainName = bare(name).trim();
-  return plainName.length >= 3 && bare(text).includes(` ${plainName} `);
+  const plainName = bareOf(name).trim();
+  return plainName.length >= 3 && bareOf(text).includes(` ${plainName} `);
+}
+
+/** Words with the little words and "ال" off, spaced at both ends. */
+function bare(words: string): string {
+  return ` ${words.split(' ').filter((word) => !LITTLE.has(word)).map((word) => (word.length > 4 ? word.replace(/^ال/, '') : word)).join(' ')} `;
+}
+
+/**
+ * `bare`, kept for the words last asked: a part is held against every name
+ * of every command, and was made bare again for each one of them.
+ */
+const bareKept = new Map<string, string>();
+function bareOf(words: string): string {
+  let kept = bareKept.get(words);
+  if (kept === undefined) {
+    if (bareKept.size > 2000) bareKept.clear();
+    kept = bare(words);
+    bareKept.set(words, kept);
+  }
+  return kept;
 }
 
 /** Words that change nothing of what is asked. */
@@ -254,9 +280,16 @@ const LITTLE = new Set(['the', 'a', 'an', 'my', 'this', 'that', 'it', 'of', 'ple
 const FILLER =
   /(?:^|\s)(?:the|a|an|it|this|that|these|file|document|pdf|for|me|now|my|please|button|هذا|هذي|هذه|الملف|ملف|المستند|لي|الحين|الان|زر)(?=\s|$)/g;
 
+/** The words with the filler off, kept for the words last asked (see `bareOf`). */
+let fillerKept = { text: '', said: '' };
+function withoutFiller(text: string): string {
+  if (fillerKept.text !== text || text === '') fillerKept = { text, said: text.replace(FILLER, ' ').replace(/\s+/g, ' ').trim() };
+  return fillerKept.said;
+}
+
 /** How much of the part a name says, 0..1: a name must be most of what was said. */
 function coverage(text: string, name: string): number {
-  const said = text.replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
+  const said = withoutFiller(text);
   return said ? Math.min(1, name.replace(FILLER, ' ').trim().length / said.length) : 1;
 }
 
@@ -267,6 +300,9 @@ function coverage(text: string, name: string): number {
  */
 export function entryNamed(part: string, entries: readonly BookEntry[]): BookEntry | null {
   const text = normalize(part);
+  // A name must be half of what was said (`coverage`): words this long name no command, and
+  // reading them against every name of every command took a quarter of a second.
+  if (text.length > LONGEST_PART) return null;
   let best: BookEntry | null = null;
   let length = 0;
   let tie = false;
@@ -340,7 +376,7 @@ const PRESS =
  */
 export function controlNamed(part: string, controls: readonly Control[]): Control | null {
   const text = normalize(part).replace(PRESS, '').trim();
-  if (!text) return null;
+  if (!text || text.length > LONGEST_PART) return null;
   let best: Control | null = null;
   let length = 0;
   for (const control of controls) {
