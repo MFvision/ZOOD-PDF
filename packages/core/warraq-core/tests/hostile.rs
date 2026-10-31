@@ -1520,7 +1520,13 @@ fn mutation_fuzzer_never_panics_hangs_or_balloons() {
     let mut failures = vec![];
     let started = Instant::now();
     let mut runs = 0;
+    // Only the seed files whose name contains this, to replay one of them.
+    let only = std::env::var("WARRAQ_FUZZ_ONLY").ok();
+    let crashes = std::env::var("WARRAQ_FUZZ_CRASHES").ok();
     for (si, (name, bytes)) in seeds.iter().enumerate() {
+        if only.as_deref().is_some_and(|o| !name.contains(o)) {
+            continue;
+        }
         for k in 0..per_seed {
             let seed = base_seed ^ ((si as u64) << 32) ^ k as u64;
             let mut rng = Rng(seed | 1);
@@ -1528,11 +1534,15 @@ fn mutation_fuzzer_never_panics_hangs_or_balloons() {
             let label = format!("{name} seed={seed:#x}");
             let keep = input.clone();
             let len = input.len();
+            // Kept before the run too: a case that never ends leaves it behind.
+            if let Some(dir) = &crashes {
+                let _ = std::fs::write(format!("{dir}/running.pdf"), &keep);
+            }
             let outcome = measured(&label, move || drive(input));
             let before = failures.len();
             check(&label, len, &outcome, &mut failures);
             if failures.len() > before {
-                if let Ok(dir) = std::env::var("WARRAQ_FUZZ_CRASHES") {
+                if let Some(dir) = &crashes {
                     let _ = std::fs::write(format!("{dir}/{seed:x}.pdf"), &keep);
                 }
             }
