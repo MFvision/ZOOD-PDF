@@ -3692,5 +3692,7 @@
   "look.terra": "Stone and clay",
   "look.terra.note": "Sage green and concrete grey with burnt amber: earthy and modern.",
   "look.atlas": "Summer trip",
-  "look.atlas.note": "Baby blue with red and sunshine yellow: bright and cheerful."
+  "look.atlas.note": "Baby blue with red and sunshine yellow: bright and cheerful.",
+  "compress.fileWord": "compressed",
+  "combine.fileWord": "{count} files combined"
 }

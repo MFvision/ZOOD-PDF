@@ -315,7 +315,7 @@ export interface AppServices {
   /** Back to the layer visibility the file has itself. */
   resetLayers: () => Promise<void>;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
-  combineFiles: (files: readonly CombineInput[]) => Promise<void>;
+  combineFiles: (files: readonly CombineInput[], word?: string) => Promise<void>;
   /** Compress: a smaller copy of the file as it stands now; the open one is not changed. */
   compressFile: (options: CompressChoice) => Promise<CompressResult>;
   /** Saves bytes as a new PDF beside the open one (the native panel on desktop). */
@@ -1645,7 +1645,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [currentFileBytes, bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const combineFiles = useCallback(
-    async (files: readonly CombineInput[]) => {
+    async (files: readonly CombineInput[], word?: string) => {
       if (files.length < 2) return;
       try {
         // Copies: the core takes the buffers over, and the list keeps its own.
@@ -1657,7 +1657,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const bytes = blobs[0];
         if (!bytes || result.pageCount < 1) throw new Error('E_EDIT: nothing combined');
         dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
-        await openFile(new File([bytes], combinedFileName(files.map((file) => file.name)), { type: 'application/pdf' }));
+        await openFile(new File([bytes], combinedFileName(files.map((file) => file.name), word), { type: 'application/pdf' }));
       } catch {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.failed' });
       }

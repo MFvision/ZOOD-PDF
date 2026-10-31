@@ -16,7 +16,7 @@ type Level = CompressLevel;
 
 /** Bytes as a person reads them: 870 KB, 12.4 MB. */
 export function formatSize(bytes: number, lang: string): string {
-  const units = lang === 'ar' ? ['بايت', 'ك.ب', 'م.ب'] : ['bytes', 'KB', 'MB'];
+  const units = lang === 'ar' ? ['بايت', 'كيلوبايت', 'ميغابايت'] : ['bytes', 'KB', 'MB'];
   if (bytes < 1024) return `${bytes} ${units[0]}`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} ${units[1]}`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} ${units[2]}`;
@@ -107,7 +107,7 @@ export function CompressPanel() {
                   label={t('compress.save')}
                   icon={<Icon of={FileDown} />}
                   showLabel
-                  onClick={() => void services.saveCopy(done.bytes, compressedFileName(name))}
+                  onClick={() => void services.saveCopy(done.bytes, compressedFileName(name, t('compress.fileWord')))}
                 />
                 <IconButton
                   label={t('compress.open')}
@@ -115,7 +115,7 @@ export function CompressPanel() {
                   showLabel
                   onClick={() => {
                     dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
-                    void services.openFile(new File([done.bytes], compressedFileName(name), { type: 'application/pdf' }));
+                    void services.openFile(new File([done.bytes], compressedFileName(name, t('compress.fileWord')), { type: 'application/pdf' }));
                   }}
                 />
               </div>
