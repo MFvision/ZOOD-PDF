@@ -1,0 +1,5 @@
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: ask: E_MIC: there is no microphone

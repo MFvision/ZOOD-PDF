@@ -1,0 +1,84 @@
+[1m[92m   Compiling[0m warraq-desktop v0.1.0 (D:\a\ZOOD-PDF\ZOOD-PDF\apps\desktop\src-tauri)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 34.86s
+[1m[92m     Running[0m unittests src\lib.rs (apps\desktop\src-tauri\target\debug\deps\warraq_desktop_lib-36bce38893650131.exe)
+
+running 62 tests
+test remote::announce::tests::a_phone_finds_the_pc_by_its_name ... ok
+test remote::announce::tests::host_names_are_plain ... ok
+test remote::announce::tests::tags_are_pinned ... ok
+test remote::capture::tests::a_rect_knows_its_size_and_middle ... ok
+test remote::capture::tests::the_mouse_is_taken_and_given_back ... ok
+test remote::clip::tests::a_new_copy_has_a_new_fingerprint ... ok
+test remote::clip::tests::a_phone_clip_is_text_or_a_real_png ... ok
+test remote::clip::tests::pictures_go_through_png_unchanged ... ok
+test remote::clip::tests::the_clipboard_is_read_once_per_copy_after_it_settles ... ok
+test remote::devices::tests::a_damaged_file_is_no_phones ... ok
+test remote::devices::tests::keeps_at_most_eight ... ok
+test remote::devices::tests::remembers_forgets_and_survives_a_restart ... ok
+test remote::input::tests::keeps_every_action_small ... ok
+test remote::input::tests::reads_a_computers_mouse_and_keys ... ok
+test remote::input::tests::reads_each_action ... ok
+test remote::input::tests::refuses_anything_else ... ok
+test remote::keys::tests::a_letter_from_a_pc_is_the_same_letter_on_a_mac ... ok
+test remote::keys::tests::control_and_command_change_places_between_a_pc_and_a_mac ... ok
+test remote::keys::tests::every_name_is_once_and_codes_go_both_ways ... ok
+test remote::keys::tests::unknown_names_are_not_keys ... ok
+test remote::pairpc::tests::both_computers_make_the_same_key_and_digits ... ok
+test remote::pairpc::tests::digits_are_pinned ... ok
+test remote::pairpc::tests::only_a_pairing_message_is_read ... ok
+test remote::pairpc::tests::someone_in_the_middle_gets_other_digits ... ok
+test remote::seal::tests::keys_go_through_text_and_back ... ok
+test remote::seal::tests::matches_the_shared_vector ... ok
+test remote::seal::tests::never_repeats_a_nonce ... ok
+test remote::seal::tests::opens_what_it_sealed ... ok
+test remote::seal::tests::refuses_another_key_a_changed_byte_and_scraps ... ok
+test remote::server::tests::admits_the_code_on_screen_and_remembered_phones ... ok
+test remote::server::tests::answers_addresses_only ... ok
+test remote::server::tests::messages_in_must_be_new_and_from_the_phone ... ok
+test remote::server::tests::messages_out_are_numbered ... ok
+test remote::server::tests::reads_a_request_head ... ok
+test remote::server::tests::refuses_old_hellos_wrong_keys_and_spent_codes ... ok
+test remote::server::tests::serves_the_remote_page_and_its_files_only ... ok
+test remote::stream::tests::a_file_in_parts_lands_whole_under_its_own_name ... ok
+test remote::stream::tests::a_file_left_unfinished_leaves_nothing ... ok
+test remote::stream::tests::a_phone_that_stops_answering_is_given_up ... ok
+test remote::stream::tests::gives_in_parts_and_never_runs_ahead_of_the_phone ... ok
+test remote::stream::tests::refuses_parts_out_of_order_too_many_bytes_or_short_files ... ok
+test remote::stream::tests::the_window_holds_parts_back_until_answered ... ok
+test remote::tests::a_file_waiting_for_a_phone_goes_to_the_first_that_joins ... ok
+test remote::tests::a_flicked_file_lands_on_the_desktop_and_the_phone_hears_where ... ok
+test remote::tests::a_large_file_sent_in_parts_lands_whole_and_beats_are_answered ... ok
+test remote::tests::a_paired_phone_moves_the_pointer ... pointer (512, 384) -> (552, 414)
+ok
+test remote::tests::a_phone_pairs_and_its_messages_reach_the_interface ... ok
+test remote::tests::a_phone_the_person_does_not_allow_is_turned_away ... ok
+test remote::tests::another_computer_pairs_with_digits_and_comes_back_by_its_key ... ok
+test remote::tests::comes_on_at_launch_for_kept_phones_and_always_for_a_paired_computer ... ok
+test remote::tests::draws_a_qr_code ... ok
+test remote::tests::files_for_the_phone_are_typed_by_their_name ... ok
+test remote::tests::local_addresses_are_private_and_ipv4 ... ok
+test remote::tests::the_phone_page_pairs_and_presents ... phone: a file from the PC was caught full screen
+phone: paired, the document and its first page are shown
+phone: next page, presenting, notes
+phone: laser
+phone: PC control stays off until the PC allows it
+phone: the PC's clipboard, and files from the PC (one in parts)
+phone: the phone's clipboard went to the PC
+phone: a file flicked up landed on the desktop
+phone: a 3 MB file went in parts and landed
+phone: reopened without a code: remembered
+phone: a second phone with the same code is refused
+phone: a wrong key is refused
+phone: all steps held
+ok
+test remote::transfer::tests::a_flicked_file_never_replaces_one_already_there ... ok
+test remote::transfer::tests::files_land_on_the_desktop_or_at_home ... ok
+test remote::transfer::tests::names_stay_in_their_folder_and_readable ... ok
+test remote::twin::tests::crosses_only_when_pushed_over_the_chosen_edge ... ok
+test remote::twin::tests::every_side_comes_back_over_its_own_edge ... ok
+test remote::twin::tests::odd_sizes_do_not_break_it ... ok
+test remote::twin::tests::the_pointer_arrives_at_the_same_height_and_comes_back_there ... ok
+test remote::twin::tests::the_settings_read_back_and_old_files_still_load ... ok
+
+test result: ok. 62 passed; 0 failed; 0 ignored; 0 measured; 211 filtered out; finished in 20.17s
+

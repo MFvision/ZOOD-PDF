@@ -1,0 +1,29 @@
+cores: 4 (CPU in % of one core; 100 = one core fully busy)
+
+phase    cpuAvg cpuPeak cpuSettled machineAvg ramPeakMB ramEndMB processes webviews
+-----    ------ ------- ---------- ---------- --------- -------- --------- --------
+launch     1.60   44.80       0.70       4.00    800.00   701.00        11       10
+settings   0.40    2.30       0.40       1.70    685.00   364.00        11       10
+after      0.80    4.50       0.60       2.00    364.00   272.00        11       10
+
+
+per-process at the end:
+
+  Id ProcessName    cpuSec    MB
+  -- -----------    ------    --
+9108 msedgewebview2   1.90 51.00
+6600 msedgewebview2   1.10 44.00
+2728 msedgewebview2   0.40 26.00
+3500 msedgewebview2   0.50 25.00
+2240 msedgewebview2   0.30 23.00
+6280 msedgewebview2   0.40 22.00
+ 892 msedgewebview2   1.00 18.00
+1556 msedgewebview2   0.20 16.00
+9012 msedgewebview2   0.10 16.00
+8700 warraq-desktop   1.60 16.00
+ 724 msedgewebview2   0.00 12.00
+
+
+stall.log (what held the main thread up):
+     0.0s started, version 0.1.0
+

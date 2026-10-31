@@ -1,0 +1,6 @@
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: ui: ocr: starting Tesseract (SIMD core) for ara+eng
+warraq: ui: ocr: Tesseract ready in 376 ms
