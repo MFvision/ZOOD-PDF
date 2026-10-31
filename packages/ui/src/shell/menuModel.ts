@@ -81,6 +81,9 @@ const APPLE_ORDER = ['Ctrl', 'Alt', 'Shift', 'Mod'];
  * first, in the system's fixed order (⌃⌥⇧⌘), with no separators: "⇧⌘Z".
  * Everyone else spells them out: "Ctrl+Shift+Z".
  */
+/** Close the document, on Windows and Linux only. */
+const CLOSE_DOCUMENT_KEYS = 'Mod+W';
+
 export function formatShortcut(keys: string, apple = isApplePlatform()): string {
   const parts = keys.split('+').filter(Boolean);
   // "Mod+=" splits into ["Mod", "="]; "Mod+Shift++" would not occur.
@@ -225,6 +228,9 @@ export function useMenuModel(): MenuModel[] {
         {
           id: 'close',
           label: t('file.close'),
+          // ⌘W is the Mac menu bar's Close Window; elsewhere Ctrl+W closes the
+          // document. Not in the Mac menu bar's fixture (nativeMenu.test.ts) for that reason.
+          ...(isApplePlatform() ? {} : { keys: CLOSE_DOCUMENT_KEYS }),
           disabled: !hasDocument,
           separatorBefore: true,
           onSelect: services.closeDocument,

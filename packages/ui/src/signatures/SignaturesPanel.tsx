@@ -7,6 +7,7 @@ import { useSignatures } from './SignaturesContext';
 import { SignatureList } from './SignatureList';
 import { SignForm } from './SignForm';
 import './signatures.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 /**
  * Digital signatures: the file's signatures, each checked — integrity,
@@ -32,7 +33,7 @@ export function SignaturesPanel() {
         {t('tool.certificates')}
       </h3>
       {state.document === null ? (
-        <p className="tool-panel-note">{t('tool.openFirst')}</p>
+        <OpenFirst />
       ) : (
         <>
           <div className="segmented signatures-tabs" role="tablist" aria-label={t('tool.certificates')}>

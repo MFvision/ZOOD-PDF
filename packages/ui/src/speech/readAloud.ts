@@ -47,7 +47,7 @@ export interface ReadAloudState {
   voiceAr: string | null;
   voiceEn: string | null;
   /** What stopped the reading: no voice for the text, nothing to read, or a browser without speech. */
-  notice: 'unsupported' | 'noVoices' | 'noText' | 'noSelection' | 'done' | 'slept' | null;
+  notice: 'unsupported' | 'noVoices' | 'speechFailed' | 'noText' | 'noSelection' | 'done' | 'slept' | null;
   /** The sleep timer: minutes chosen, or null when reading runs to the end. */
   sleep: number | null;
 }
@@ -192,6 +192,12 @@ export function closeBar(): void {
   setSleep(null);
   stop();
   set({ open: false, notice: null });
+}
+
+/** Another document on screen: what was being read, and what was said about it, stop. */
+export function documentChanged(): void {
+  if (state.active) stop();
+  if (state.notice !== null) set({ notice: null });
 }
 
 export function stop(): void {
@@ -339,7 +345,9 @@ export async function start(next: ReadingSource, scope: Scope): Promise<void> {
   } catch {
     if (alive()) {
       stop();
-      set({ notice: 'noVoices' });
+      // No voice at all says so plainly; with voices there, the one speaking
+      // failed, and the person can try again or choose another.
+      set({ notice: state.voices.length === 0 ? 'noVoices' : 'speechFailed' });
     }
   }
 }

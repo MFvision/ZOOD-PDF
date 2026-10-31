@@ -52,6 +52,6 @@ describe('switching a layer', () => {
 
   it('sizes read in either language', () => {
     expect(sizeText(18, 'en')).toBe('18 bytes');
-    expect(sizeText(2048, 'ar')).toBe('2 ك.ب');
+    expect(sizeText(2048, 'ar')).toBe('2 كيلوبايت');
   });
 });

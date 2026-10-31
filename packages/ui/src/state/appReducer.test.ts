@@ -321,7 +321,7 @@ describe('switching engines', () => {
 
 describe('combinedFileName', () => {
   it('is the first file’s name and how many more', () => {
-    expect(combinedFileName(['report.pdf', 'annex.pdf', 'scan.pdf'])).toBe('report + 2.pdf');
-    expect(combinedFileName(['عقد.pdf', 'ملحق.pdf'])).toBe('عقد + 1.pdf');
+    expect(combinedFileName(['report.pdf', 'annex.pdf', 'scan.pdf'])).toBe('report (3 files combined).pdf');
+    expect(combinedFileName(['عقد.pdf', 'ملحق.pdf'], 'دمج 2 ملفات')).toBe('عقد (دمج 2 ملفات).pdf');
   });
 });

@@ -42,7 +42,7 @@ import { runQuick, wantsPassword } from './runQuick';
 type Phase = 'choose' | 'options' | 'running' | 'done';
 
 const formatSize = (bytes: number, lang: string) => {
-  const units = lang === 'ar' ? ['بايت', 'ك.ب', 'م.ب', 'ج.ب'] : ['B', 'KB', 'MB', 'GB'];
+  const units = lang === 'ar' ? ['بايت', 'كيلوبايت', 'ميغابايت', 'غيغابايت'] : ['B', 'KB', 'MB', 'GB'];
   let value = bytes;
   let unit = 0;
   while (value >= 1024 && unit < units.length - 1) {

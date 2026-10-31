@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Eye, ScanText, Square } from 'lucide-react';
+import { CircleStop, Eye, ScanText } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
@@ -15,6 +15,7 @@ import type { OcrLanguage } from './engine';
 import { readOcrOptions, writeOcrOptions } from './run';
 import type { OcrProgress, OcrScope, ReadOptions } from './run';
 import './ocr.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 const LANGUAGE_NAMES: Record<OcrLanguage, TKey> = {
   ara: 'ocr.lang.ara',
@@ -55,6 +56,13 @@ export function OcrPanel() {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const running = progress !== null;
   const stopper = useRef<AbortController | null>(null);
+  // Stop pressed: the page being read is finished first, and the button says so.
+  const [stopping, setStopping] = useState(false);
+  // The file it was reading went away (closed, or another tab chosen).
+  const [gone, setGone] = useState(false);
+  // Another document on screen, or none: the reading stops there.
+  const documentId = state.document?.id ?? null;
+  useEffect(() => () => stopper.current?.abort(), [documentId]);
   const ready = state.view === 'viewer' && state.document !== null && state.switching === null;
   const cleaning = anyCleanup(options.cleanup);
 
@@ -74,6 +82,8 @@ export function OcrPanel() {
 
   const run = async () => {
     setOutcome(null);
+    setGone(false);
+    setStopping(false);
     setProgress({ page: 0, of: 0 });
     stopper.current = new AbortController();
     try {
@@ -81,10 +91,12 @@ export function OcrPanel() {
         cleanup: options.cleanup,
         replaceImage: options.replaceImage && cleaning,
       }));
-    } catch {
-      dispatch({ type: 'DOCUMENT_FAILED', error: 'ocr.failed' });
+    } catch (error) {
+      if (String(error instanceof Error ? error.message : error).startsWith('E_DOCUMENT_GONE')) setGone(true);
+      else dispatch({ type: 'DOCUMENT_FAILED', error: 'ocr.failed' });
     } finally {
       setProgress(null);
+      setStopping(false);
       stopper.current = null;
     }
   };
@@ -114,7 +126,7 @@ export function OcrPanel() {
         <Icon of={ScanText} />
         {t('tool.ocr')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {state.document === null && <OpenFirst />}
       <fieldset className="compress-levels" disabled={!ready || running}>
         <legend>{t('ocr.languages')}</legend>
         {OCR_LANGUAGES.map((code) => (
@@ -187,10 +199,14 @@ export function OcrPanel() {
       <div className="tool-actions">
         {running ? (
           <IconButton
-            label={t('ocr.stop')}
-            icon={<Icon of={Square} />}
+            label={t(stopping ? 'ocr.stopping' : 'ocr.stop')}
+            icon={<Icon of={CircleStop} />}
             showLabel
-            onClick={() => stopper.current?.abort()}
+            disabled={stopping}
+            onClick={() => {
+              setStopping(true);
+              stopper.current?.abort();
+            }}
           />
         ) : (
           <IconButton
@@ -208,14 +224,25 @@ export function OcrPanel() {
           {progress.of === 0 ? t('ocr.preparing') : t('ocr.progress', { page: progress.page, of: progress.of })}
         </p>
       )}
+      {gone && (
+        <p className="tool-panel-note" role="status">
+          {t('ocr.gone')}
+        </p>
+      )}
       {outcome && (
         <div role="status">
           <p className="tool-panel-note">
-            {outcome.pages === 0
-              ? outcome.skipped > 0
-                ? t('ocr.alreadyDone')
-                : t('ocr.nothing')
-              : t('ocr.done', { pages: outcome.pages, words: outcome.words, confidence: Math.round(outcome.confidence) })}
+            {outcome.stopped
+              ? outcome.pages === 0
+                ? t('ocr.stoppedNothing')
+                : t('ocr.stoppedKept', { pages: outcome.pages, words: outcome.words })
+              : outcome.pages === 0
+                ? outcome.skipped > 0
+                  ? t('ocr.alreadyDone')
+                  : (outcome.tried ?? 0) > 0
+                    ? t('ocr.noWords', { count: outcome.tried ?? 0 })
+                    : t('ocr.nothing')
+                : t('ocr.done', { pages: outcome.pages, words: outcome.words, confidence: Math.round(outcome.confidence) })}
           </p>
           {(outcome.images ?? 0) > 0 && <p className="tool-panel-note">{t('ocr.imagesReplaced', { count: outcome.images ?? 0 })}</p>}
           {(outcome.imagesKept ?? 0) > 0 && <p className="tool-panel-note">{t('ocr.imagesKept', { count: outcome.imagesKept ?? 0 })}</p>}

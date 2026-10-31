@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, Combine, FilePlus2, LockKeyhole, X } from 'lucide-r
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
 import { isTauriHost, pickPdfFiles } from '../core/host-tauri';
-import { useT } from '../i18n/useT';
+import { useI18n } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { isPdf } from '../state/pdfFile';
 import './combine.css';
@@ -30,12 +30,17 @@ interface Entry {
  * the files it was given.
  */
 export function CombinePanel() {
-  const t = useT();
+  const { t, lang } = useI18n();
   const state = useAppState();
   const dispatch = useAppDispatch();
   const services = useServices();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
+  // Files left out, by name: not PDFs, or PDFs that cannot be read. One
+  // unnamed "A file could not be read as a PDF." stood for all of them, and a
+  // Word file in the same drop disappeared without a word (First Five, Rami).
+  const [notPdf, setNotPdf] = useState<string[]>([]);
+  const [unreadable, setUnreadable] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextKey = useRef(1);
   const seeded = useRef(false);
@@ -56,14 +61,16 @@ export function CombinePanel() {
 
   const add = async (files: { name: string; bytes: ArrayBuffer; password?: string }[]) => {
     const added: Entry[] = [];
+    const bad: string[] = [];
     for (const file of files) {
       try {
         const { pages, locked } = await probe(file.bytes, file.password);
         added.push({ key: nextKey.current++, name: file.name, bytes: file.bytes, pages, locked, password: file.password ?? '', wrong: false });
       } catch {
-        dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.unreadable' });
+        bad.push(file.name);
       }
     }
+    setUnreadable(bad);
     setEntries((list) => [...list, ...added]);
   };
 
@@ -79,10 +86,12 @@ export function CombinePanel() {
 
   const addFiles = async (files: File[]) => {
     const pdfs: { name: string; bytes: ArrayBuffer }[] = [];
+    const not: string[] = [];
     for (const file of files) {
       if (await isPdf(file)) pdfs.push({ name: file.name, bytes: await file.arrayBuffer() });
-      else dispatch({ type: 'DOCUMENT_FAILED', error: 'error.notPdf' });
+      else not.push(file.name);
     }
+    setNotPdf(not);
     await add(pdfs);
   };
 
@@ -141,6 +150,7 @@ export function CombinePanel() {
     setBusy(true);
     await services.combineFiles(
       entries.map((e) => ({ name: e.name, bytes: e.bytes, password: e.password.length > 0 ? e.password : undefined })),
+      t('combine.fileWord', { count: entries.length }),
     );
     setBusy(false);
   };
@@ -236,6 +246,16 @@ export function CombinePanel() {
             </li>
           ))}
         </ol>
+      )}
+      {notPdf.length > 0 && (
+        <p className="export-alert" role="alert">
+          {t('combine.notPdf', { names: notPdf.join(lang === 'ar' ? '، ' : ', ') })}
+        </p>
+      )}
+      {unreadable.length > 0 && (
+        <p className="export-alert" role="alert">
+          {t('combine.unreadableNamed', { names: unreadable.join(lang === 'ar' ? '، ' : ', ') })}
+        </p>
       )}
       {entries.length > 0 && entries.length < 2 && <p className="tool-panel-note">{t('combine.needTwo')}</p>}
       <div className="tool-actions">

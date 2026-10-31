@@ -584,7 +584,7 @@ export function ChatView(props: ChatViewProps) {
         )}
         {listening === turn.id && reading.notice && reading.notice !== 'done' && (
           <p className="field-error" role="alert">
-            {t(reading.notice === 'unsupported' ? 'readAloud.unsupported' : 'readAloud.noVoices')}
+            {t(reading.notice === 'unsupported' ? 'readAloud.unsupported' : reading.notice === 'speechFailed' ? 'readAloud.speechFailed' : 'readAloud.noVoices')}
           </p>
         )}
       </li>

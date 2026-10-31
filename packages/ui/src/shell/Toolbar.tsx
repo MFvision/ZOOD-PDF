@@ -33,6 +33,8 @@ import { PageInput } from './PageInput';
 import { RemoteButtons } from '../remote/RemoteLayer';
 import { ShareButton } from './ShareButton';
 import { ZoomControl } from './ZoomControl';
+import { reachEmbedSearch } from '../embed/embedControl';
+import { documentStem } from '../state/saveFile';
 
 /**
  * The unified toolbar: the window's title bar and its toolbar in one strip,
@@ -188,11 +190,17 @@ export function Toolbar() {
               icon={<Icon of={Search} />}
               disabled={organizing}
               pressed={!organizing && services.viewCommandOn('find')}
-              onClick={() =>
-                services.embedShowing
-                  ? services.viewCommand('find')
-                  : dispatch({ type: state.find.open ? 'FIND_CLOSE' : 'FIND_OPEN' })
-              }
+              onClick={() => {
+                if (!services.embedShowing) {
+                  dispatch({ type: state.find.open ? 'FIND_CLOSE' : 'FIND_OPEN' });
+                  return;
+                }
+                // The cursor goes in the box: it stayed on the button and the
+                // first word typed was lost (First Five, Omar and Nasser).
+                const opening = !services.viewCommandOn('find');
+                services.viewCommand('find');
+                if (opening) reachEmbedSearch();
+              }}
             />
             {/* Read aloud, in either view: the bar under the toolbar, with the sentence marked on the page. */}
             <IconButton
@@ -233,11 +241,12 @@ function DocumentTitle() {
   const state = useAppState();
   const { t } = useI18n();
   const { document, currentPage, core } = state;
-  const edited = document !== null && hasUnsavedEdits(state);
+  const { liveEdited } = useServices();
+  const edited = document !== null && (hasUnsavedEdits(state) || liveEdited);
   return (
     <div className="toolbar-title">
       <span className="toolbar-title-name" dir="auto" title={document?.name}>
-        {document?.name ?? t('app.name')}
+        {document ? documentStem(document.name) : t('app.name')}
       </span>
       {document && (
         <span className="toolbar-subtitle" role="status" aria-label={t('shell.documentStatus')}>

@@ -1,6 +1,8 @@
 import {
   ArrowDown,
+  ArrowDownToLine,
   ArrowUp,
+  ArrowUpToLine,
   Check,
   CheckCheck,
   Crop,
@@ -16,6 +18,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { splitArchiveName } from '../state/saveFile';
 import type { ChangeEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { IconButton } from '../components/IconButton';
@@ -23,8 +26,9 @@ import { Stepper } from '../components/Stepper';
 import type { TKey } from '../i18n/messages';
 import { useT } from '../i18n/useT';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
-import { orderStepping, positionsAfter, selectionAfterDelete } from './selection';
+import { orderMovingTo, orderStepping, positionsAfter, selectionAfterDelete } from './selection';
 import { describeParts, splitAt, splitEvery } from './split';
+import { OpenFirst } from '../tools/OpenFirst';
 
 /** A file chosen for inserting that needs its password first. */
 interface Locked {
@@ -56,11 +60,22 @@ export function OrganizePanel() {
     const order = orderStepping(count, pages, step);
     if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, pages));
   };
+  // To the start or the end in one press: the last of 1320 pages to the front
+  // took 1319 presses of Move earlier (First Five, Yousef).
+  const moveTo = (target: number) => {
+    const order = orderMovingTo(count, pages, target);
+    if (order) void services.organizePages('reorder', { order }, () => positionsAfter(order, pages));
+  };
 
   // Insert pages from a file: after the last selected page, or at the end.
   const chooser = useRef<HTMLInputElement>(null);
   const [locked, setLocked] = useState<Locked | null>(null);
   const [insertNote, setInsertNote] = useState<TKey | null>(null);
+  // One split at a time, and what it saved said where it stays: a double
+  // click saved the zip twice, and the 3-second toast was gone before anyone
+  // read it (First Five, Rami).
+  const [splitting, setSplitting] = useState(false);
+  const [splitSaved, setSplitSaved] = useState<{ name: string; count: number } | null>(null);
   const insertAt = pages.length > 0 ? last + 1 : count;
   const insert = async (file: { name: string; bytes: ArrayBuffer }, at: number, password?: string) => {
     setInsertNote(null);
@@ -111,10 +126,12 @@ export function OrganizePanel() {
         <Icon of={LayoutGrid} />
         {t('tool.organize')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
-      <p className="organize-count" role="status">
-        {t('organize.selected', { count: pages.length, total: count })}
-      </p>
+      {state.document === null && <OpenFirst />}
+      {state.document !== null && (
+        <p className="organize-count" role="status">
+          {t('organize.selected', { count: pages.length, total: count })}
+        </p>
+      )}
       <div className="tool-actions">
         <IconButton
           label={t('organize.rotateLeft')}
@@ -131,6 +148,13 @@ export function OrganizePanel() {
           onClick={() => void services.organizePages('rotate', { pages, quarterTurns: 1 }, () => pages)}
         />
         <IconButton
+          label={t('organize.moveFirst')}
+          icon={<Icon of={ArrowUpToLine} />}
+          showLabel
+          disabled={!ready || orderMovingTo(count, pages, 0) === null}
+          onClick={() => moveTo(0)}
+        />
+        <IconButton
           label={t('organize.moveEarlier')}
           icon={<Icon of={ArrowUp} />}
           showLabel
@@ -143,6 +167,13 @@ export function OrganizePanel() {
           showLabel
           disabled={!ready || orderStepping(count, pages, 1) === null}
           onClick={() => move(1)}
+        />
+        <IconButton
+          label={t('organize.moveLast')}
+          icon={<Icon of={ArrowDownToLine} />}
+          showLabel
+          disabled={!ready || orderMovingTo(count, pages, count) === null}
+          onClick={() => moveTo(count)}
         />
         <IconButton
           label={t('organize.insertBlank')}
@@ -341,9 +372,23 @@ export function OrganizePanel() {
           label={t('organize.splitRun')}
           icon={<Icon of={Scissors} />}
           showLabel
-          disabled={!ready || parts.length < 2}
-          onClick={() => void services.splitDocument(parts, t('organize.splitWord'))}
+          disabled={!ready || parts.length < 2 || splitting}
+          onClick={() => {
+            if (splitting || !state.document) return;
+            const name = splitArchiveName(state.document.name, t('organize.splitWord'));
+            setSplitting(true);
+            setSplitSaved(null);
+            void services
+              .splitDocument(parts, t('organize.splitWord'))
+              .then((saved) => saved && setSplitSaved({ name, count: parts.length }))
+              .finally(() => setSplitting(false));
+          }}
         />
+        {splitSaved && (
+          <p className="tool-panel-note" role="status">
+            {t('organize.splitSaved', { name: splitSaved.name, count: splitSaved.count })}
+          </p>
+        )}
       </fieldset>
       {pages.length > 0 && pages.length >= count && <p className="tool-panel-note">{t('organize.keepOne')}</p>}
       <p className="tool-panel-note">{t('organize.hint')}</p>

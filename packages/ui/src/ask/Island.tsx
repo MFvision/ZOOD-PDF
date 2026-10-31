@@ -93,6 +93,7 @@ import { SAFE_CHARS_PER_TOKEN, contextTokensFor, materialTokensFor, replyTokensF
 import type { AnswerFileKind } from './answerFile';
 import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
+import { namesIt, pickByWords, sayChoices } from './choices';
 import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
 import type { DeckLook } from './deck';
 import type { Shortcut } from './shortcuts';
@@ -669,7 +670,8 @@ function Island() {
       const outcome = readQuick(ranked);
       if (outcome.kind === 'model') return false;
       if (outcome.kind === 'choose') {
-        aloud(translate(language, 'ask.quick.choose'), spoken);
+        // The choices themselves are said, not only the question (`choices.ts`).
+        aloud(sayChoices(translate(language, 'ask.quick.choose'), outcome.keys.map((one) => optionLabel(one, language, toolName)), language), spoken);
         setPhase({ kind: 'choose', words, keys: outcome.keys, spoken });
         return true;
       }
@@ -732,7 +734,19 @@ function Island() {
   };
 
   /** A request, spoken or typed: decide, then do or show. */
-  const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false) => {
+  const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false): Promise<void> => {
+    // Choices were just read out: "the second", «الأول» or a choice's name answers them.
+    if (!chosen && !past && (phase.kind === 'choose' || phase.kind === 'pick')) {
+      const language = languageOf(phase.words);
+      if (phase.kind === 'choose') {
+        const i = pickByWords(words, phase.keys.map((key) => optionLabel(key, language, toolName)));
+        if (i !== null) return respond(phase.words, spoken, phase.keys[i]);
+      } else {
+        if (namesIt(words, translate(language, 'ask.pick.other'))) return respond(phase.words, spoken, undefined, true);
+        const i = pickByWords(words, phase.offers.map((offer) => offerName(offer, language)));
+        if (i !== null) return runPicked(phase.offers[i]!, phase.words, spoken);
+      }
+    }
     // A Sort window waiting for an answer (its Speak button, or it is in
     // front) takes the words: it says what it does itself (`sort/voice.ts`).
     if (!chosen && !past && (await sortVoice(words))) {
@@ -1048,7 +1062,16 @@ function Island() {
     }
     const offers = fuzzyOffers(words, entries, true);
     if (offers.length === 0) return false;
-    aloud(translate(languageOf(words), 'ask.pick.title'), spoken);
+    const language = languageOf(words);
+    aloud(
+      sayChoices(
+        translate(language, 'ask.pick.title'),
+        offers.map((offer) => offerName(offer, language)),
+        language,
+        translate(language, 'ask.pick.other'),
+      ),
+      spoken,
+    );
     setPhase({ kind: 'pick', words, offers, spoken });
     return true;
   };

@@ -12,6 +12,7 @@ import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { DEFAULT_FORM, TOKENS, batesSample, formOf, hasContent, pageNumberSample, pagesLabel, parsePages, specOf } from './markSpec';
 import type { MarkForm, MarkKind, MarkPosition, MarkSection } from './markSpec';
 import './marks.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 /** A mark in the file, as `marks.list` answers. */
 interface ListedMark {
@@ -302,6 +303,11 @@ export function PageMarksPanel() {
     </Field>
   );
 
+  const textColorField = (
+    <Field label={t('marks.color')}>
+      <input className="marks-color" type="color" value={form.textColor} onChange={(e) => set('textColor', e.target.value)} />
+    </Field>
+  );
   const fontSelect = (
     <Field label={t('marks.font')}>
       <select className="select" value={form.font} onChange={(e) => set('font', e.target.value as EditFontId)}>
@@ -322,7 +328,7 @@ export function PageMarksPanel() {
         <Icon of={Layers} />
         {t('tool.pageMarks')}
       </h3>
-      <p className="tool-panel-note">{state.document === null ? t('tool.openFirst') : t('marks.intro')}</p>
+      {state.document === null ? <OpenFirst /> : <p className="tool-panel-note">{t('marks.intro')}</p>}
 
       <fieldset disabled={disabled}>
         <legend>{t('marks.kind')}</legend>
@@ -469,6 +475,7 @@ export function PageMarksPanel() {
               </Field>
               {numeralsSelect}
               {fontSelect}
+              {textColorField}
               {numberField('size', 'marks.size', 5, 72)}
               {numberField('margin', 'marks.margin', 0, 200)}
             </div>
@@ -495,6 +502,7 @@ export function PageMarksPanel() {
             {numberField('size', 'marks.size', 5, 72)}
             {numberField('margin', 'marks.margin', 0, 200)}
             {fontSelect}
+            {textColorField}
           </div>
           <label>
             <input type="checkbox" checked={form.skipFirst} onChange={(e) => set('skipFirst', e.target.checked)} />
@@ -519,6 +527,7 @@ export function PageMarksPanel() {
             {numberField('size', 'marks.size', 5, 72)}
             {numberField('margin', 'marks.margin', 0, 200)}
             {fontSelect}
+            {textColorField}
           </div>
         </fieldset>
       )}

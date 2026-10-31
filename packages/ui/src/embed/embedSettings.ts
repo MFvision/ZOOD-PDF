@@ -3,7 +3,7 @@ import { readJson, writeJson } from '../state/preferences';
 import { SHEET_QUERY } from '../shell/sheetDrag';
 import { getSettings } from '../state/settings';
 import type { OpenZoom, PageLayout } from '../state/settings';
-import { commandActive, runCommand, setZoom } from './embedControl';
+import { commandActive, runCommand, setZoom, zoomNow } from './embedControl';
 import type { EmbedZoom } from './embedControl';
 
 /**
@@ -70,19 +70,45 @@ export function applyOpenZoom(registry: PluginRegistry, zoom: OpenZoom, file: st
   setZoom(registry, rememberedZoom(file) ?? 'fit-width');
 }
 
+/** Above this, fitting the width only blows a small page up (a photo made into a PDF opened at 279 %). */
+const FIT_WIDTH_MOST = 1.5;
+
 /** Everything Settings › Viewing says about a document that has just opened. */
 export function applyOpenSettings(registry: PluginRegistry, file: string): void {
   const settings = getSettings();
   // The page thumbnails first (EmbedPDF's own sidebar in this view), so the
   // zoom fits the room they leave. At phone width they would cover the
   // page, so they open only when asked for there.
-  setPagePanel(registry, settings.pagePanel && !globalThis.matchMedia?.(SHEET_QUERY).matches);
+  setPagePanel(registry, settings.pagePanel && !sheetWidth());
   applyPageLayout(registry, settings.pageLayout);
   // One page at a time fits each page already.
   if (settings.pageLayout !== 'single') applyOpenZoom(registry, settings.openZoom, file);
+  // A small page (a receipt photographed and made into a PDF) fitted to the
+  // width came up blurred and cut off at 279 %: the whole page instead
+  // (First Five, Rami, 2026-10-31).
+  if (settings.pageLayout !== 'single' && settings.openZoom === 'fit-width') {
+    setTimeout(() => {
+      const now = zoomNow(registry);
+      if (now !== null && now > FIT_WIDTH_MOST) setZoom(registry, 'fit-page');
+    }, 120);
+  }
 }
 
 const SIDEBAR = 'panel:toggle-sidebar';
+
+/**
+ * EmbedPDF shows its sidebar as a bottom sheet over half the page whenever
+ * the viewer itself is under 768 px wide, not only on a phone: a 1280×720
+ * laptop at 125% with the tools pane open is that narrow (First Five,
+ * 2026-10-31: the sheet covered the page and never followed it).
+ */
+const EMBED_SHEET_WIDTH = 768;
+
+function sheetWidth(): boolean {
+  if (globalThis.matchMedia?.(SHEET_QUERY).matches) return true;
+  const viewer = globalThis.document?.querySelector<HTMLElement>('.embed-viewer');
+  return !!viewer && viewer.clientWidth > 0 && viewer.clientWidth < EMBED_SHEET_WIDTH;
+}
 
 /** Whether the page thumbnails are showing. */
 export function pagePanelOpen(registry: PluginRegistry): boolean {

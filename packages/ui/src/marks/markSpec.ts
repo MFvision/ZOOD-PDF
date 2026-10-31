@@ -43,6 +43,9 @@ export interface MarkForm {
   opacity: number;
   front: boolean;
   color: string;
+  /** Headers, footers, page numbers and Bates numbers: their own colour, black
+   * unless chosen; they took the watermark's red (First Five, Faisal). */
+  textColor: string;
   band: 'header' | 'footer';
   /** Start, centre, end: "start" is the right-hand side in Arabic. */
   slots: [string, string, string];
@@ -78,6 +81,7 @@ export const DEFAULT_FORM: MarkForm = {
   opacity: 30,
   front: true,
   color: '#c0392b',
+  textColor: '#000000',
   band: 'header',
   slots: ['', '', ''],
   direction: 'auto',
@@ -178,7 +182,7 @@ export function hasContent(form: MarkForm, picture: boolean): boolean {
 export function specOf(form: MarkForm, context: { fileName: string; now: Date }): Record<string, unknown> {
   const common = {
     kind: kindOf(form),
-    color: hex(form.color),
+    color: hex(form.section === 'watermark' ? form.color : form.textColor),
     numerals: form.numerals,
     marginX: form.margin,
     marginY: form.margin,
@@ -240,7 +244,8 @@ export function formOf(spec: Record<string, unknown>, fallback: MarkForm = DEFAU
   const kind = text('kind', 'watermark') as MarkKind;
   const base: MarkForm = {
     ...fallback,
-    color: text('color', fallback.color),
+    color: kind === 'watermark' ? text('color', fallback.color) : fallback.color,
+    textColor: kind === 'watermark' ? fallback.textColor : text('color', fallback.textColor),
     numerals: text('numerals', fallback.numerals) === 'arabic' ? 'arabic' : 'western',
     margin: number('marginY', fallback.margin),
     font: text('font', fallback.font) as EditFontId,
