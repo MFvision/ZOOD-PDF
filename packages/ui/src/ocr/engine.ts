@@ -3,7 +3,7 @@ import workerUrl from 'tesseract.js/dist/worker.min.js?url';
 import coreUrl from 'tesseract.js-core/tesseract-core-lstm.wasm.js?url';
 import coreSimdUrl from 'tesseract.js-core/tesseract-core-simd-lstm.wasm.js?url';
 import { uiLog } from '../core/host-tauri';
-import { buildSheet, detectSize, doubtful, mergeEnglish, readingOrder, scaleBoxes, sheetLine, toPage, toPgm } from './lines';
+import { PAGE_MAX_LINES, buildSheet, detectSize, doubtful, mergeEnglish, readingOrder, scaleBoxes, sheetChunks, sheetLine, toPage, toPgm } from './lines';
 import type { Box, GreyLine, LineWord, Placement } from './lines';
 import type { DetectAnswer, DetectJob } from './detect.worker';
 
@@ -131,6 +131,12 @@ async function findLines(image: HTMLCanvasElement, rightToLeft: boolean): Promis
     const answer = await new Promise<DetectAnswer>((resolve) => {
       const timer = setTimeout(() => {
         lines.waiting.delete(id);
+        // A finder that hung once would cost every later page the same wait: it is off until the app restarts.
+        finderBroken = true;
+        finder = null;
+        lines.worker.terminate();
+        for (const done of lines.waiting.values()) done({ id: -1, ok: false, message: 'E_OCR_LINES: the line finder stopped' });
+        lines.waiting.clear();
         resolve({ id, ok: false, message: 'E_OCR_LINES: timed out' });
       }, FIND_TIMEOUT_MS);
       lines.waiting.set(id, (done) => {
@@ -268,38 +274,70 @@ export async function startRecognizer(languages: readonly OcrLanguage[]): Promis
     const whole = withEnglish ? await (mixed ??= tesseract(languages)) : primary;
     return wordsOf(await whole.read(image, PSM.AUTO), (box) => box);
   };
+  /**
+   * `boxes` read off sheets of at most `SHEET_MAX_PIXELS` each: the words,
+   * their `line` the index into the returned placements.
+   */
+  const readSheets = async (reader: Awaited<ReturnType<typeof tesseract>>, grey: GreyLine, boxes: readonly Box[]) => {
+    const placed: Placement[] = [];
+    const words: LineWord[] = [];
+    for (const chunk of sheetChunks(boxes)) {
+      const { sheet, placements } = buildSheet(grey, boxes.slice(chunk.start, chunk.start + chunk.count));
+      if (placements.length === 0) continue;
+      const ids = placements.map((_, k) => placed.length + k);
+      // One column of lines, each its own: Tesseract's own page layout is not asked for.
+      words.push(...sheetWords(await reader.read(toPgm(sheet), PSM.SINGLE_COLUMN), placements, ids));
+      placed.push(...placements);
+    }
+    return { words, placed };
+  };
+  /** The page read line by line, English only where the first reading doubted; `null` when no line could be cut. */
+  const readByLines = async (image: HTMLCanvasElement, boxes: readonly Box[]): Promise<LineWord[] | null> => {
+    const grey = greyOfCanvas(image);
+    if (!grey) return null;
+    const first = await readSheets(primary, grey, boxes);
+    if (first.placed.length === 0) return null;
+    let words = first.words;
+    if (withEnglish) {
+      const doubted = [...new Set(words.filter(doubtful).map((word) => word.line))].sort((a, b) => a - b);
+      if (doubted.length > 0) {
+        const reader = await (english ??= tesseract(['eng']));
+        const again = await readSheets(reader, grey, doubted.map((k) => first.placed[k]!.box));
+        const read = again.words.flatMap((word) => (doubted[word.line] === undefined ? [] : [{ ...word, line: doubted[word.line]! }]));
+        words = mergeEnglish(words, read);
+      }
+    }
+    return words;
+  };
   return {
     async read(image) {
       const boxes = await findLines(image, rightToLeft).catch(() => null);
       if (!boxes || boxes.length === 0) return readWhole(image);
-      const grey = greyOfCanvas(image);
-      if (!grey) return readWhole(image);
-      const { sheet, placements } = buildSheet(grey, boxes);
-      if (placements.length === 0) return readWhole(image);
-      const all = placements.map((_, k) => k);
-      // One column of lines, each its own: Tesseract's own page layout is not asked for.
-      let words = sheetWords(await primary.read(toPgm(sheet), PSM.SINGLE_COLUMN), placements, all);
-      if (withEnglish) {
-        const doubted = [...new Set(words.filter(doubtful).map((word) => word.line))].sort((a, b) => a - b);
-        if (doubted.length > 0) {
-          const again = buildSheet(grey, doubted.map((k) => placements[k]!.box));
-          const reader = await (english ??= tesseract(['eng']));
-          const read = sheetWords(await reader.read(toPgm(again.sheet), PSM.SINGLE_COLUMN), again.placements, doubted);
-          words = mergeEnglish(words, read);
-        }
+      if (boxes.length > PAGE_MAX_LINES) {
+        uiLog(`ocr: ${boxes.length} lines found, too many to be text; read whole`);
+        return readWhole(image);
       }
-      // A page the lines did not suit (its lines turned, say, where the
-      // straightening could not measure it) reads with little confidence:
-      // it is read the old way too, and the better reading kept.
-      const mean = words.length ? words.reduce((sum, word) => sum + word.confidence, 0) / words.length : 0;
-      if (mean < DOUBTFUL_PAGE) {
-        const whole = await readWhole(image);
-        if (weight(whole) > weight(words)) {
-          uiLog(`ocr: the page read better whole (${Math.round(mean)} % sure line by line)`);
-          return whole;
+      try {
+        const words = await readByLines(image, boxes);
+        if (!words) return readWhole(image);
+        uiLog(`ocr: read line by line (${boxes.length} lines)`);
+        // A page the lines did not suit (its lines turned, say, where the
+        // straightening could not measure it) reads with little confidence:
+        // it is read the old way too, and the better reading kept.
+        const mean = words.length ? words.reduce((sum, word) => sum + word.confidence, 0) / words.length : 0;
+        if (mean < DOUBTFUL_PAGE) {
+          const whole = await readWhole(image);
+          if (weight(whole) > weight(words)) {
+            uiLog(`ocr: the page read better whole (${Math.round(mean)} % sure line by line)`);
+            return whole;
+          }
         }
+        return spaced(words);
+      } catch (error) {
+        // Whatever went wrong line by line, the page is still read the old way.
+        uiLog(`ocr: reading line by line failed (${error instanceof Error ? error.message : String(error)}); read whole`);
+        return readWhole(image);
       }
-      return spaced(words);
     },
     async stop() {
       await primary.stop();

@@ -3,6 +3,7 @@ import {
   SHEET_GAP,
   SHEET_LINE,
   SHEET_MARGIN,
+  SHEET_MAX_PIXELS,
   buildSheet,
   detectSize,
   detectorInput,
@@ -12,6 +13,7 @@ import {
   readingOrder,
   regionsOf,
   scaleBoxes,
+  sheetChunks,
   sheetLine,
   toPage,
   toPgm,
@@ -145,5 +147,35 @@ describe('English where Arabic failed', () => {
     const arabic = [w('رقم', 80, 100, 95), w('2026-0042-/ل/|', 10, 70, 12), w('شكرا', 80, 100, 92, 1)];
     const english = [w('INV-2026-0042', 12, 72, 92), w('gull', 80, 100, 95, 1), w('YoY', 0, 5, 21)];
     expect(mergeEnglish(arabic, english).map((x) => x.text)).toEqual(['رقم', 'INV-2026-0042', 'شكرا']);
+  });
+});
+
+describe('sheet size budget', () => {
+  it('splits a dense page into sheets that each stay within the pixel budget', () => {
+    // 4000 boxes (the most regionsOf returns), each a long thin line: unchunked this is gigabytes.
+    const page = { width: 3000, height: 4000, data: new Uint8Array(3000 * 4000).fill(255) };
+    const boxes: [number, number, number, number][] = [];
+    for (let k = 0; k < 4000; k += 1) boxes.push([0, k, 3000, k + 2.5]);
+    const chunks = sheetChunks(boxes);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.reduce((n, c) => n + c.count, 0)).toBe(4000);
+    let next = 0;
+    for (const chunk of chunks.slice(0, 3)) {
+      expect(chunk.start).toBe(next);
+      next += chunk.count;
+      const { sheet } = buildSheet(page, boxes.slice(chunk.start, chunk.start + chunk.count));
+      expect(sheet.width * sheet.height).toBeLessThanOrEqual(SHEET_MAX_PIXELS);
+    }
+  });
+
+  it('keeps an ordinary page on one sheet', () => {
+    const boxes: [number, number, number, number][] = [];
+    for (let k = 0; k < 40; k += 1) boxes.push([100, 100 + k * 60, 2400, 140 + k * 60]);
+    expect(sheetChunks(boxes)).toEqual([{ start: 0, count: 40 }]);
+  });
+
+  it('gives every line a sheet even when one alone is over a tiny budget', () => {
+    const boxes: [number, number, number, number][] = [[0, 0, 500, 40], [0, 50, 500, 90]];
+    expect(sheetChunks(boxes, 10)).toEqual([{ start: 0, count: 1 }, { start: 1, count: 1 }]);
   });
 });

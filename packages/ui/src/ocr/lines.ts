@@ -177,6 +177,49 @@ export const SHEET_MARGIN = 20;
 /** No line is drawn wider than this on the sheet; a longer one is drawn smaller. */
 const SHEET_MAX_WIDTH = 6000;
 
+/**
+ * The most pixels one sheet may have (about 48 MB of grey, copied once more
+ * for Tesseract): a page with more lines is read in several sheets
+ * (`sheetChunks`), so a dense or hostile page cannot ask for gigabytes.
+ */
+export const SHEET_MAX_PIXELS = 48_000_000;
+/** A page with more "lines" than this is specks or noise, not text: it is read whole. */
+export const PAGE_MAX_LINES = 1500;
+
+/** The width a box takes on a sheet (`buildSheet`'s own arithmetic), margins aside. */
+function sheetWidth(box: Box): number {
+  const w = Math.ceil(box[2]) - Math.floor(box[0]);
+  const h = Math.ceil(box[3]) - Math.floor(box[1]);
+  if (w < 2 || h < 2) return 1;
+  return Math.max(1, Math.round(w * Math.min(SHEET_LINE / h, SHEET_MAX_WIDTH / w)));
+}
+
+/**
+ * The boxes split, in order, into runs whose sheet each stays within
+ * `SHEET_MAX_PIXELS`: the start index and length of each run. One line is
+ * never wider than `SHEET_MAX_WIDTH`, so every run holds at least one line
+ * and fits.
+ */
+export function sheetChunks(boxes: readonly Box[], maxPixels = SHEET_MAX_PIXELS): { start: number; count: number }[] {
+  const chunks: { start: number; count: number }[] = [];
+  let start = 0;
+  let widest = 1;
+  for (let k = 0; k < boxes.length; k += 1) {
+    const wide = Math.max(widest, sheetWidth(boxes[k]!));
+    const count = k - start + 1;
+    const pixels = (wide + 2 * SHEET_MARGIN) * (2 * SHEET_MARGIN + count * (SHEET_LINE + SHEET_GAP));
+    if (count > 1 && pixels > maxPixels) {
+      chunks.push({ start, count: k - start });
+      start = k;
+      widest = sheetWidth(boxes[k]!);
+    } else {
+      widest = wide;
+    }
+  }
+  if (boxes.length > start) chunks.push({ start, count: boxes.length - start });
+  return chunks;
+}
+
 /** Where a line of the page went on the sheet. */
 export interface Placement {
   /** The line's box on the page. */
