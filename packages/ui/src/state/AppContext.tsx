@@ -110,6 +110,8 @@ export interface CombineInput {
   name: string;
   bytes: ArrayBuffer;
   password?: string;
+  /** How many pages it was found to have when it was listed: all of them must arrive. */
+  pages?: number;
 }
 
 /** The page changes of Organize pages (`warraq-core/src/tools/pages.rs`). */
@@ -1498,13 +1500,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * is kept first, so the change can be undone byte for byte.
    */
   const organizePages = useCallback(
-    async (op: OrganizeOp, args: object, selectAfter: (pageCount: number) => number[], blobs: ArrayBuffer[] = []) => {
+    async (
+      op: OrganizeOp,
+      args: object,
+      selectAfter: (pageCount: number) => number[],
+      blobs: ArrayBuffer[] = [],
+      /** Whether the change did what was asked; when not, the file goes back as it was. */
+      accept?: (pageCount: number) => boolean,
+    ) => {
       const doc = documentRef.current;
       if (!doc || stateRef.current.organize.busy) return false;
       dispatch({ type: 'ORGANIZE_BUSY', busy: true });
       try {
         const before = await doc.save();
         const { result } = await doc.call<PageShape>(`pages.${op}`, args, blobs);
+        if (accept && !accept(result.pageCount)) {
+          const opened = await client.open(before.slice(), passwordRef.current);
+          void doc.free();
+          documentRef.current = opened;
+          setDocument(opened);
+          // The file as it was: no change to save, nothing to undo.
+          dispatch({ type: 'ORGANIZE_BUSY', busy: false });
+          return false;
+        }
         const history = organizeHistory.current;
         history.undo = [...history.undo, before].slice(-ORGANIZE_HISTORY);
         history.redo = [];
@@ -1517,7 +1535,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [],
+    [client],
   );
 
   /** Undo or redo a page change: the file goes back to the bytes it had. */
@@ -1579,11 +1597,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if ((error as { code?: string } | null)?.code !== 'E_PASSWORD') return 'failed';
         return password ? 'wrongPassword' : 'locked';
       }
+      const before = documentRef.current?.pageCount ?? 0;
+      // Every page it was counted with, or none: a damaged file counted one
+      // page and brought none, and the insert still said it was done, with an
+      // Undo step for nothing (break-zood, files-ui).
       const done = await organizePages(
         'insert_file',
         { at, password: password ?? null },
         () => Array.from({ length: pages }, (_, k) => at + k),
         [file.bytes.slice(0)],
+        (pageCount) => pageCount === before + pages,
       );
       return done ? 'inserted' : 'failed';
     },
@@ -1773,6 +1796,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         const bytes = blobs[0];
         if (!bytes || result.pageCount < 1) throw new Error('E_EDIT: nothing combined');
+        // A damaged file can be counted when listed and still give no pages
+        // when combined: "Combine 5 pages" made a file of 4, and said nothing
+        // (break-zood, files-ui). Nothing is made rather than a file short of pages.
+        const expected = files.reduce((sum, file) => sum + (file.pages ?? 0), 0);
+        if (files.every((file) => file.pages !== undefined) && result.pageCount < expected) {
+          dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.pagesLost' });
+          return;
+        }
         dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
         await openFile(new File([bytes], combinedFileName(files.map((file) => file.name), word), { type: 'application/pdf' }), undefined, { unsaved: true });
       } catch {
