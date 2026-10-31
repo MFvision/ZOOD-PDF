@@ -286,7 +286,9 @@ pub fn call_static(name: &str, json: &str, blobs: Vec<Vec<u8>>) -> Result<Reply,
             let a: Add = args(json)?;
             let (doc, _) = marked(&a, &blobs, true)?;
             let one = doc.extract_pages(&[a.page])?;
-            let page = warraq_render::open(one, None)?.render(0, a.scale.clamp(0.05, 4.0))?;
+            let copy = warraq_pdf::PdfDocument::open(one.clone(), None)?;
+            let page =
+                crate::open_renderer(&copy, one, None)?.render(0, a.scale.clamp(0.05, 4.0))?;
             Ok(
                 Reply::of(&serde_json::json!({ "width": page.width, "height": page.height }))?
                     .with_blob(page.rgba),

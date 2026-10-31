@@ -140,6 +140,27 @@ enum Reading {
 /// asked for; with, for each page, whether all its text was invisible.
 type Textless = (Box<dyn RenderDoc>, Vec<bool>);
 
+/// The rasterizer for `bytes`, which are `pdf` as written (or a copy of it
+/// with the same objects): given a tamed copy when the file has a shape that
+/// would make it overflow the stack or allocate without bound
+/// (`PdfDocument::for_rasterizer`).
+pub(crate) fn open_renderer(
+    pdf: &PdfDocument,
+    bytes: Vec<u8>,
+    password: Option<&str>,
+) -> Result<Box<dyn RenderDoc>, CoreError> {
+    if let Some(safe) = pdf.for_rasterizer()? {
+        // `bytes` can differ from `pdf` (a copy with its text taken out):
+        // tame that copy when it opens, else draw from `pdf` itself.
+        let safe = match PdfDocument::open(bytes, password) {
+            Ok(copy) => copy.for_rasterizer()?.unwrap_or(safe),
+            Err(_) => safe,
+        };
+        return Ok(warraq_render::open(safe, None)?);
+    }
+    Ok(warraq_render::open(bytes, password)?)
+}
+
 pub struct Document {
     pdf: PdfDocument,
     render: Box<dyn RenderDoc>,
@@ -160,7 +181,7 @@ impl Document {
         } else {
             (bytes, password)
         };
-        let render = warraq_render::open(render_bytes, render_password)?;
+        let render = open_renderer(&pdf, render_bytes, render_password)?;
         Ok(Self {
             pdf,
             render,
@@ -696,7 +717,7 @@ impl Document {
     ) -> Result<(warraq_render::Bitmap, bool), CoreError> {
         if self.textless.borrow().is_none() {
             let (bytes, shown) = self.pdf.without_text()?;
-            let render = warraq_render::open(bytes, None)?;
+            let render = open_renderer(&self.pdf, bytes, None)?;
             let hidden = shown.iter().map(|s| s.only_invisible()).collect();
             *self.textless.borrow_mut() = Some((render, hidden));
         }
@@ -816,7 +837,7 @@ impl Document {
     /// user would edit a page and see no change until they saved and reopened.
     pub fn refresh_after_edit(&mut self) -> Result<(), CoreError> {
         let bytes = self.pdf.save_to_vec()?;
-        self.render = warraq_render::open(bytes, None)?;
+        self.render = open_renderer(&self.pdf, bytes, None)?;
         self.lines_cache.borrow_mut().clear();
         self.textless.borrow_mut().take();
         Ok(())
