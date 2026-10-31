@@ -24,6 +24,18 @@ use std::time::{Duration, Instant};
 use serde_json::json;
 use warraq_core::{call_static, Document};
 
+/// Whether to run here. The budgets below are for an optimised build: an
+/// unoptimised one is twenty to fifty times slower at decoding and shaping,
+/// so `cargo test` (debug) would spend ten minutes proving nothing. CI runs
+/// these with `--release`; `WARRAQ_HOSTILE_DEBUG=1` runs them in debug too.
+fn optimised_or_asked(test: &str) -> bool {
+    let run = !cfg!(debug_assertions) || std::env::var_os("WARRAQ_HOSTILE_DEBUG").is_some();
+    if !run {
+        eprintln!("hostile: {test} skipped in a debug build; run with --release");
+    }
+    run
+}
+
 // ---------------------------------------------------------------- memory
 
 struct Counting;
@@ -1112,6 +1124,9 @@ fn run_named(cases: Vec<(String, Vec<u8>)>) -> Vec<String> {
 
 #[test]
 fn hand_made_nasties_never_panic_hang_or_balloon() {
+    if !optimised_or_asked("hand_made_nasties_never_panic_hang_or_balloon") {
+        return;
+    }
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let only = std::env::var("WARRAQ_HOSTILE_ONLY").ok();
     // A file the fuzzer saved (`WARRAQ_FUZZ_CRASHES`), replayed alone.
@@ -1142,6 +1157,9 @@ fn hand_made_nasties_never_panic_hang_or_balloon() {
 /// unpaired bidi controls, private-use and noncharacters.
 #[test]
 fn weird_arabic_text_never_panics_or_hangs() {
+    if !optimised_or_asked("weird_arabic_text_never_panics_or_hangs") {
+        return;
+    }
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let base = std::fs::read(format!(
         "{}/../../../tests/corpus/arabic/generated/chrome-notonaskh-justified-3pages.pdf",
@@ -1266,6 +1284,9 @@ fn create_args(text: &str) -> String {
 /// paragraph that must be broken inside the word, line after line.
 #[test]
 fn creating_a_document_from_one_endless_word_is_quick() {
+    if !optimised_or_asked("creating_a_document_from_one_endless_word_is_quick") {
+        return;
+    }
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let mut failures = vec![];
     for (label, text) in [
@@ -1483,6 +1504,9 @@ fn seeds() -> Vec<(String, Vec<u8>)> {
 
 #[test]
 fn mutation_fuzzer_never_panics_hangs_or_balloons() {
+    if !optimised_or_asked("mutation_fuzzer_never_panics_hangs_or_balloons") {
+        return;
+    }
     let _serial = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let per_seed: usize = std::env::var("WARRAQ_FUZZ_ITERS")
         .ok()
