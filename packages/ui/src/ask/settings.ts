@@ -32,6 +32,8 @@ export interface AskPreferences {
   talkBack: TalkBack;
   /** Inside ZOOD PDF, Ask ZOOD may click the steps itself; elsewhere it only points. */
   doForMe: boolean;
+  /** "Search the internet for…" looks it up on the web: only the search and the pages' addresses leave the computer. */
+  web: boolean;
   /** The person's own words — names, companies, products — the ear is told and put right to. */
   words: string[];
   /** The microphone Ask ZOOD listens on, by the host's id; null for the system's own. */
@@ -114,6 +116,7 @@ export function readAskPreferences(): AskPreferences {
     glow: raw.glow !== false,
     talkBack: TALK_BACKS.includes(raw.talkBack as TalkBack) ? (raw.talkBack as TalkBack) : 'spoken',
     doForMe: raw.doForMe !== false,
+    web: raw.web !== false,
     words: Array.isArray(raw.words)
       ? parseWords(raw.words.filter((word) => typeof word === 'string').join('\n'))
       : [],

@@ -27,6 +27,7 @@ import type { Revision } from './revisions';
 import { visualChanges } from './visual';
 import type { Box, Raster } from './visual';
 import './compare.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 type Translate = (key: TKey, params?: TParams) => string;
 
@@ -447,7 +448,7 @@ export function ComparePanel() {
         <Icon of={GitCompare} />
         {t('tool.compare')}
       </h3>
-      {state.document === null && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {state.document === null && <OpenFirst />}
       <p className="tool-panel-note">{t('compare.intro')}</p>
 
       <fieldset className="compare-choice" disabled={!ready}>

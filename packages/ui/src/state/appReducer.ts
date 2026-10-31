@@ -68,6 +68,8 @@ export interface AppState {
   document: DocumentInfo | null;
   loadingName: string | null;
   error: TKey | null;
+  /** The file an error is about, named in its message ({name}). */
+  errorName: string | null;
   toast: { key: TKey; nonce: number } | null;
   /** 1-based. */
   currentPage: number;
@@ -95,9 +97,10 @@ export interface AppState {
 }
 
 export type AppAction =
-  | { type: 'DOCUMENT_LOADING'; name: string }
-  | { type: 'DOCUMENT_OPENED'; document: DocumentInfo }
-  | { type: 'DOCUMENT_FAILED'; error: TKey }
+  /** `keepError`: going back to a tab already open, which says nothing about the error on screen. */
+  | { type: 'DOCUMENT_LOADING'; name: string; keepError?: boolean }
+  | { type: 'DOCUMENT_OPENED'; document: DocumentInfo; keepError?: boolean }
+  | { type: 'DOCUMENT_FAILED'; error: TKey; name?: string }
   | { type: 'DOCUMENT_CLOSED' }
   | { type: 'PASSWORD_NEEDED'; name: string; wrong: boolean }
   | { type: 'SWITCH_ENGINE'; direction: 'in' | 'out' }
@@ -222,6 +225,7 @@ export function createInitialState(prefs: Preferences = {}): AppState {
     document: null,
     loadingName: null,
     error: null,
+    errorName: null,
     toast: null,
     currentPage: 1,
     zoom: 1,
@@ -298,7 +302,10 @@ function reduce(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'DOCUMENT_LOADING':
       // A password prompt stays up while its answer is tried.
-      return { ...state, loadingName: action.name, error: null };
+      // A file named in an error stays named while the person goes back to another tab.
+      return action.keepError && state.errorName !== null
+        ? { ...state, loadingName: action.name }
+        : { ...state, loadingName: action.name, error: null, errorName: null };
     case 'DOCUMENT_OPENED':
       return {
         ...state,
@@ -312,21 +319,25 @@ function reduce(state: AppState, action: AppAction): AppState {
         homeShown: false,
         document: action.document,
         loadingName: null,
-        error: null,
+        ...(action.keepError && state.errorName !== null ? {} : { error: null, errorName: null }),
         passwordPrompt: null,
         currentPage: 1,
         scrollRequest: null,
         find: { ...state.find, matches: [], cursor: 0, searched: false },
         edit: { ...createEditState(), active: state.edit.active },
+        // Pages chosen in one file mean nothing in another: page 10 of the
+        // file closed stayed chosen in the next one, with Delete one key away
+        // (First Five, Abu Fahad).
+        organize: { selection: NO_SELECTION, revision: state.organize.revision + 1, busy: false },
       };
     case 'DOCUMENT_FAILED':
-      return { ...state, loadingName: null, error: action.error, passwordPrompt: null, switching: null };
+      return { ...state, loadingName: null, error: action.error, errorName: action.name ?? null, passwordPrompt: null, switching: null };
     case 'SWITCH_ENGINE':
       return { ...state, switching: action.direction };
     case 'SWITCH_DONE':
       return { ...state, switching: null };
     case 'PASSWORD_NEEDED':
-      return { ...state, loadingName: null, error: null, passwordPrompt: { name: action.name, wrong: action.wrong } };
+      return { ...state, loadingName: null, error: null, errorName: null, passwordPrompt: { name: action.name, wrong: action.wrong } };
     case 'PASSWORD_CANCELLED':
       return { ...state, passwordPrompt: null };
     case 'DOCUMENT_CLOSED':
@@ -342,7 +353,7 @@ function reduce(state: AppState, action: AppAction): AppState {
         edit: createEditState(),
       };
     case 'ERROR_DISMISSED':
-      return { ...state, error: null };
+      return { ...state, error: null, errorName: null };
     case 'TOAST':
       return { ...state, toast: { key: action.key, nonce: (state.toast?.nonce ?? 0) + 1 } };
     case 'TOAST_CLEARED':

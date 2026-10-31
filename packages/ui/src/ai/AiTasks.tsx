@@ -31,6 +31,7 @@ import { FormFillReview, OcrFixReview, PiiReview, TablesReview, findWithPatterns
 import { findTablesOnDevice } from './extras/tables';
 import type { Table } from './extras/tables';
 import { layerWords } from '../ocr/layer';
+import { OpenFirst } from '../tools/OpenFirst';
 
 type Message = { key: TKey; params?: TParams };
 
@@ -484,7 +485,7 @@ export function AiTasks({ settings, apiKey, device }: { settings: AiSettings; ap
         </div>
       )}
 
-      {!documentOpen && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {!documentOpen && <OpenFirst />}
       <div className="tool-actions">
         <IconButton
           label={t('ai.review')}

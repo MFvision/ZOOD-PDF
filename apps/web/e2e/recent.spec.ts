@@ -62,7 +62,11 @@ test('a picture is kept of a plain file’s first page, and forgotten the moment
 
   await page.locator('.pane-end').getByRole('button', { name: 'Apply redactions', exact: true }).click();
   await expect.poll(() => pendingRedactions(page)).toBe(0);
-  await closeDocument(page);
+  // Applied but not saved: closing asks first, and this closes without saving.
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'File', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Close document' }).click();
+  await page.getByRole('dialog', { name: 'Save the changes?' }).getByRole('button', { name: 'Close without saving' }).click();
+  await expect(page.locator('.home')).toBeVisible();
   await expect(tile(page, NAME)).toBeVisible();
   await expect(tile(page, NAME).locator('img')).toHaveCount(0);
   expect(await kept(page, NAME)).toBe(false);

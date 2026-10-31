@@ -879,7 +879,7 @@ export function HistoryPage() {
             value={settings.autosaveMinutes}
             options={[
               { value: 1, label: t('prefs.minutes', { n: 1 }) },
-              { value: 5, label: t('prefs.minutes', { n: 5 }) },
+              { value: 5, label: t('prefs.minutesFew', { n: 5 }) },
             ]}
             onChange={(autosaveMinutes) => set({ autosaveMinutes })}
           />

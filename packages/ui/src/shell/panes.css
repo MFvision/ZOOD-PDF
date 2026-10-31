@@ -109,7 +109,15 @@
   content: "";
 }
 
+.pane-resizer:focus-visible {
+  outline: none;
+}
+
+/* Focused, the handle shows as a bar the width of a finger-tip, not a hairline. */
 .pane-resizer:focus-visible::before {
+  inset-inline-start: -3px;
+  inline-size: 6px;
+  border-radius: 3px;
   background: var(--focus);
 }
 

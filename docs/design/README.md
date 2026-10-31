@@ -53,7 +53,7 @@ Segoe UI on Windows, with Cairo and Inter bundled for the rest.
 | `--fill` … `--quaternary-fill`               | black at 10 / 7 / 5 / 3 %     | white at 16 / 11 / 8 / 5 %      | Pressed, selected, hover and resting plates                           |
 | `--accent`                                   | `#007aff`                     | `#0a84ff`                       | System blue. It becomes CSS `AccentColor` where the engine has it (Safari, and so the macOS app), so the user's own accent is used |
 | `--red` `--orange` `--yellow` `--green`      | system colours                | system colours                  | `--destructive` is red                                                |
-| `--focus`                                    | accent at 55 %                | accent at 55 %                  | The 3-px focus ring                                                   |
+| `--focus`                                    | accent at 85 %                | accent at 85 %                  | The 3-px focus ring                                                   |
 | `--scrim`                                    | black at 22 %                 | black at 45 %                   | Behind a sheet                                                        |
 | `--home-gradient`                            | sky, haze, green on `#f5f6fa` | navy on `#1c1d22`               | The home screen's ground: an original CSS gradient, no picture        |
 | `--glass-panel` / `--glass-card` / `--glass-border` / `--glass-hover` | white at 52 / 66 / 60 / 80 % | dark grey at 52 / 58 %, white at 12 %, grey at 70 % | The home's frosted panels, cards, their 1-px edge, and a hover. Solid under increased contrast and reduced transparency |

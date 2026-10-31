@@ -602,6 +602,15 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     desktop: true,
   },
   {
+    id: 'askWeb',
+    section: 'ai',
+    label: 'ask.settings.web',
+    kind: 'toggle',
+    host: true,
+    names: ['search the internet setting', 'ask zood internet search', 'web search', 'internet search', 'البحث في الانترنت', 'البحث في النت'],
+    desktop: true,
+  },
+  {
     id: 'bubble',
     section: 'ai',
     label: 'ask.settings.bubble',
@@ -1040,6 +1049,8 @@ export async function settingNow(entry: SettingEntry, setters: SettingSetters): 
       return readAskPreferences().oneTap;
     case 'doForMe':
       return readAskPreferences().doForMe ? 'on' : 'off';
+    case 'askWeb':
+      return readAskPreferences().web ? 'on' : 'off';
     case 'bubble': {
       const presence = await presenceSettings();
       return presence ? (presence.bubble ? 'on' : 'off') : null;
@@ -1120,6 +1131,9 @@ export async function applySetting(entry: SettingEntry, value: string, setters: 
       return true;
     case 'doForMe':
       writeAskPreferences({ ...readAskPreferences(), doForMe: on });
+      return true;
+    case 'askWeb':
+      writeAskPreferences({ ...readAskPreferences(), web: on });
       return true;
     case 'bubble':
       return (await configurePresence({ bubble: on })) !== null;

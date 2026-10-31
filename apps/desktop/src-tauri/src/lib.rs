@@ -623,6 +623,8 @@ pub fn run() {
             ask::ask_paste,
             ask::ask_shortcut,
             ask::deck::ask_save_deck,
+            ask::web::ask_web_search,
+            ask::web::ask_web_read,
             ask::ask_copy,
             ask::ask_undo,
             ask::ask_window_png,

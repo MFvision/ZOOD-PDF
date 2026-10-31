@@ -418,6 +418,73 @@ html.ask-point-page body {
   font-size: 14px;
 }
 
+/* An answer from the web: its table, and links shown by their site's name. */
+.ask-answer {
+  white-space: normal;
+}
+
+.ask-answer > p {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.ask-answer > p:last-child {
+  margin-block-end: 0;
+}
+
+.ask-table-wrap {
+  margin-block-end: 8px;
+  overflow-x: auto;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 10px;
+}
+
+.ask-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ask-table th,
+.ask-table td {
+  padding: 6px 10px;
+  border-block-end: 1px solid rgb(255 255 255 / 8%);
+  text-align: start;
+  vertical-align: top;
+}
+
+.ask-table th {
+  color: var(--ask-ink);
+  background: rgb(174 139 102 / 22%);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ask-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.ask-table tbody tr:nth-child(even) td {
+  background: rgb(255 255 255 / 4%);
+}
+
+.ask-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  color: #e6cfb1;
+  background: none;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ask-link:hover,
+.ask-link:focus-visible {
+  color: var(--ask-ink);
+}
+
 /* A double tap away from a conversation: what Ask ZOOD can do here. */
 .ask-idea-list {
   display: flex;

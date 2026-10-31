@@ -46,7 +46,7 @@ import { resetEditPdf } from '../edit/editPdf';
 import { canRedo as canRedoStack, canUndo as canUndoStack, isFileEntry, redo as redoStack, snapshotsIn, undo as undoStack } from '../edit/editStack';
 import type { EditEntry, StackStep } from '../edit/editStack';
 import type { TKey } from '../i18n/messages';
-import { appReducer, createInitialState, warraqOwnsDocument } from './appReducer';
+import { appReducer, createInitialState, hasUnsavedEdits, warraqOwnsDocument } from './appReducer';
 import type { AppAction, AppState } from './appReducer';
 import { readJson, readPreferences, writePreferences } from './preferences';
 import { changesUnderWay } from './underWay';
@@ -61,7 +61,7 @@ import { zipSync } from 'fflate';
 import { findTool } from '../tools/tools';
 import { keepPolicy, mentionsSignature } from '../signatures/marker';
 import type { OcrLanguage } from '../ocr/engine';
-import { recognizeFile } from '../ocr/run';
+import { PLAIN_READING, recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope, ReadOptions } from '../ocr/run';
 import { runSelfCheck } from '../ocr/selfCheck';
 import { requestPage } from '../home/pendingPage';
@@ -80,6 +80,10 @@ export interface OcrOutcome {
   /** Pages whose scan was replaced by the cleaned-up one, and pages that kept theirs. */
   images?: number;
   imagesKept?: number;
+  /** Pages it read, words found or not. */
+  tried?: number;
+  /** Stopped before the last page. */
+  stopped?: boolean;
 }
 
 /** How much Compress may trade: `imageDpi` downsamples images (lossy); absent keeps them. */
@@ -146,7 +150,15 @@ export interface OpenOptions {
   recent?: boolean;
   /** The parked tab this file is (`tabs.ts`): going back to it, not opening a new one. */
   tab?: number;
+  /**
+   * A file made here and not saved anywhere yet (Create, Combine, Compress'
+   * "Open it here"): its tab shows unsaved changes, and closing it asks first.
+   */
+  unsaved?: boolean;
 }
+
+/** What the person chose when a tab with unsaved changes was about to close. */
+export type CloseAnswer = 'save' | 'discard' | 'cancel';
 
 /**
  * Where Save writes instead of this device, while something claims it: a
@@ -205,9 +217,18 @@ export interface AppServices {
   /** A tool has claimed the window's drops. */
   dropClaimed: boolean;
   /** Opens the first PDF in a drop or picker selection. */
-  openFiles: (files: ArrayLike<File>) => Promise<void>;
-  /** Closes the live tab: the next one shows, or the home screen when it was the last. */
+  openFiles: (files: ArrayLike<File>, options?: OpenOptions) => Promise<void>;
+  /** Closes the live tab: the next one shows, or the home screen when it was the last. Unsaved changes are asked about first. */
   closeDocument: () => void;
+  /**
+   * The live document has changes not saved yet: Warraq's edits, EmbedPDF's
+   * (a drawing, a filled field, a comment), or it was made here and never saved.
+   */
+  liveEdited: boolean;
+  /** A tab with unsaved changes about to close: the question on screen, or null. */
+  closeQuestion: { key: number; name: string } | null;
+  /** The answer to `closeQuestion`. */
+  answerClose: (answer: CloseAnswer) => void;
   /** The documents open, in order (`tabs.ts`); the live one has no parked file. */
   tabs: readonly DocTab<SaveTarget>[];
   activeTab: number | null;
@@ -235,6 +256,8 @@ export interface AppServices {
   embedRegistry: PluginRegistry | null;
   /** Called by the EmbedPDF view each time it has opened a file, with the bytes it opened. */
   embedOpened: (bytes?: ArrayBuffer) => void;
+  /** Called by the EmbedPDF view when it could not open a file: `firstOpen` when the file had just come on screen. */
+  viewFailed: (firstOpen: boolean) => void;
   /** Runs one of the EmbedPDF viewer's registered commands (ADR-0007). */
   runEmbedCommand: (command: string) => void;
   /**
@@ -315,7 +338,7 @@ export interface AppServices {
   /** Back to the layer visibility the file has itself. */
   resetLayers: () => Promise<void>;
   /** Combine files: one new file of every page of `files`, in order, opened in place of the current one. */
-  combineFiles: (files: readonly CombineInput[]) => Promise<void>;
+  combineFiles: (files: readonly CombineInput[], word?: string) => Promise<void>;
   /** Compress: a smaller copy of the file as it stands now; the open one is not changed. */
   compressFile: (options: CompressChoice) => Promise<CompressResult>;
   /** Saves bytes as a new PDF beside the open one (the native panel on desktop). */
@@ -444,6 +467,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const embedRef = useRef<PluginRegistry | null>(null);
   const [embed, setEmbed] = useState<PluginRegistry | null>(null);
   const [embedHistory, setEmbedHistory] = useState({ canUndo: false, canRedo: false });
+  // EmbedPDF's changes to the file on screen since it opened or was saved:
+  // each change to its history counts (a drawing, a field filled, an undo),
+  // the count starts again for each file it opens, and Save marks where it
+  // stood. A drawing used to be lost without a word when its tab was closed
+  // (First Five, Rami, 2026-10-31).
+  const embedEditsRef = useRef({ made: 0, saved: 0 });
+  const [embedDirty, setEmbedDirty] = useState(false);
+  const noteEmbedEdits = useCallback((next: { made: number; saved: number }) => {
+    embedEditsRef.current = next;
+    setEmbedDirty(next.made !== next.saved);
+  }, []);
   const [pendingRedactions, setPendingRedactions] = useState(0);
   // Layers shown by choice (the Layers pane): the view draws a copy whose
   // default configuration shows them, and the file keeps its own until the
@@ -619,7 +653,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       openSequence.current += 1;
       const sequence = openSequence.current;
-      dispatch({ type: 'DOCUMENT_LOADING', name: file.name });
+      dispatch({ type: 'DOCUMENT_LOADING', name: file.name, keepError: switching !== undefined });
       try {
         // The live document, as it is now, for its tab while another shows.
         const leaving = documentRef.current ? tabsRef.current.find((tab) => tab.key === activeTabRef.current) : undefined;
@@ -633,7 +667,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ...leaving,
               parked: keepNativePath(new File([kept], leaving.name, { type: 'application/pdf' }), leaving.path),
               page: stateRef.current.currentPage,
-              edited: leaving.edited || edit.revision !== edit.savedRevision,
+              edited: leaving.edited || edit.revision !== edit.savedRevision || embedEditsRef.current.made !== embedEditsRef.current.saved,
               save: saveTarget.current,
             };
           }
@@ -670,7 +704,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             parked: null,
             password,
             page: 1,
-            edited: false,
+            edited: options?.unsaved === true,
             save: null,
           });
           setSaveTarget(null);
@@ -686,6 +720,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         forgetLayerView();
         dispatch({
           type: 'DOCUMENT_OPENED',
+          keepError: switching !== undefined,
           document: {
             id: opened.id,
             name: file.name,
@@ -713,7 +748,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           dispatch({ type: 'PASSWORD_NEEDED', name: file.name, wrong: password !== undefined });
           return;
         }
-        dispatch({ type: 'DOCUMENT_FAILED', error: errorKeyFor(err) });
+        // Which file, and what to do: "Could not open the file" stayed on
+        // screen through later steps and read as if they had failed (First Five, Rami).
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'error.openNamed', name: file.name });
       }
     },
     [client, forgetLayerView, commitTabs, setSaveTarget, startCreate],
@@ -733,10 +770,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openFiles = useCallback(
-    async (files: ArrayLike<File>) => {
+    async (files: ArrayLike<File>, options?: OpenOptions) => {
       const list = Array.from(files);
       const pdf = list.find(isPdfFile) ?? list[0];
-      if (pdf) await openFile(pdf);
+      if (pdf) await openFile(pdf, undefined, options);
     },
     [openFile],
   );
@@ -807,7 +844,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [openFile],
   );
 
-  const closeTab = useCallback(
+  const closeTabNow = useCallback(
     (key: number) => {
       const list = tabsRef.current;
       if (key !== activeTabRef.current) {
@@ -831,15 +868,93 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [commitTabs, openFile, releaseDocument],
   );
 
+  // Closing a tab with work not saved asks first: Save, Close without saving,
+  // or Cancel. Before, the tab simply went, and a drawing or a file just made
+  // from Excel with it (First Five, Rami, 2026-10-31).
+  const [closeQuestion, setCloseQuestion] = useState<{ key: number; name: string } | null>(null);
+  const closeAnswerRef = useRef<((answer: CloseAnswer) => void) | null>(null);
+  const answerClose = useCallback((answer: CloseAnswer) => {
+    const settle = closeAnswerRef.current;
+    closeAnswerRef.current = null;
+    setCloseQuestion(null);
+    settle?.(answer);
+  }, []);
+  /** Save, as the toolbar runs it; set once `save` exists further down. True once the file was written. */
+  const saveForClose = useRef<() => Promise<boolean>>(async () => false);
+  const closingRef = useRef(false);
+  const closeTab = useCallback(
+    async (key: number) => {
+      if (closingRef.current) return;
+      const tab = tabsRef.current.find((one) => one.key === key);
+      if (!tab) return;
+      const live = key === activeTabRef.current;
+      const editsLive = () =>
+        documentRef.current !== null &&
+        (hasUnsavedEdits(stateRef.current) || embedEditsRef.current.made !== embedEditsRef.current.saved);
+      if (!(tab.edited || (live && editsLive()))) {
+        closeTabNow(key);
+        return;
+      }
+      closingRef.current = true;
+      try {
+        // A tab in the background comes on screen first: the question is about
+        // the document the person can see, and Save saves that one.
+        if (!live) {
+          if (!tab.parked) return;
+          await openFile(tab.parked, tab.password, { recent: false, tab: key });
+          if (activeTabRef.current !== key) return;
+        }
+        dispatch({ type: 'SHOW_HOME', shown: false });
+        const answer = await new Promise<CloseAnswer>((resolve) => {
+          closeAnswerRef.current?.('cancel');
+          closeAnswerRef.current = resolve;
+          setCloseQuestion({ key, name: tab.name });
+        });
+        if (answer === 'cancel') return;
+        if (answer === 'save' && !(await saveForClose.current())) return;
+        if (activeTabRef.current === key) closeTabNow(key);
+      } finally {
+        closingRef.current = false;
+      }
+    },
+    [closeTabNow, openFile],
+  );
+
   const closeDocument = useCallback(() => {
     const live = activeTabRef.current;
     if (live !== null) {
-      closeTab(live);
+      void closeTab(live);
       return;
     }
     releaseDocument();
     dispatch({ type: 'DOCUMENT_CLOSED' });
   }, [closeTab, releaseDocument]);
+
+  // The view could not draw a file the core opened (cut short by a download,
+  // damaged): its tab goes, with a message that names it and says what to do,
+  // and it leaves the recent files. Before, a tab stayed open on PDFium's
+  // "FPDF_LoadMemDocument failed / Error Code: 3", and the file was listed
+  // under Recent as a blank card (First Five, Rami, 2026-10-31). New bytes
+  // of a file already on screen (an edit) keep their tab: the work is there.
+  const viewFailed = useCallback(
+    (firstOpen: boolean) => {
+      const name = stateRef.current.document?.name;
+      if (!firstOpen || !name) {
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'error.open' });
+        return;
+      }
+      forgetRecentPath(name);
+      setRecent(removeStoredRecent(name));
+      const live = activeTabRef.current;
+      if (live !== null) closeTabNow(live);
+      else {
+        releaseDocument();
+        dispatch({ type: 'DOCUMENT_CLOSED' });
+      }
+      dispatch({ type: 'DOCUMENT_FAILED', error: 'error.damaged', name });
+    },
+    [closeTabNow, releaseDocument],
+  );
 
   /**
    * A browser opens the hidden `<input type="file">`; the desktop webview
@@ -957,8 +1072,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!warraqOwnsDocument(stateRef.current)) dispatch({ type: 'SET_CURRENT_PAGE', page });
       },
       onHistory: setEmbedHistory,
+      onChange: () => noteEmbedEdits({ ...embedEditsRef.current, made: embedEditsRef.current.made + 1 }),
+      onDocument: () => noteEmbedEdits({ made: 0, saved: 0 }),
     });
-  }, [embed]);
+  }, [embed, noteEmbedEdits]);
 
   useEffect(() => {
     if (embed) setKeyboard(embed, !warraqOwns, disabledCategories(isTauriHost()));
@@ -1603,7 +1720,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!target?.parked) {
           // Onto "+": the pages as a document of their own, in a new tab.
           const name = extractedFileName(from.name, pages.map((page) => page + 1));
-          await openFile(new File([extracted], name, { type: 'application/pdf' }), undefined, { recent: false });
+          await openFile(new File([extracted], name, { type: 'application/pdf' }), undefined, { recent: false, unsaved: true });
           return;
         }
         const own = await target.parked.arrayBuffer();
@@ -1645,7 +1762,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [currentFileBytes, bytesFromEmbed, keepOwnBytes, withOwnLayers]);
 
   const combineFiles = useCallback(
-    async (files: readonly CombineInput[]) => {
+    async (files: readonly CombineInput[], word?: string) => {
       if (files.length < 2) return;
       try {
         // Copies: the core takes the buffers over, and the list keeps its own.
@@ -1657,7 +1774,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const bytes = blobs[0];
         if (!bytes || result.pageCount < 1) throw new Error('E_EDIT: nothing combined');
         dispatch({ type: 'SET_ACTIVE_TOOL', tool: null });
-        await openFile(new File([bytes], combinedFileName(files.map((file) => file.name)), { type: 'application/pdf' }));
+        await openFile(new File([bytes], combinedFileName(files.map((file) => file.name), word), { type: 'application/pdf' }), undefined, { unsaved: true });
       } catch {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'combine.failed' });
       }
@@ -1776,11 +1893,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       signal?: AbortSignal,
       options?: ReadOptions,
     ): Promise<OcrOutcome> => {
+      // The file it reads, by when it was opened: if that file is closed or
+      // another tab is chosen while it reads, what it read goes nowhere. It
+      // used to land in whichever document was on screen by then (First
+      // Five, Rami, 2026-10-31): the scan's pages inside another file.
+      const sequence = openSequence.current;
       // The layer is an update of the file's own bytes, not of PDFium's
       // rewrite of them: a signature over them stays whole.
       const bytes = await fileBytesForChange();
       if (!bytes) throw new Error('E_NOT_FOUND: no open file');
-      const { bytes: read, ...outcome } = await recognizeFile(client, bytes, passwordRef.current, languages, scope, onProgress, signal, options);
+      const { bytes: read, ...outcome } = await recognizeFile(client, bytes, passwordRef.current, languages, scope, onProgress, signal, {
+        ...(options ?? PLAIN_READING),
+        keepOnStop: true,
+      });
+      if (sequence !== openSequence.current || !documentRef.current) throw new Error('E_DOCUMENT_GONE: the document it read was closed');
       if (outcome.pages > 0) await replaceCurrentFile(read);
       return outcome;
     },
@@ -1798,12 +1924,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const transformFile = useCallback(
     async <T,>(op: string, args: object, options: { font?: boolean } = {}): Promise<{ result: T; changed: boolean }> => {
+      const sequence = openSequence.current;
       const fromEmbed = warraqOwnsDocument(stateRef.current) ? null : await bytesFromEmbed();
       const bytes = fromEmbed ? await keepOwnBytes(fromEmbed) : await currentFileBytes();
       if (!bytes) throw new Error('E_NOT_FOUND: no open file');
       const blobs = [bytes];
       if (options.font) blobs.push((await loadEditFont('amiri')).slice().buffer);
       const { result, blobs: out } = await client.callStatic<T>(op, { password: passwordRef.current ?? null, ...args }, blobs);
+      // Never into another document than the one it changed (see `recognizeText`).
+      if (sequence !== openSequence.current || !documentRef.current) throw new Error('E_DOCUMENT_GONE: the document it changed was closed');
       const next = out[0];
       if (next) await replaceCurrentFile(next);
       return { result, changed: next !== undefined };
@@ -2012,6 +2141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /** The live tab's changes are saved: it shows as unchanged again. */
   const markLiveSaved = useCallback(() => {
+    noteEmbedEdits({ ...embedEditsRef.current, saved: embedEditsRef.current.made });
     const live = activeTabRef.current;
     if (tabsRef.current.some((tab) => tab.key === live && tab.edited)) {
       commitTabs(
@@ -2019,7 +2149,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         live,
       );
     }
-  }, [commitTabs]);
+  }, [commitTabs, noteEmbedEdits]);
 
   /**
    * After a save (Settings › History): the file as it was before goes to its
@@ -2034,29 +2164,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (tab !== null) void noteSaved(tab, bytes).catch(() => undefined);
   }, []);
 
+  /** Saves the live document; true once it was written (a cancelled save panel is not a failure, but not a save either). */
   const save = useCallback(
-    async (toDevice: boolean) => {
+    async (toDevice: boolean): Promise<boolean> => {
       const name = stateRef.current.document?.name;
-      if (!documentRef.current || !name) return;
+      if (!documentRef.current || !name) return false;
       try {
         const bytes = await bytesForSave();
-        if (!bytes) return;
+        if (!bytes) return false;
         const target = toDevice ? null : saveTarget.current;
         if (target) {
           const outcome = await target.save(bytes, name);
-          if (!outcome.saved) return;
+          if (!outcome.saved) return false;
           forgetRecentThumbnail(name);
           afterSave(bytes, name);
           dispatch({ type: 'DOCUMENT_SAVED' });
           markLiveSaved();
           dispatch({ type: 'TOAST', key: outcome.toast });
-          return;
+          return true;
         }
         if (isTauriHost()) {
           // The panel opens beside the file, not in the last folder used
           // (Downloads, on the owner's PC). Cancelling it is not a failure.
           const from = tabsRef.current.find((tab) => tab.key === activeTabRef.current)?.path;
-          if (!(await savePdfFile(bytes, besideFile(from, pdfFileName(name))))) return;
+          if (!(await savePdfFile(bytes, besideFile(from, pdfFileName(name))))) return false;
         } else {
           downloadPdf(bytes, name);
         }
@@ -2071,15 +2202,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
           markLiveSaved();
         }
         dispatch({ type: 'TOAST', key: 'file.saved' });
+        return true;
       } catch (error) {
         const tooLarge = String(error instanceof Error ? error.message : error).includes('E_SIGNED_TOO_LARGE');
         dispatch({ type: 'DOCUMENT_FAILED', error: tooLarge ? 'signatures.error.tooLarge' : 'file.saveFailed' });
+        return false;
       }
     },
     [bytesForSave, markLiveSaved, afterSave],
   );
-  const saveDocument = useCallback(() => save(false), [save]);
-  const saveToDevice = useCallback(() => save(true), [save]);
+  useEffect(() => {
+    saveForClose.current = () => save(false);
+  }, [save]);
+  const saveDocument = useCallback(async () => {
+    await save(false);
+  }, [save]);
+  const saveToDevice = useCallback(async () => {
+    await save(true);
+  }, [save]);
 
   const onFileInput = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files ? [...event.target.files] : [];
@@ -2093,6 +2233,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (purpose === 'create') startCreate(files);
     else void openFiles(files);
   };
+
+  const liveEdited =
+    document !== null && (hasUnsavedEdits(state) || embedDirty || tabs.some((tab) => tab.key === activeTab && tab.edited));
 
   const services = useMemo<AppServices>(
     () => ({
@@ -2115,6 +2258,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dropLabel,
       dropClaimed: dropLabel !== 'drop.overlay',
       closeDocument,
+      liveEdited,
+      closeQuestion,
+      answerClose,
       tabs,
       activeTab,
       activateTab,
@@ -2126,6 +2272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       attachEmbed,
       embedRegistry: embed,
       embedOpened,
+      viewFailed,
       runEmbedCommand,
       embedShowing,
       viewCommand,
@@ -2189,6 +2336,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       claimDrops,
       dropLabel,
       closeDocument,
+      liveEdited,
+      closeQuestion,
+      answerClose,
       tabs,
       activeTab,
       activateTab,
@@ -2200,6 +2350,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       attachEmbed,
       embed,
       embedOpened,
+      viewFailed,
       runEmbedCommand,
       embedShowing,
       viewCommand,

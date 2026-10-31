@@ -10,6 +10,15 @@ import { DEFAULT_CREATE_OPTIONS, createKind, createPdf } from './createPdf';
 import type { CreateKind, CreateOptions, CreateReport } from './createPdf';
 import { recognizeFile } from '../ocr/run';
 import { appCreateEnvironment } from './environment';
+
+/** "%PDF-" within a file's first kilobyte, as PDF readers accept it. */
+function startsLikePdf(head: Uint8Array): boolean {
+  const marker = [0x25, 0x50, 0x44, 0x46, 0x2d];
+  for (let at = 0; at + marker.length <= head.length; at += 1) {
+    if (marker.every((byte, k) => head[at + k] === byte)) return true;
+  }
+  return false;
+}
 import './create.css';
 
 interface Entry {
@@ -56,6 +65,9 @@ export function CreatePanel() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   // Files that are no kind Create reads, named so the person knows which.
   const [refused, setRefused] = useState<string[]>([]);
+  // PDFs among the files: already PDFs, they open in tabs of their own, and
+  // the panel says so. They were listed as "could not be read" (First Five, Rami).
+  const [opened, setOpened] = useState<string[]>([]);
   const nextKey = useRef(1);
   const busy = status.kind === 'working' || status.kind === 'reading';
 
@@ -63,12 +75,17 @@ export function CreatePanel() {
   const read = async (files: readonly { name: string; bytes: ArrayBuffer }[]): Promise<Entry[]> => {
     const added: Entry[] = [];
     const not: string[] = [];
+    const pdfs: { name: string; bytes: ArrayBuffer }[] = [];
     for (const file of files) {
+      const head = new Uint8Array(file.bytes, 0, Math.min(1024, file.bytes.byteLength));
       const kind = createKind(file.name, new Uint8Array(file.bytes));
       if (kind) added.push({ key: nextKey.current++, name: file.name, bytes: file.bytes, kind });
+      else if (startsLikePdf(head)) pdfs.push(file);
       else not.push(file.name);
     }
     setRefused(not);
+    setOpened(pdfs.map((file) => file.name));
+    for (const file of pdfs) await services.openFile(new File([file.bytes], file.name, { type: 'application/pdf' }));
     return added;
   };
 
@@ -96,7 +113,7 @@ export function CreatePanel() {
         }
       }
       setStatus({ kind: 'done', name: result.name, report: result.report, read });
-      await services.openFiles([new File([bytes], result.name, { type: 'application/pdf' })]);
+      await services.openFiles([new File([bytes], result.name, { type: 'application/pdf' })], { unsaved: true });
     } catch {
       setStatus({ kind: 'idle' });
       dispatch({ type: 'DOCUMENT_FAILED', error: 'create.failed' });
@@ -265,6 +282,11 @@ export function CreatePanel() {
               ? t('create.done', { name: status.name })
               : ''}
       </p>
+      {opened.length > 0 && (
+        <p className="tool-panel-note" role="status">
+          {t('create.alreadyPdf', { names: opened.join(lang === 'ar' ? '، ' : ', ') })}
+        </p>
+      )}
       {[...refused, ...(report?.unreadable ?? [])].length > 0 && (
         <p className="export-alert" role="alert">
           {t('create.unreadable', { names: [...new Set([...refused, ...(report?.unreadable ?? [])])].join(lang === 'ar' ? '، ' : ', ') })}

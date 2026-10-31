@@ -1,11 +1,13 @@
 import { Icon } from '../components/Icon';
 import { FormNotices } from '../forms/FormNotices';
+import { useFormRuntime } from '../forms/FormRuntime';
 import { WalletFill } from '../ai/profile/WalletFill';
 import { IconButton } from '../components/IconButton';
 import { useT } from '../i18n/useT';
 import { useAppState, useServices } from '../state/AppContext';
 import { warraqOwnsDocument } from '../state/appReducer';
 import type { ToolDefinition } from './tools';
+import { OpenFirst } from './OpenFirst';
 
 /**
  * The panel of a tool that EmbedPDF implements (ADR-0007): every button runs a
@@ -15,7 +17,11 @@ import type { ToolDefinition } from './tools';
 export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
   const t = useT();
   const state = useAppState();
-  const { runEmbedCommand } = useServices();
+  const { runEmbedCommand, documentPassword } = useServices();
+  // A file that opened with a password: Protect's one button also takes it
+  // off, which nothing said; it read "Set a password" (First Five, Rami).
+  const locked = tool.id === 'protect' && documentPassword !== undefined && documentPassword !== '';
+  const { model } = useFormRuntime();
   const ready =
     state.view === 'viewer' && state.document !== null && !warraqOwnsDocument(state) && state.switching === null;
 
@@ -25,13 +31,16 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
         <Icon of={tool.icon} />
         {t(tool.labelKey)}
       </h3>
-      {!ready && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {!ready && <OpenFirst />}
       {tool.id === 'fillSign' && <FormNotices />}
+      {tool.id === 'fillSign' && ready && model && model.fields.length === 0 && (
+        <p className="tool-panel-note" role="note">{t('tool.fillSign.noFields')}</p>
+      )}
       <div className="tool-actions">
         {(tool.actions ?? []).map((action) => (
           <IconButton
             key={action.command}
-            label={t(action.labelKey)}
+            label={t(locked && action.command === 'document:protect' ? 'action.changePassword' : action.labelKey)}
             icon={<Icon of={action.icon} />}
             showLabel
             disabled={!ready}
@@ -39,6 +48,7 @@ export function EmbedToolPanel({ tool }: { tool: ToolDefinition }) {
           />
         ))}
       </div>
+      {locked && ready && <p className="tool-panel-note">{t('tool.protect.removeNote')}</p>}
       {(tool.id === 'comment' || tool.id === 'fillSign') && (
         <p className="tool-panel-note">{t('tool.arabicDrawNote')}</p>
       )}

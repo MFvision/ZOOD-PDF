@@ -14,6 +14,7 @@ import { duplicateNames, proposalsOf, toCreate } from './formTypes';
 import type { DetectedPage, PageRect, Proposal, ProposalKind } from './formTypes';
 import { KIND_LABELS, ProposalOverlay } from './ProposalOverlay';
 import './forms.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 const KINDS: ProposalKind[] = ['text', 'checkbox', 'date', 'hijri', 'signature'];
 
@@ -124,7 +125,7 @@ export function PrepareFormPanel() {
         {tool && <Icon of={tool.icon} />}
         {t('tool.prepareForm')}
       </h3>
-      {!ready && <p className="tool-panel-note">{t('tool.openFirst')}</p>}
+      {!ready && <OpenFirst />}
       <FormNotices />
 
       <fieldset disabled={!ready || busy}>

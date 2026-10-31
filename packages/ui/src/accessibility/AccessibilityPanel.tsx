@@ -27,6 +27,7 @@ import { PagePicture } from './PagePicture';
 import { ROLES, automaticFixes, excerpt, moveBlock, readingNumbers, withPage, withRole } from './plan';
 import type { Check, CheckStatus, Figure, Plan, PlanAnswer, PlanBlock, Role } from './plan';
 import './accessibility.css';
+import { OpenFirst } from '../tools/OpenFirst';
 
 type Tab = 'check' | 'order' | 'alt';
 
@@ -211,7 +212,7 @@ function AccessibilityTools() {
         {t('tool.accessibility')}
       </h3>
       {state.document === null ? (
-        <p className="tool-panel-note">{t('tool.openFirst')}</p>
+        <OpenFirst />
       ) : (
         <>
           <p className="tool-panel-note">{t('access.intro')}</p>

@@ -24,6 +24,11 @@ export interface ReadOptions {
   cleanup: CleanupOptions;
   /** Put the cleaned-up (and straightened) page in place of the scan's own picture. */
   replaceImage: boolean;
+  /**
+   * "Stop after this page" keeps the pages read before it (Scan & OCR on the
+   * open file). Without it a stop leaves the file as it was (the batch).
+   */
+  keepOnStop?: boolean;
 }
 
 export const PLAIN_READING: ReadOptions = { cleanup: NO_CLEANUP, replaceImage: false };
@@ -255,6 +260,10 @@ export interface RecognizedFile {
   /** Pages whose scan was replaced by the cleaned-up one, and pages that kept theirs. */
   images: number;
   imagesKept: number;
+  /** Pages it read, words found or not: 0 when no page needed it. */
+  tried: number;
+  /** It was stopped before the last page. */
+  stopped: boolean;
 }
 
 /**
@@ -284,9 +293,12 @@ export async function recognizeFile(
   }
   const read = pages.filter((page) => page.words.length > 0);
   const confidence = read.length ? read.reduce((sum, page) => sum + page.confidence, 0) / read.length : 0;
-  const nothing = { bytes, pages: 0, words: 0, skipped: 0, images: 0, imagesKept: 0, confidence };
-  if (read.length === 0 || signal?.aborted) return nothing;
+  const stopped = signal?.aborted === true;
+  const nothing = { bytes, pages: 0, words: 0, skipped: 0, images: 0, imagesKept: 0, confidence, tried: pages.length, stopped };
+  // A stop used to throw away the pages already read and then say no page
+  // needed reading (First Five, Rami): "Stop after this page" keeps them.
+  if (read.length === 0 || (stopped && !options.keepOnStop)) return nothing;
   // `writeTextLayer` hands the core a copy: the file as it was is the answer when nothing was written.
   const written = await writeTextLayer(client, bytes, password, read);
-  return { ...written.report, bytes: written.bytes ?? bytes, confidence };
+  return { ...written.report, bytes: written.bytes ?? bytes, confidence, tried: pages.length, stopped };
 }

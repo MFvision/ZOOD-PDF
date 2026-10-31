@@ -3,16 +3,18 @@ import { buildDocx, readsRtl } from '../export/docx';
 import type { ExportParagraph } from '../export/paragraphs';
 import { DEFAULT_CREATE_OPTIONS, createPdf } from '../create/createPdf';
 import { appCreateEnvironment } from '../create/environment';
+import { answerXlsx } from './research';
 
 /**
  * An answer of Ask ZOOD kept as a file: "make it a PDF", "as a Word file".
  * The question is the title and the answer the body, laid out by ZOOD's own
  * writers (Create PDF's typesetter for a PDF, PDF → Word's writer for a
- * .docx), on this computer. A presentation is written by the deck lane
+ * .docx), on this computer; an Excel sheet is its table, or its lines
+ * (`research.ts`). A presentation is written by the deck lane
  * instead (`deck.ts`), from the answer.
  */
 
-export type AnswerFileKind = 'pdf' | 'docx';
+export type AnswerFileKind = 'pdf' | 'docx' | 'xlsx';
 
 /** The question as a title: one line, no question mark, at most 80 letters. */
 export function answerTitle(question: string, fallback: string): string {
@@ -56,6 +58,7 @@ export async function answerFile(
   answer: string,
   client: Pick<CoreClient, 'callStatic'>,
 ): Promise<Uint8Array> {
+  if (kind === 'xlsx') return answerXlsx(title, answer);
   if (kind === 'docx') {
     const paragraphs = answerParagraphs(title, answer);
     return buildDocx([{ number: 1, text: paragraphs.map((one) => one.text).join('\n'), paragraphs }]);

@@ -59,9 +59,13 @@ export function extractedFileName(name: string, pages: readonly number[]): strin
   return `${base} (${runs.join(', ')}).pdf`;
 }
 
-/** The name of a smaller copy: `report (compressed).pdf`, whatever the language. */
-export function compressedFileName(name: string): string {
-  return `${pdfFileName(name).replace(/\.pdf$/i, '')} (compressed).pdf`;
+/**
+ * The name of a smaller copy: `report (compressed).pdf`, `word` in the
+ * interface's language («تقرير (مضغوط).pdf»): an English word in an Arabic
+ * name read as "ressed) 2 +" once cut in a tab (First Five, 2026-10-31).
+ */
+export function compressedFileName(name: string, word = 'compressed'): string {
+  return `${pdfFileName(name).replace(/\.pdf$/i, '')} (${word}).pdf`;
 }
 
 /** The name of Compare's report on a file: `report (comparison).html`, whatever the language. */
@@ -69,10 +73,15 @@ export function comparisonFileName(name: string): string {
   return `${pdfFileName(name).replace(/\.pdf$/i, '')} (comparison).html`;
 }
 
-/** The name of a file made of several: the first one's, and how many more: `report + 2.pdf`. */
-export function combinedFileName(names: readonly string[]): string {
+/**
+ * The name of a file made of several: the first one's, and what it is, in the
+ * interface's language: `report (3 files combined).pdf`, «فاتورة (دمج 3 ملفات).pdf».
+ * The old `report + 2.pdf` showed as «فاتورة + pdf.2» in a right-to-left tab.
+ */
+export function combinedFileName(names: readonly string[], word?: string): string {
   const base = pdfFileName(names[0] ?? '').replace(/\.pdf$/i, '');
-  return names.length > 1 ? `${base} + ${names.length - 1}.pdf` : `${base}.pdf`;
+  if (names.length < 2) return `${base}.pdf`;
+  return `${base} (${word ?? `${names.length} files combined`}).pdf`;
 }
 
 /**

@@ -40,6 +40,7 @@ pub mod notch;
 pub mod reach;
 pub mod tap;
 pub mod tidy;
+pub mod web;
 pub mod words;
 
 use std::path::PathBuf;

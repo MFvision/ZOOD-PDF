@@ -3,6 +3,7 @@ import {
   Check,
   ClipboardPaste,
   Copy,
+  FileSpreadsheet,
   FileText,
   FileType,
   FolderInput,
@@ -86,9 +87,14 @@ import type { BookEntry, BookStep, Control, Intent } from './book';
 import { settingAsked, settingFirst, settingsPageAsked, settingWords, unknownSetting } from './settingsBook';
 import type { SettingAsk } from './settingsBook';
 import { answerFile, answerTitle } from './answerFile';
+import { AnswerText } from './AnswerText';
+import { PAGES_READ, cellText, markdownTable, researchAsked, researchMessages, researchQuery, sourceLines } from './research';
+import type { WebHit, WebPage } from './research';
+import { SAFE_CHARS_PER_TOKEN, contextTokensFor, materialTokensFor, replyTokensFor } from '../ai/device/context';
 import type { AnswerFileKind } from './answerFile';
 import { asksAGeneralQuestion, asksAboutWords, asksTheWorld, asksToReadOut } from './content';
 import { ASKS_FIRST, keysOf, shortcutAsked } from './shortcuts';
+import { namesIt, pickByWords, sayChoices } from './choices';
 import { DECK_LOOKS, DECK_SIZES, canvasMeasure, deckAsked, deckFile, deckGrammar, deckPrompt, deckRequest, deckTopic, drawBackground, readDeck } from './deck';
 import type { DeckLook } from './deck';
 import type { Shortcut } from './shortcuts';
@@ -215,6 +221,7 @@ type Phase =
   | { kind: 'reading' }
   | { kind: 'drafting'; app: string }
   | { kind: 'thinking'; words: string; screen: boolean }
+  | { kind: 'researching'; words: string; step: 'search' | 'read' | 'write'; count: number }
   | {
       kind: 'confirm';
       words: string;
@@ -535,6 +542,11 @@ function Island() {
         if (shouldTalk(prefs.talkBack, false)) void talk(result.say);
         return await place('', result.say, result.text, moment.app, documents.length > 0);
       }
+      // The ideas are said with the question, so someone listening can answer one.
+      if (shouldTalk(prefs.talkBack, false)) {
+        const language = languageOf(`${result.say} ${result.ideas.join(' ')}`);
+        void talk(sayChoices(result.say || translate(language, 'ask.ideas.question'), result.ideas, language));
+      }
       setPhase({ kind: 'ideas', draft: result });
     } catch (error) {
       request.current = null;
@@ -563,6 +575,76 @@ function Island() {
         x: -1,
         y: -1,
         text: '',
+      },
+    });
+  };
+
+  /**
+   * "Search the internet for…" (`research.ts`): the host searches and
+   * fetches the first pages as text (`ask/web.rs`), and the best model here
+   * writes the answer from them — a table with links for things to compare
+   * or buy, kept as an Excel sheet with one press.
+   */
+  const research = async (words: string, spoken: boolean) => {
+    const language = languageOf(words);
+    setPhase({ kind: 'researching', words, step: 'search', count: 0 });
+    let hits: WebHit[];
+    try {
+      hits = ((await invokeHost('ask_web_search', { query: researchQuery(words) })) as WebHit[]).slice(0, 8);
+    } catch (error) {
+      uiLog(`ask: web search failed: ${String(error)}`);
+      return sayOnly(words, translate(language, 'ask.web.offline'), spoken);
+    }
+    if (hits.length === 0) return sayOnly(words, translate(language, 'ask.web.nothing'), spoken);
+    setPhase({ kind: 'researching', words, step: 'read', count: Math.min(PAGES_READ, hits.length) });
+    const pages = await Promise.all(
+      hits.map((hit, k) =>
+        k < PAGES_READ ? (invokeHost('ask_web_read', { url: hit.url }) as Promise<WebPage>).catch(() => null) : Promise.resolve(null),
+      ),
+    );
+    setPhase({ kind: 'researching', words, step: 'write', count: hits.length });
+    const memory = await machineMemoryGiB();
+    const model = await writerFor(chosenBrain(readAskPreferences(), memory), memory);
+    const context = contextTokensFor(memory, false);
+    const room = Math.floor(materialTokensFor(context) * SAFE_CHARS_PER_TOKEN);
+    const today = new Date().toISOString().slice(0, 10);
+    asked += 1;
+    const id = `ask-${Date.now()}-${asked}-web`;
+    request.current = id;
+    const done = (await invokeHost('ask_think', {
+      request: {
+        id,
+        model: model.id,
+        messages: researchMessages(words, hits, pages, language, room, today),
+        maxTokens: replyTokensFor(context),
+        contextTokens: context,
+        screen: false,
+      },
+    })) as { text: string };
+    request.current = null;
+    const answer = done.text.trim();
+    if (!answer) return sayOnly(words, translate(language, 'ask.web.nothing'), spoken);
+    const say = translate(language, 'ask.web.found', { count: hits.length });
+    // A table is read as its choices, one by one; other answers whole.
+    const table = markdownTable(answer);
+    const items = table ? table.slice(1).map((row) => cellText(row[0] ?? '')).filter(Boolean) : [];
+    const heard = table
+      ? `${say} ${items.map((item, k) => `${k + 1}: ${item}.`).join(' ')}`
+      : `${say}\n${answer}`;
+    aloud(heard.slice(0, SPOKEN_MOST), spoken);
+    setPhase({
+      kind: 'said',
+      words,
+      decision: {
+        say,
+        act: 'answer',
+        tool: null,
+        query: '',
+        fields: [],
+        profile: '',
+        x: -1,
+        y: -1,
+        text: `${answer}\n\n${translate(language, 'ask.web.sources')}\n${sourceLines(hits)}`,
       },
     });
   };
@@ -600,7 +682,8 @@ function Island() {
       const outcome = readQuick(ranked);
       if (outcome.kind === 'model') return false;
       if (outcome.kind === 'choose') {
-        aloud(translate(language, 'ask.quick.choose'), spoken);
+        // The choices themselves are said, not only the question (`choices.ts`).
+        aloud(sayChoices(translate(language, 'ask.quick.choose'), outcome.keys.map((one) => optionLabel(one, language, toolName)), language), spoken);
         setPhase({ kind: 'choose', words, keys: outcome.keys, spoken });
         return true;
       }
@@ -663,7 +746,24 @@ function Island() {
   };
 
   /** A request, spoken or typed: decide, then do or show. */
-  const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false) => {
+  const respond = async (words: string, spoken: boolean, chosen?: QuickKey, past = false): Promise<void> => {
+    // The ideas a double tap offered were read out: "the second", «الأول» or an idea's words runs it.
+    if (!chosen && !past && phase.kind === 'ideas') {
+      const i = pickByWords(words, phase.draft.ideas);
+      if (i !== null) return respond(phase.draft.ideas[i]!, spoken);
+    }
+    // Choices were just read out: "the second", «الأول» or a choice's name answers them.
+    if (!chosen && !past && (phase.kind === 'choose' || phase.kind === 'pick')) {
+      const language = languageOf(phase.words);
+      if (phase.kind === 'choose') {
+        const i = pickByWords(words, phase.keys.map((key) => optionLabel(key, language, toolName)));
+        if (i !== null) return respond(phase.words, spoken, phase.keys[i]);
+      } else {
+        if (namesIt(words, translate(language, 'ask.pick.other'))) return respond(phase.words, spoken, undefined, true);
+        const i = pickByWords(words, phase.offers.map((offer) => offerName(offer, language)));
+        if (i !== null) return runPicked(phase.offers[i]!, phase.words, spoken);
+      }
+    }
     // A Sort window waiting for an answer (its Speak button, or it is in
     // front) takes the words: it says what it does itself (`sort/voice.ts`).
     if (!chosen && !past && (await sortVoice(words))) {
@@ -689,6 +789,8 @@ function Island() {
       // Another app's everyday command ("print", «اطبع», "new tab"): its own shortcut, no picture.
       const shortcut = named && !moment.ours ? shortcutAsked(words) : null;
       if (shortcut) return await shortcutLane(words, shortcut, spoken);
+      // "Search the internet for…": looked up on the web, read and written here.
+      if (!chosen && !past && prefs.web && researchAsked(words)) return await research(words, spoken);
       // "Make me a presentation": a few questions, then ZOOD writes the file itself.
       if (!chosen && !past && deckAsked(words)) return startDeck(words, spoken);
       // Another app's button by its name ("archive", "click Insert", «أرشف»), before ZOOD's own settings:
@@ -977,7 +1079,16 @@ function Island() {
     }
     const offers = fuzzyOffers(words, entries, true);
     if (offers.length === 0) return false;
-    aloud(translate(languageOf(words), 'ask.pick.title'), spoken);
+    const language = languageOf(words);
+    aloud(
+      sayChoices(
+        translate(language, 'ask.pick.title'),
+        offers.map((offer) => offerName(offer, language)),
+        language,
+        translate(language, 'ask.pick.other'),
+      ),
+      spoken,
+    );
     setPhase({ kind: 'pick', words, offers, spoken });
     return true;
   };
@@ -1523,7 +1634,11 @@ function Island() {
       const title = answerTitle(words, translate(language, 'ask.file.untitled'));
       const bytes = await answerFile(kind, title, answer, getSharedCoreClient());
       await saveDeck(bytes, title, kind);
-      const say = translate(language, kind === 'pdf' ? 'ask.file.donePdf' : 'ask.file.doneWord', { title });
+      const say = translate(
+        language,
+        kind === 'pdf' ? 'ask.file.donePdf' : kind === 'xlsx' ? 'ask.file.doneExcel' : 'ask.file.doneWord',
+        { title },
+      );
       aloud(say, false);
       setPhase({ kind: 'decked', words, say });
     } catch (error) {
@@ -1558,6 +1673,9 @@ function Island() {
       </button>
       <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => void keepAs('docx', words, answer)}>
         {making === 'docx' ? <Loader className="spin" /> : <FileType />} Word
+      </button>
+      <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => void keepAs('xlsx', words, answer)}>
+        {making === 'xlsx' ? <Loader className="spin" /> : <FileSpreadsheet />} Excel
       </button>
       <button type="button" className="ask-cancel" disabled={making !== null} onClick={() => deckFromAnswer(words, answer)}>
         <Presentation /> PowerPoint
@@ -1641,6 +1759,7 @@ function Island() {
     phase.kind === 'tidy' ||
     phase.kind === 'tidied' ||
     phase.kind === 'thinking' ||
+    phase.kind === 'researching' ||
     phase.kind === 'placed' ||
     phase.kind === 'deck' ||
     phase.kind === 'decked'
@@ -1650,6 +1769,7 @@ function Island() {
   const busy =
     phase.kind === 'hearing' ||
     phase.kind === 'thinking' ||
+    phase.kind === 'researching' ||
     (phase.kind === 'tidy' && phase.working) ||
     phase.kind === 'reading' ||
     phase.kind === 'drafting';
@@ -1728,6 +1848,8 @@ function Island() {
                 ? t('ask.hearing')
                 : phase.kind === 'thinking'
                   ? t(phase.screen ? 'ask.lookingAndThinking' : 'ask.thinking')
+                  : phase.kind === 'researching'
+                  ? t(`ask.web.${phase.step}`, { count: phase.count })
                   : phase.kind === 'reading'
                     ? t('ask.reading')
                     : phase.kind === 'drafting'
@@ -1887,9 +2009,7 @@ function Island() {
         )}
       {phase.kind === 'said' && phase.decision.text && (
         <div className="ask-plan">
-          <p className="ask-text" dir="auto">
-            {phase.decision.text}
-          </p>
+          <AnswerText text={phase.decision.text} />
           <div className="ask-actions">
             <button
               type="button"

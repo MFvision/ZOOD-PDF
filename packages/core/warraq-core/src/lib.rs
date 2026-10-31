@@ -18,6 +18,43 @@ pub use tools::{call_static, Reply};
 /// Whether an address is one a link may open (`http`, `https`, `mailto`).
 pub use warraq_pdf::{allowed_uri, safe_uri};
 
+/// The size a substitute face is drawn at so the paragraph's own words take
+/// the width they took before. Drawn at the original's size, a substitute can
+/// be much larger than the face it stands in for (Cairo's Arabic beside
+/// Arial's): a one-letter typo fix came back bigger and heavier, with its
+/// lines touching (First Five, 2026-10-31). Never larger than the original
+/// size, and never below three quarters of it.
+pub(crate) fn size_matching_width(
+    font: &[u8],
+    lines: &[&TextLine],
+    size: f32,
+    direction: warraq_text::Direction,
+) -> f32 {
+    let Ok(shaper) = warraq_text::Shaper::new(font) else {
+        return size;
+    };
+    let (mut was, mut now) = (0.0f32, 0.0f32);
+    for line in lines {
+        if line.turned.is_some() || line.text.trim().is_empty() || line.width <= 0.0 {
+            continue;
+        }
+        let advance: f32 = shaper
+            .shape_run(&line.text, direction)
+            .iter()
+            .map(|glyph| glyph.x_advance)
+            .sum();
+        if advance <= 0.0 {
+            continue;
+        }
+        was += line.width;
+        now += advance / 1000.0 * size;
+    }
+    if !(was > 0.0 && now > 0.0) {
+        return size;
+    }
+    size * (was / now).clamp(0.75, 1.0)
+}
+
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
@@ -532,12 +569,14 @@ impl Document {
             .first()
             .map(|face| face.weight);
         let synthetic_bold = was_bold && drawn_weight.is_some_and(|weight| weight < 600);
+        let para_lines: Vec<&TextLine> = para.lines.iter().filter_map(|&i| lines.get(i)).collect();
+        let drawn_size = size_matching_width(font, &para_lines, size, para.direction);
         let edit = warraq_pdf::ops::ParagraphEdit {
             rect,
             first_baseline: page_height - (first.y + size),
             text: new_text,
             font,
-            font_size: size,
+            font_size: drawn_size,
             leading: para.leading.max(size * 1.15),
             direction: para.direction,
             alignment: para.alignment,
@@ -787,6 +826,71 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cairo() -> Vec<u8> {
+        std::fs::read(format!(
+            "{}/../../../tests/fonts/Cairo-Variable.ttf",
+            env!("CARGO_MANIFEST_DIR")
+        ))
+        .unwrap()
+    }
+
+    fn line(text: &str, width: f32) -> TextLine {
+        TextLine {
+            text: text.into(),
+            x: 0.0,
+            y: 0.0,
+            width,
+            height: 12.0,
+            direction: warraq_text::Direction::Rtl,
+            spans: vec![],
+            turned: None,
+        }
+    }
+
+    #[test]
+    fn a_substitute_face_takes_the_width_the_paragraph_took() {
+        let font = cairo();
+        let text = "نطمح أن يكون الدليل مفيد ويساعدكم على التفكير بشكل مختلف";
+        let shaper = warraq_text::Shaper::new(&font).unwrap();
+        let natural: f32 = shaper
+            .shape_run(text, warraq_text::Direction::Rtl)
+            .iter()
+            .map(|g| g.x_advance)
+            .sum::<f32>()
+            / 1000.0
+            * 10.0;
+        // The original face set the words in 85% of Cairo's width: Cairo comes down to match.
+        let narrower = line(text, natural * 0.85);
+        let size = size_matching_width(&font, &[&narrower], 10.0, warraq_text::Direction::Rtl);
+        assert!((size - 8.5).abs() < 0.05, "{size}");
+        // Never larger than the original size, never below three quarters of it.
+        let wider = line(text, natural * 1.3);
+        assert_eq!(
+            size_matching_width(&font, &[&wider], 10.0, warraq_text::Direction::Rtl),
+            10.0
+        );
+        let tiny = line(text, natural * 0.3);
+        assert_eq!(
+            size_matching_width(&font, &[&tiny], 10.0, warraq_text::Direction::Rtl),
+            7.5
+        );
+        // Nothing to measure: the size as it was.
+        assert_eq!(
+            size_matching_width(&font, &[], 10.0, warraq_text::Direction::Rtl),
+            10.0
+        );
+        assert_eq!(
+            size_matching_width(
+                b"not a font",
+                &[&narrower],
+                10.0,
+                warraq_text::Direction::Rtl
+            ),
+            10.0
+        );
+    }
+
     fn corpus(name: &str) -> Vec<u8> {
         std::fs::read(format!(
             "{}/../../../tests/corpus/arabic/generated/{name}",
