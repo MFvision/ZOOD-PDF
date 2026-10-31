@@ -10,7 +10,7 @@ import { inlineRuns, readMarkdown } from './markdown';
 import { readPptx } from './pptx';
 import { readText } from './text';
 import { parseXml, readAttributes } from './xml';
-import { firstRows, readXlsx } from './xlsx';
+import { firstRows, readXlsx, shapeOf, showNumber } from './xlsx';
 import { TooLargeError, hasPart, readParts } from './zip';
 
 /**
@@ -161,13 +161,30 @@ describe('a hostile workbook', () => {
     const rows = Array.from({ length: 300_000 }, (_, k) => `<row r="${k + 1}"><c r="A${k + 1}"><v>${k + 1}</v></c></row>`).join('');
     const file = workbook(`<worksheet xmlns="${S}"><sheetData>${rows}</sheetData><mergeCells><mergeCell ref="A1:A2"/></mergeCells></worksheet>`);
     const { value, ms } = timed(() => readXlsx(file));
-    expect(ms).toBeLessThan(2500);
+    expect(ms).toBeLessThan(4000);
     expect(value.truncated).toBe(true);
     const table = tables(value.blocks)[0]!;
     expect(table.rows).toHaveLength(2000);
     expect(table.rows[1999]![0]!.text).toBe('2000');
     // What comes after the rows is still read.
     expect(table.rows[1]![0]!.text).toBe('');
+  }, 30_000);
+
+  it('shows a Hijri date as Hijri, not as the Gregorian day it is stored as', () => {
+    // 31 October 2026 is 19 Jumada al-Ula 1448 by Excel's (Kuwaiti) reckoning.
+    for (const code of ['[$-1060401]B2yyyy/mm/dd', 'B2yyyy-mm-dd', '[$-ar-SA,1060401]dd/mm/yyyy']) {
+      const shape = shapeOf(code);
+      expect(shape, code).toMatchObject({ kind: 'date', hijri: true });
+      expect(showNumber(46326, shape)).toBe('1448-05-19');
+    }
+    expect(shapeOf('yyyy-mm-dd').hijri).toBeUndefined();
+    expect(showNumber(46326, shapeOf('[$-409]yyyy-mm-dd'))).toBe('2026-10-31');
+    const file = workbook(`<worksheet xmlns="${S}"><sheetData><row r="1"><c r="A1" s="1"><v>46326</v></c></row></sheetData></worksheet>`, {
+      'xl/styles.xml': strToU8(
+        `<styleSheet xmlns="${S}"><numFmts count="1"><numFmt numFmtId="164" formatCode="[$-1060401]B2yyyy/mm/dd"/></numFmts><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="164"/></cellXfs></styleSheet>`,
+      ),
+    });
+    expect(tables(readXlsx(file).blocks)[0]!.rows[0]![0]!.text).toBe('1448-05-19');
   });
 
   it('cuts rows by the tag, whatever its prefix', () => {

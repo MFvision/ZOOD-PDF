@@ -70,6 +70,8 @@ interface NumberShape {
   grouped: boolean;
   /** Dates: with a time of day, or only one. */
   time?: 'with' | 'only';
+  /** Dates in the Hijri calendar: Excel's `B2` prefix, or a `[$-…]` locale whose calendar is 06. */
+  hijri?: boolean;
   /** Text the format puts before and after the number: a currency ("SR", "€"), a unit. */
   prefix?: string;
   suffix?: string;
@@ -152,7 +154,15 @@ export function shapeOf(code: string | undefined): NumberShape {
   if (/[ymdhs]/i.test(bare) && !/[0#?]/.test(bare.replace(/[ymdhs:./\- ]/gi, ''))) {
     const hasDate = /[yd]/i.test(bare) || /m{3,}/i.test(bare);
     const hasTime = /[hs]/i.test(bare);
-    return { kind: 'date', decimals: 0, grouped: false, time: hasTime ? (hasDate ? 'with' : 'only') : undefined };
+    const locale = /\[\$[^\]]*?([0-9a-f]{6,8})\]/i.exec(first)?.[1] ?? '';
+    const hijri = /^B2/i.test(bare.trim()) || (locale.length >= 6 && parseInt(locale.slice(-6, -4), 16) === 6);
+    return {
+      kind: 'date',
+      decimals: 0,
+      grouped: false,
+      time: hasTime ? (hasDate ? 'with' : 'only') : undefined,
+      ...(hijri && hasDate ? { hijri: true } : {}),
+    };
   }
   const decimals = (/\.([0#?]+)/.exec(bare)?.[1] ?? '').length;
   const grouped = /[0#?],[0#?]/.test(bare);
@@ -166,15 +176,34 @@ export function shapeOf(code: string | undefined): NumberShape {
   };
 }
 
-/** A serial day number (Excel's, 1900 or 1904 based) as an ISO date and time. */
-export function excelDate(serial: number, from1904: boolean, time?: 'with' | 'only'): string {
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const isoDate = (d: Date) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+
+/**
+ * A day in the Hijri calendar as Excel's Hijri formats show it, by the
+ * tabular (Kuwaiti) reckoning Excel uses: `1448-05-19`. Null where this
+ * browser has no Hijri calendar.
+ */
+export function hijriDate(d: Date): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-civil-nu-latn', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).formatToParts(d);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value;
+    const [year, month, day] = [part('year'), part('month'), part('day')];
+    return year && month && day ? `${year}-${month}-${day}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A serial day number (Excel's, 1900 or 1904 based) as an ISO date and time; `hijri`, in the Hijri calendar. */
+export function excelDate(serial: number, from1904: boolean, time?: 'with' | 'only', hijri = false): string {
   // 1900's day 60 is Excel's own 29 February 1900, which never was.
   const days = from1904 ? serial + 1462 : serial < 60 ? serial + 1 : serial;
   const ms = Math.round((days - 25569) * 86_400_000);
   const d = new Date(ms);
   if (!Number.isFinite(d.getTime())) return String(serial);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const date = hijri ? (hijriDate(d) ?? isoDate(d)) : isoDate(d);
   const clock = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}${d.getUTCSeconds() ? `:${pad(d.getUTCSeconds())}` : ''}`;
   if (time === 'only') return clock;
   return time === 'with' ? `${date} ${clock}` : date;
@@ -185,7 +214,7 @@ export function showNumber(value: number, shape: NumberShape, from1904 = false):
   if (!Number.isFinite(value)) return String(value);
   switch (shape.kind) {
     case 'date':
-      return excelDate(value, from1904, shape.time);
+      return excelDate(value, from1904, shape.time, shape.hijri === true);
     case 'percent':
       return `${showNumber(value * 100, { ...shape, kind: 'number', prefix: undefined, suffix: undefined })}%`;
     case 'number': {
