@@ -861,15 +861,19 @@ export function onNativeMenu(onItem: (id: string) => void): () => void {
  * user cancels, which is not an error and must not be reported as a failed
  * save.
  *
- * Header values are ASCII, so the path is percent-encoded — `write_file`
- * percent-decodes it, which is what keeps an Arabic filename intact.
+ * The write is the host's `save_file` (`apps/desktop/src-tauri/src/save.rs`),
+ * not the file system plugin's `write_file`: it writes beside the file and
+ * renames over it, so a full disk or a crash halfway never leaves the
+ * person's file cut short. Header values are ASCII, so the path is
+ * percent-encoded — the host percent-decodes it, which is what keeps an
+ * Arabic filename intact.
  */
 export async function saveFileAs(bytes: Uint8Array, suggestedName: string, filter: FileFilter): Promise<boolean> {
   const path = await invoke('plugin:dialog|save', {
     options: { defaultPath: suggestedName, filters: [filter] },
   });
   if (typeof path !== 'string') return false;
-  await invoke('plugin:fs|write_file', bytes, { headers: { path: encodeURIComponent(path) } });
+  await invoke('save_file', bytes, { headers: { 'x-warraq-path': encodeURIComponent(path) } });
   return true;
 }
 

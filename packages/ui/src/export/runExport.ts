@@ -45,6 +45,13 @@ export interface ExportRequest {
   pagesWord: string;
   /** After each page: how many are done, of how many. */
   onProgress?: (done: number, total: number) => void;
+  /**
+   * Stops the export between pages: the panel was left, the document closed,
+   * or Stop pressed. A 1,300-page Word export ran on for many minutes after its
+   * document was closed, and leaving and coming back to Export let a second,
+   * third and fourth start beside it (break-zood, files-ui).
+   */
+  signal?: AbortSignal;
 }
 
 export interface ExportResult {
@@ -84,11 +91,21 @@ export async function exportCurrentFile(
   request: ExportRequest,
   password: string | undefined = source.documentPassword,
 ): Promise<ExportResult | null> {
+  const { signal } = request;
+  signal?.throwIfAborted();
   const bytes = await source.currentFileBytes();
   if (!bytes) throw new Error('E_NO_FILE: there is no file to export');
+  signal?.throwIfAborted();
   const doc = await source.client.open(bytes, password);
   try {
-    return await exportDocument(doc, request);
+    // Every format reports each page done: that is where a stop is heard.
+    const onProgress = (done: number, total: number) => {
+      signal?.throwIfAborted();
+      request.onProgress?.(done, total);
+    };
+    const result = await exportDocument(doc, { ...request, onProgress });
+    signal?.throwIfAborted();
+    return result;
   } finally {
     await doc.free().catch(() => undefined);
   }

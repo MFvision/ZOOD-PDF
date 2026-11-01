@@ -47,6 +47,11 @@ describe('the quick lane', () => {
     expect(readQuick([{ key: 'nonsense', p: 1 }])).toEqual({ kind: 'model' });
     expect(readQuick([])).toEqual({ kind: 'model' });
     expect(CERTAIN).toBeGreaterThan(SURE);
+    // Keys every object has, and a ranking of the wrong shape, are never a tool to run.
+    expect(readQuick([{ key: 'constructor', p: 1 }])).toEqual({ kind: 'model' });
+    expect(readQuick([{ key: { toString: 1 } as unknown as string, p: 1 }])).toEqual({ kind: 'model' });
+    expect(readQuick([{ key: 'compress', p: Number.NaN }])).toEqual({ kind: 'model' });
+    expect(readQuick([{ key: 'protect', p: 0.4 }, { key: 'toString', p: 0.3 }])).toEqual({ kind: 'act', key: 'protect', p: 0.4 });
   });
 
   it('a tool needs selected files, and replies in the language asked', () => {

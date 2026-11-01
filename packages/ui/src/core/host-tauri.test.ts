@@ -281,37 +281,37 @@ describe('native file dialogs', () => {
   it('writes through the save panel, with the path percent-encoded in a header', async () => {
     const calls = fakeHost({
       'plugin:dialog|save': '/Users/me/تقرير.pdf',
-      'plugin:fs|write_file': null,
+      save_file: null,
     });
     const bytes = new Uint8Array([1, 2, 3]);
     expect(await savePdfFile(bytes, 'تقرير.pdf')).toBe(true);
     expect(calls.find((c) => c.cmd === 'plugin:dialog|save')?.args).toEqual({
       options: { defaultPath: 'تقرير.pdf', filters: PDF },
     });
-    const write = calls.find((c) => c.cmd === 'plugin:fs|write_file');
+    const write = calls.find((c) => c.cmd === 'save_file');
     expect(write?.args).toBe(bytes);
-    expect(write?.options?.headers).toEqual({ path: encodeURIComponent('/Users/me/تقرير.pdf') });
+    expect(write?.options?.headers).toEqual({ 'x-warraq-path': encodeURIComponent('/Users/me/تقرير.pdf') });
   });
 
   it('reports a cancelled save without writing anything', async () => {
     const calls = fakeHost({ 'plugin:dialog|save': null });
     expect(await savePdfFile(new Uint8Array([1]), 'x.pdf')).toBe(false);
-    expect(calls.some((c) => c.cmd === 'plugin:fs|write_file')).toBe(false);
+    expect(calls.some((c) => c.cmd === 'save_file')).toBe(false);
   });
 
   it('saves any kind of file the same way, with that kind in the panel', async () => {
     const calls = fakeHost({
       'plugin:dialog|save': '/Users/me/تقرير (الصفحات).zip',
-      'plugin:fs|write_file': null,
+      save_file: null,
     });
     const bytes = new Uint8Array([0x50, 0x4b]);
     expect(await saveFileAs(bytes, 'تقرير (الصفحات).zip', { name: 'ZIP', extensions: ['zip'] })).toBe(true);
     expect(calls.find((c) => c.cmd === 'plugin:dialog|save')?.args).toEqual({
       options: { defaultPath: 'تقرير (الصفحات).zip', filters: [{ name: 'ZIP', extensions: ['zip'] }] },
     });
-    const write = calls.find((c) => c.cmd === 'plugin:fs|write_file');
+    const write = calls.find((c) => c.cmd === 'save_file');
     expect(write?.args).toBe(bytes);
-    expect(write?.options?.headers).toEqual({ path: encodeURIComponent('/Users/me/تقرير (الصفحات).zip') });
+    expect(write?.options?.headers).toEqual({ 'x-warraq-path': encodeURIComponent('/Users/me/تقرير (الصفحات).zip') });
   });
 });
 

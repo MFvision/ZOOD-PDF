@@ -37,6 +37,7 @@ pub mod quit;
 pub mod recent;
 pub mod remote;
 pub mod ring;
+pub mod save;
 pub mod share;
 pub mod shelf;
 pub mod shell_menu;
@@ -321,17 +322,18 @@ fn read_file_bytes<R: Runtime>(
         core_bridge::debug_log(&refused);
         return Err(refused);
     }
-    let read = std::fs::read(&path);
+    // Bounded: a file of many gigabytes (or one that never ends) is refused
+    // with E_TOO_BIG instead of taking every byte of memory and the app with it.
+    let read = save::read_bounded(&path, save::MAX_OPEN_BYTES);
     core_bridge::debug_log(format!(
         "read {} -> {}",
         path.display(),
         match &read {
             Ok(bytes) => format!("{} bytes", bytes.len()),
-            Err(e) => e.to_string(),
+            Err(e) => e.clone(),
         }
     ));
     read.map(tauri::ipc::Response::new)
-        .map_err(|e| format!("E_IO: {}: {e}", path.display()))
 }
 
 /// Builds and runs the Tauri application. On iOS and Android (Tauri 2's
@@ -452,6 +454,7 @@ pub fn run() {
             debug_selfcheck,
             open_url,
             read_file_bytes,
+            save::save_file,
             startup_file,
             startup_tool,
             doc_window::open_document_window,

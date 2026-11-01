@@ -217,6 +217,32 @@ test.describe('Organize pages changes the file, not just the grid', () => {
     await expect(password).toHaveCount(0);
   });
 
+  // A download cut short (the first 20 kB of a linearized file) is counted as
+  // one page when chosen and brings none: the insert still said it was done
+  // and left an Undo step for nothing (break-zood, files-ui).
+  test('a file that brings none of its pages is said to be unreadable, and nothing changes', async ({
+    page,
+    stayLocal: _,
+  }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Organize pages');
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      control(page, 'Insert pages from a file').click(),
+    ]);
+    await chooser.setFiles({
+      name: 'half-downloaded.pdf',
+      mimeType: 'application/pdf',
+      buffer: readFileSync(WORD_EXPORT).subarray(0, 20_000),
+    });
+    const panel = page.locator('.pane-end');
+    await expect(panel.getByRole('alert')).toHaveText('That file could not be read as a PDF.');
+    await expect(grid(page).getByRole('option')).toHaveCount(3);
+    await expect(control(page, 'Undo')).toBeDisabled();
+    await expect(statusBar(page)).not.toContainText('Edited');
+  });
+
   test('split into files: every page, or at the selected pages, saved as one zip of the parts', async ({
     page,
     stayLocal: _,

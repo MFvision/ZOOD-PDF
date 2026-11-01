@@ -187,6 +187,13 @@ unicode-normalization = "0.1"
 name = "print"
 harness = false
 
+# The core's hardened hayro crates (packages/core/Cargo.toml and
+# packages/core/vendor/*/ZOOD-PATCHES.md): a [patch] applies only in the
+# workspace that declares it, so this one repeats it.
+[patch.crates-io]
+hayro-syntax = { path = "../../../packages/core/vendor/hayro-syntax" }
+hayro-interpret = { path = "../../../packages/core/vendor/hayro-interpret" }
+
 [profile.release]
 opt-level = 3
 lto = "thin"

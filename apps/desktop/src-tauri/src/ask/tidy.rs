@@ -499,7 +499,7 @@ pub fn apply(folder: &Path, moves: &[Move], journal_file: &Path) -> Result<usize
     };
     let write = |journal: &Journal| {
         let text = serde_json::to_string(journal).map_err(|e| e.to_string())?;
-        std::fs::write(journal_file, text).map_err(|e| format!("E_IO: {e}"))
+        crate::save::write_whole(journal_file, text.as_bytes()).map_err(|e| format!("E_IO: {e}"))
     };
     for step in moves {
         // The plan is checked again: inside the folder, one level down at most, nothing overwritten.

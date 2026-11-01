@@ -23,8 +23,13 @@ pub struct MarkedSequence {
     pub warraq_mark: bool,
 }
 
-/// The renderer (hayro) gives up on forms nested deeper than this.
-const MAX_DEPTH: u32 = 50;
+/// The renderer (hayro, as vendored: `vendor/hayro-interpret/ZOOD-PATCHES.md`)
+/// gives up on content nested deeper than 24 levels, and on a page whose forms
+/// it would have to draw more than 10 000 times; past either the order of its
+/// sequences cannot be vouched for. Without the second, forms that each draw
+/// the next one twice made this walk 2^50 steps long.
+const MAX_DEPTH: u32 = 24;
+const MAX_FORMS: u32 = 10_000;
 
 fn resolve<'a>(doc: &'a Document, object: &'a Object) -> &'a Object {
     match object {
@@ -63,6 +68,7 @@ fn walk<'a>(
     content: &[u8],
     resources: &Resources<'a>,
     depth: u32,
+    forms: &mut u32,
     out: &mut Vec<MarkedSequence>,
 ) -> Option<()> {
     for op in Content::decode(content).ok()?.operations {
@@ -115,7 +121,7 @@ fn walk<'a>(
                     .and_then(|s| s.as_name().ok())
                     == Some(b"Form")
                 {
-                    draw_form(doc, form, resources, depth, out)?;
+                    draw_form(doc, form, resources, depth, forms, out)?;
                 }
             }
             _ => {}
@@ -129,14 +135,14 @@ fn draw_form<'a>(
     form: &'a lopdf::Stream,
     parent: &Resources<'a>,
     depth: u32,
+    forms: &mut u32,
     out: &mut Vec<MarkedSequence>,
 ) -> Option<()> {
-    if depth + 1 >= MAX_DEPTH || is_optional_content(&form.dict) {
+    *forms += 1;
+    if depth + 1 >= MAX_DEPTH || *forms > MAX_FORMS || is_optional_content(&form.dict) {
         return None;
     }
-    let content = form
-        .decompressed_content()
-        .unwrap_or_else(|_| form.content.clone());
+    let content = crate::document::decoded(form).ok()?;
     let resources: Resources<'a> = match form
         .dict
         .get(b"Resources")
@@ -146,7 +152,7 @@ fn draw_form<'a>(
         Some(own) => std::iter::once(own).chain(parent.iter().copied()).collect(),
         None => parent.clone(),
     };
-    walk(doc, &content, &resources, depth + 1, out)
+    walk(doc, &content, &resources, depth + 1, forms, out)
 }
 
 impl PdfDocument {
@@ -167,7 +173,9 @@ impl PdfDocument {
             )
             .collect();
         let mut out = Vec::new();
-        walk(doc, &doc.get_page_content(page_id), &resources, 0, &mut out)?;
+        let mut forms = 0;
+        let content = crate::document::page_content_of(doc, page_id).ok()?;
+        walk(doc, &content, &resources, 0, &mut forms, &mut out)?;
         let page = doc.get_dictionary(page_id).ok()?;
         let annots = page
             .get(b"Annots")
@@ -193,7 +201,7 @@ impl PdfDocument {
                 .and_then(|ap| ap.get(b"N").ok())
                 .map(|n| resolve(doc, n));
             if let Some(Object::Stream(form)) = normal {
-                draw_form(doc, form, &resources, 0, &mut out)?;
+                draw_form(doc, form, &resources, 0, &mut forms, &mut out)?;
             }
         }
         Some(out)
@@ -230,6 +238,55 @@ mod tests {
                 .iter()
                 .any(|t| t.chars().any(|c| ('\u{0600}'..='\u{06FF}').contains(&c))),
             "{texts:?}"
+        );
+    }
+
+    /// Forty forms, each drawing the next one twice: 2^40 forms to walk.
+    #[test]
+    fn forms_that_each_draw_the_next_twice_end_quickly() {
+        use lopdf::{dictionary, Stream};
+        let mut doc = Document::with_version("1.7");
+        let mut next = doc.add_object(Stream::new(
+            dictionary! { "Subtype" => "Form", "BBox" => vec![0.into(), 0.into(), 9.into(), 9.into()] },
+            b"/Span << /ActualText (a) >> BDC EMC".to_vec(),
+        ));
+        for _ in 0..40 {
+            next = doc.add_object(Stream::new(
+                dictionary! {
+                    "Subtype" => "Form",
+                    "BBox" => vec![0.into(), 0.into(), 9.into(), 9.into()],
+                    "Resources" => dictionary! { "XObject" => dictionary! { "F" => next } },
+                },
+                b"/F Do /F Do".to_vec(),
+            ));
+        }
+        let content = doc.add_object(Stream::new(dictionary! {}, b"/F Do".to_vec()));
+        let pages = doc.new_object_id();
+        let page = doc.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages,
+            "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
+            "Contents" => content,
+            "Resources" => dictionary! { "XObject" => dictionary! { "F" => next } },
+        });
+        doc.objects.insert(
+            pages,
+            Object::Dictionary(
+                dictionary! { "Type" => "Pages", "Kids" => vec![page.into()], "Count" => 1 },
+            ),
+        );
+        let catalog = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages });
+        doc.trailer.set("Root", catalog);
+        let mut bytes = vec![];
+        doc.save_to(&mut bytes).unwrap();
+        let pdf = PdfDocument::open(bytes, None).unwrap();
+        let started = std::time::Instant::now();
+        // Past what the renderer draws: no order to vouch for.
+        assert_eq!(pdf.marked_content(0), None);
+        assert!(
+            started.elapsed().as_secs() < 2,
+            "took {:?}",
+            started.elapsed()
         );
     }
 

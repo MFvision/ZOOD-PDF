@@ -281,7 +281,19 @@ export interface TrustedCert {
 
 const TRUST_KEY = 'warraq.signatures.trusted';
 
-export function readTrusted(storage: Pick<Storage, 'getItem'> | undefined = globalThis.localStorage): TrustedCert[] {
+/**
+ * The page's storage, or nothing. Reading `localStorage` itself throws when
+ * the browser blocks site data, so it is only ever read inside a `try`.
+ */
+function pageStorage(): Storage | undefined {
+  try {
+    return globalThis.localStorage ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function readTrusted(storage: Pick<Storage, 'getItem'> | undefined = pageStorage()): TrustedCert[] {
   try {
     const parsed: unknown = JSON.parse(storage?.getItem(TRUST_KEY) ?? '[]');
     return Array.isArray(parsed)
@@ -292,7 +304,7 @@ export function readTrusted(storage: Pick<Storage, 'getItem'> | undefined = glob
   }
 }
 
-export function writeTrusted(list: readonly TrustedCert[], storage: Pick<Storage, 'setItem'> | undefined = globalThis.localStorage): void {
+export function writeTrusted(list: readonly TrustedCert[], storage: Pick<Storage, 'setItem'> | undefined = pageStorage()): void {
   try {
     storage?.setItem(TRUST_KEY, JSON.stringify(list));
   } catch {

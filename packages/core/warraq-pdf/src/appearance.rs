@@ -356,9 +356,9 @@ impl PdfDocument {
                 let js = self.resolve(action.get(b"JS").ok()?);
                 return match js {
                     Object::String(bytes, _) => Some(decode_text_string(&bytes)),
-                    Object::Stream(s) => Some(decode_text_string(
-                        &s.decompressed_content().unwrap_or(s.content.clone()),
-                    )),
+                    Object::Stream(s) => {
+                        Some(decode_text_string(&crate::document::decoded(&s).ok()?))
+                    }
                     _ => None,
                 };
             }
@@ -570,8 +570,8 @@ impl PdfDocument {
             .as_ref()
             .and_then(|s| {
                 let bytes = s
-                    .decompressed_content()
-                    .unwrap_or_else(|_| s.content.clone());
+                    .decompressed_content_with_limit(crate::document::MAX_STREAM)
+                    .ok()?;
                 Content::decode(&bytes).ok()
             })
             .map(|c| c.operations)

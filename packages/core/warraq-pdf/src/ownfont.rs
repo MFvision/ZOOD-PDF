@@ -299,7 +299,7 @@ pub struct PageFonts<'a> {
 impl<'a> PageFonts<'a> {
     pub fn read(pdf: &'a PdfDocument, page_index: usize) -> Result<Self> {
         let page_id = pdf.page_id(page_index)?;
-        let ops = Content::decode(&pdf.doc.get_page_content(page_id))
+        let ops = Content::decode(&pdf.page_content(page_id)?)
             .map_err(|e| Error::Edit(e.to_string()))?
             .operations;
         let runs = crate::text_walk::locate_show_runs(&ops);
@@ -635,7 +635,7 @@ pub fn replace_paragraph_own_font(
     }
     ops.push(Operation::new("ET", vec![]));
     ops.push(Operation::new("Q", vec![]));
-    let mut content = pdf.doc.get_page_content(page_id);
+    let mut content = pdf.page_content(page_id)?;
     content.push(b'\n');
     content.extend(
         Content { operations: ops }

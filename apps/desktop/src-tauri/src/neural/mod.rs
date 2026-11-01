@@ -34,7 +34,7 @@ pub mod supertonic;
 pub mod tashkeel;
 
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -299,6 +299,8 @@ struct DownloadEvent {
 
 pub const DOWNLOAD_EVENT: &str = "warraq://speech-download";
 const PROGRESS_EVERY: u64 = 1 << 20;
+/// How long a voice's download may go without a byte before it is given up.
+const STALL: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// One file into `dir`: streamed into `.part`, hashed as it goes, renamed
 /// into place only once its size and digest match. `done` is what came
@@ -316,23 +318,18 @@ fn fetch<R: Runtime>(
     let target = dir.join(&file.file);
     let part = with_suffix(&target, ".part");
     let result = (|| {
-        let mut response = crate::ai::open_download(&file.url)?;
-        let mut body = response.body_mut().as_reader();
+        let response = crate::ai::open_download(&file.url)?;
         let mut out =
             std::fs::File::create(&part).map_err(|e| format!("E_IO: {}: {e}", part.display()))?;
         let mut hasher = Sha256::new();
         let mut received: u64 = 0;
         let mut announced: u64 = 0;
-        let mut buffer = vec![0u8; 256 * 1024];
         let total = pack.bytes();
-        loop {
-            if cancel.load(Ordering::Relaxed) {
-                return Err("E_CANCELLED: the download was stopped".to_string());
-            }
-            let n = body.read(&mut buffer).map_err(|e| format!("E_NET: {e}"))?;
-            if n == 0 {
-                break;
-            }
+        // On a thread of its own, as the model's: a connection that stops
+        // answering is given up, and Stop works while it waits.
+        let body = response.into_body().into_reader();
+        crate::ai::read_body(body, cancel, STALL, |buffer| {
+            let n = buffer.len();
             received += n as u64;
             if received > file.bytes {
                 return Err("E_VERIFY: the file is larger than the catalogue says".to_string());
@@ -359,7 +356,8 @@ fn fetch<R: Runtime>(
                     },
                 );
             }
-        }
+            Ok(())
+        })?;
         out.sync_all().map_err(|e| format!("E_IO: {e}"))?;
         drop(out);
         let digest = hex::encode(hasher.finalize());

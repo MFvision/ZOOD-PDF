@@ -5,6 +5,7 @@ import type { BookEntry } from './book';
 import { FRESH, PHRASES } from './coverage.cases';
 import { asksAboutWords, asksTheWorld } from './content';
 import { fuzzyOffers, fuzzyPick } from './fuzzy';
+import { refusal, settingRefused } from './negation';
 import { SETTINGS_BOOK, settingAsked, settingFirst, settingsPageAsked } from './settingsBook';
 import { translate } from '../i18n/messages';
 import type { TKey } from '../i18n/messages';
@@ -49,6 +50,13 @@ const QUESTION = /[?؟]|^(?:what|why|which|who|is|are|does|ما |ماذا|وش |
 
 /** Where the island's lanes take `words`, as the cases write it; `offer: …` for a choice offered. */
 function route(words: string, list: BookEntry[]): string {
+  // A "don't" first (`negation.ts`): nothing, a setting turned off, or the model's to read whole.
+  const refused = refusal(words);
+  if (refused === 'all') {
+    const off = settingRefused(words, true);
+    return off ? `setting:${off.entry.id}=${off.value ?? ''}` : 'NOTHING';
+  }
+  if (refused === 'some') return 'MODEL';
   const said = intentOf(words);
   const question = !said && QUESTION.test(words.trim());
   const about = asksAboutWords(words);
@@ -103,6 +111,18 @@ describe('Ask ZOOD reach', () => {
     expect((rows.reached + rows.offered) / rows.total).toBeGreaterThanOrEqual(0.88);
     // A wrong pick of a setting's row only shows it; a wrong command would do something.
     expect(rows.wrong.filter((row) => row.includes('→ book:')), rows.wrong.join('\n')).toEqual([]);
+  });
+
+  it('never does what it was told not to', () => {
+    for (const lang of ['en', 'ar'] as const)
+      for (const words of [
+        "don't delete page 3", "don't turn off auto save", "don't turn on dark mode", 'no undo', "don't go to page 5", "don't zoom in",
+        "don't close the file", 'do not merge files', 'لا تحذف الصفحة ٣', 'لا تحفظ', 'لا تطبع', 'لا تسكر الملف', 'لا تروح للصفحة ٥', 'لا تفتح الاعدادات',
+        'لا تشغل الوضع الليلي', 'save but don’t print', 'احفظ ولا تطبع',
+      ]) {
+        const got = route(words, entries(lang));
+        expect(got === 'NOTHING' || got === 'MODEL', `${lang} ${words} → ${got}`).toBe(true);
+      }
   });
 
   it('changes nothing for a question or a sentence that is not a request', () => {

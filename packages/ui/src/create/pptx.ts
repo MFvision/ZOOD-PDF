@@ -2,7 +2,7 @@ import { mergeRuns } from './blocks';
 import type { Block, BlockAlign, FrameBlock, ReadDocument, SourcePicture, TableCell, TextBlock, TextRun } from './blocks';
 import { attr, childElements, firstChild, parseXml, textOf } from './xml';
 import type { XmlElement } from './xml';
-import { partText, pictureMime, readParts, relsPath, resolvePart } from './zip';
+import { hasPart, partText, pictureMime, readParts, relsPath, resolvePart } from './zip';
 
 /**
  * A PowerPoint presentation (.pptx) read into blocks: each slide a page of
@@ -505,12 +505,7 @@ function shapes(tree: XmlElement | null, context: SlideContext): FrameBlock[] {
 
 /** Whether `bytes` is a PowerPoint presentation: a zip with `ppt/presentation.xml`. */
 export function isPptx(bytes: Uint8Array): boolean {
-  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return false;
-  try {
-    return 'ppt/presentation.xml' in readParts(bytes, (name) => name === 'ppt/presentation.xml');
-  } catch {
-    return false;
-  }
+  return hasPart(bytes, 'ppt/presentation.xml');
 }
 
 export function readPptx(bytes: Uint8Array): ReadDocument {
@@ -521,7 +516,9 @@ export function readPptx(bytes: Uint8Array): ReadDocument {
       name === 'docProps/core.xml' ||
       /^ppt\/(slides|slideLayouts|slideMasters|theme)\/[^/]+\.xml$/.test(name) ||
       /^ppt\/(slides|slideLayouts|slideMasters)?\/?_rels\/[^/]+\.rels$/.test(name) ||
-      name.startsWith('ppt/media/'),
+      // Pictures only: a presentation's films and sounds are never drawn.
+      (name.startsWith('ppt/media/') && pictureMime(name) !== 'application/octet-stream'),
+    (name) => name.startsWith('ppt/media/'),
   );
   const presentation = parseXml(partText(parts, 'ppt/presentation.xml') ?? '');
   if (!presentation || presentation.local !== 'presentation') throw new Error('E_CREATE: not a PowerPoint presentation');

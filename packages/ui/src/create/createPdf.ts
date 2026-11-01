@@ -8,6 +8,7 @@ import { readMarkdown } from './markdown';
 import { isPptx, readPptx } from './pptx';
 import { readText } from './text';
 import { isXlsx, readXlsx } from './xlsx';
+import { TooLargeError } from './zip';
 
 /**
  * Create PDF: files of other kinds made into one new PDF, entirely on this
@@ -77,6 +78,54 @@ export function createKind(name: string, bytes: Uint8Array): CreateKind | null {
   return null;
 }
 
+/** The most blocks, and letters, one document is made of: some two thousand pages. */
+export const MAX_BLOCKS = 60_000;
+export const MAX_LETTERS = 3_000_000;
+
+function lettersOf(block: Block): number {
+  if (block.type === 'text') return block.runs ? block.runs.reduce((sum, run) => sum + run.text.length, 0) : block.text.length;
+  if (block.type === 'table') return block.rows.reduce((sum, row) => sum + row.reduce((s, cell) => s + cell.text.length, 0), 0);
+  if (block.type === 'frame') return block.blocks.reduce((sum, inner) => sum + lettersOf(inner), 0);
+  return 0;
+}
+
+/**
+ * A document cut to `MAX_BLOCKS` blocks and `MAX_LETTERS` letters, and said
+ * to be cut. A text log of a megabyte (300,000 short lines) took the core 17
+ * seconds and 650 MB to lay out on 11,000 pages; ten megabytes would never
+ * have finished.
+ */
+export function withinLimits(read: ReadDocument): ReadDocument {
+  let letters = 0;
+  let k = 0;
+  for (; k < read.blocks.length && k < MAX_BLOCKS; k += 1) {
+    letters += lettersOf(read.blocks[k]!);
+    if (letters > MAX_LETTERS) break;
+  }
+  if (k === read.blocks.length) return read;
+  if (k > 0) return { ...read, blocks: read.blocks.slice(0, k), truncated: true };
+  // One paragraph past the limit on its own: its first letters.
+  const first = read.blocks[0]!;
+  const cut: Block =
+    first.type !== 'text'
+      ? first
+      : first.runs
+        ? { ...first, runs: cutRuns(first.runs, MAX_LETTERS) }
+        : { ...first, text: first.text.slice(0, MAX_LETTERS) };
+  return { ...read, blocks: [cut], truncated: true };
+}
+
+function cutRuns<T extends { text: string }>(runs: readonly T[], letters: number): T[] {
+  const out: T[] = [];
+  let left = letters;
+  for (const run of runs) {
+    if (left <= 0) break;
+    out.push(run.text.length <= left ? run : { ...run, text: run.text.slice(0, left) });
+    left -= run.text.length;
+  }
+  return out;
+}
+
 export function readSource(kind: Exclude<CreateKind, 'image'>, bytes: Uint8Array): ReadDocument {
   switch (kind) {
     case 'docx':
@@ -126,6 +175,22 @@ export interface CreateReport {
   truncated: boolean;
   /** Files that could not be read at all. */
   unreadable: string[];
+  /** Files too large to read here once uncompressed (a zip bomb, or near enough). */
+  tooLarge: string[];
+}
+
+type PartReport = Omit<CreateReport, 'unreadable' | 'tooLarge'>;
+
+/** Nothing could be made: which files could not be read, and which were too large to. */
+export class CreateError extends Error {
+  readonly code = 'E_CREATE';
+  constructor(
+    message: string,
+    readonly unreadable: string[] = [],
+    readonly tooLarge: string[] = [],
+  ) {
+    super(`E_CREATE: ${message}`);
+  }
 }
 
 export interface CreateResult {
@@ -201,7 +266,7 @@ async function createDocument(
   kind: CreateKind,
   options: CreateOptions,
   env: CreateEnvironment,
-): Promise<{ bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'> }> {
+): Promise<{ bytes: ArrayBuffer; report: PartReport }> {
   const { bytes: pictures, leftOut } = await readablePictures(read.pictures, env);
   const missing = new Set(pictures.flatMap((p, k) => (p ? [] : [k])));
   const faces = await documentFaces(env, dropMissing(read.blocks, missing), read.header ?? [], read.footer ?? []);
@@ -251,7 +316,7 @@ async function createFromPictures(
   files: readonly CreateFile[],
   options: CreateOptions,
   env: CreateEnvironment,
-): Promise<{ bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'>; unreadable: string[] } | null> {
+): Promise<{ bytes: ArrayBuffer; report: PartReport; unreadable: string[] } | null> {
   const unreadable: string[] = [];
   const blobs: ArrayBuffer[] = [];
   const kept: string[] = [];
@@ -297,9 +362,9 @@ function mimeOf(name: string): string {
  */
 export async function createPdf(files: readonly CreateFile[], options: CreateOptions, env: CreateEnvironment): Promise<CreateResult> {
   const parts: ArrayBuffer[] = [];
-  const report: CreateReport = { pages: 0, missingGlyphs: 0, picturesLeftOut: 0, truncated: false, unreadable: [] };
+  const report: CreateReport = { pages: 0, missingGlyphs: 0, picturesLeftOut: 0, truncated: false, unreadable: [], tooLarge: [] };
   let pictures: CreateFile[] = [];
-  const add = (made: { bytes: ArrayBuffer; report: Omit<CreateReport, 'unreadable'> }) => {
+  const add = (made: { bytes: ArrayBuffer; report: PartReport }) => {
     parts.push(made.bytes);
     report.pages += made.report.pages;
     report.missingGlyphs += made.report.missingGlyphs;
@@ -308,7 +373,9 @@ export async function createPdf(files: readonly CreateFile[], options: CreateOpt
   };
   const flushPictures = async () => {
     if (pictures.length === 0) return;
-    const made = await createFromPictures(pictures, options, env);
+    // The core refuses a set of pictures none of which it can read (E_IMAGE):
+    // those are unreadable, and the documents beside them are still made.
+    const made = await createFromPictures(pictures, options, env).catch(() => null);
     if (made) {
       add(made);
       report.unreadable.push(...made.unreadable);
@@ -328,24 +395,25 @@ export async function createPdf(files: readonly CreateFile[], options: CreateOpt
       continue;
     }
     try {
-      const read = readSource(kind, bytes);
+      const read = withinLimits(readSource(kind, bytes));
       if (read.blocks.length === 0) {
         report.unreadable.push(file.name);
         continue;
       }
       add(await createDocument(file, read, kind, options, env));
-    } catch {
-      report.unreadable.push(file.name);
+    } catch (error) {
+      if (error instanceof TooLargeError) report.tooLarge.push(file.name);
+      else report.unreadable.push(file.name);
     }
   }
   await flushPictures();
-  if (parts.length === 0) throw new Error('E_CREATE: none of the files could be made into a PDF');
+  if (parts.length === 0) throw new CreateError('none of the files could be made into a PDF', report.unreadable, report.tooLarge);
   let bytes = parts[0]!;
   if (parts.length > 1) {
     const { blobs } = await env.callStatic<{ pageCount: number }>('pages.combine', { passwords: parts.map(() => null) }, parts);
     if (!blobs[0]) throw new Error('E_CREATE: the parts could not be joined');
     bytes = blobs[0];
   }
-  const named = files.filter((f) => !report.unreadable.includes(f.name)).map((f) => f.name);
+  const named = files.filter((f) => !report.unreadable.includes(f.name) && !report.tooLarge.includes(f.name)).map((f) => f.name);
   return { bytes, name: createdFileName(named.length > 0 ? named : files.map((f) => f.name)), report };
 }

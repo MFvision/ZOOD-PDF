@@ -159,6 +159,37 @@ describe('exporting the file as it is now', () => {
     const { src } = source('locked-in-protect');
     await expect(exportCurrentFile(src, request('txt'))).rejects.toMatchObject({ code: 'E_PASSWORD' });
   });
+
+  // A 1,300-page export ran on for minutes after its document was closed, with
+  // no way to stop it (break-zood, files-ui).
+  it('stops between pages when told to, hands nothing back, and frees the copy', async () => {
+    for (const format of ['txt', 'docx', 'xlsx', 'pptx', 'png'] as const) {
+      const { src, log } = source('redacted');
+      const stop = new AbortController();
+      const pages: number[] = [];
+      const run = exportCurrentFile(
+        src,
+        request(format, {
+          signal: stop.signal,
+          onProgress: (done) => {
+            pages.push(done);
+            stop.abort();
+          },
+        }),
+      );
+      await expect(run, format).rejects.toThrow();
+      expect(pages, format).toEqual([1]);
+      expect(log, format).toContain('free redacted');
+    }
+  });
+
+  it('opens nothing when stopped before it starts', async () => {
+    const { src, log } = source('redacted');
+    const stop = new AbortController();
+    stop.abort();
+    await expect(exportCurrentFile(src, request('txt', { signal: stop.signal }))).rejects.toThrow();
+    expect(log).toEqual([]);
+  });
 });
 
 describe('what each format hands over', () => {

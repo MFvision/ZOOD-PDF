@@ -13,6 +13,8 @@ use base64::Engine;
 
 /// The longest name kept, in characters, before its extension.
 const MAX_STEM: usize = 120;
+/// And in bytes, with room for the extension and a " (n)" after it.
+const MAX_STEM_BYTES: usize = 200;
 
 /// Names Windows keeps for devices, whatever their extension.
 const RESERVED: [&str; 22] = [
@@ -44,14 +46,41 @@ pub fn safe_name(raw: &str) -> String {
         Some(dot) if dot > 0 && trimmed.len() - dot <= 12 => (&trimmed[..dot], &trimmed[dot..]),
         _ => (trimmed, ""),
     };
-    let mut stem: String = stem.chars().take(MAX_STEM).collect();
+    // At most `MAX_STEM` characters and `MAX_STEM_BYTES` bytes: a Mac's
+    // names are 255 bytes, and 120 emoji are 480 (the file would not land).
+    let mut kept = String::new();
+    for c in stem.chars().take(MAX_STEM) {
+        if kept.len() + c.len_utf8() > MAX_STEM_BYTES {
+            break;
+        }
+        kept.push(c);
+    }
+    // Cut short, it may end in a dot or a space again, which Windows drops.
+    let mut stem = kept.trim_end_matches(['.', ' ']).to_string();
     if stem.trim().is_empty() {
         stem = "file".into();
     }
-    if RESERVED.contains(&stem.to_ascii_lowercase().as_str()) {
-        stem.push('_');
+    if is_reserved(&stem) {
+        // After the part Windows reads: "CON.tar" becomes "CON_.tar".
+        let at = stem.find('.').unwrap_or(stem.len());
+        stem.insert(at, '_');
     }
     format!("{stem}{extension}")
+}
+
+/// Whether Windows takes a name for a device: it looks only at the part
+/// before the first dot, without trailing spaces, so `CON.tar.gz` and
+/// `nul .txt` are devices too.
+pub(crate) fn is_reserved(stem: &str) -> bool {
+    let first = stem.split('.').next().unwrap_or("");
+    let first = first.trim_end_matches(' ').to_lowercase();
+    RESERVED.contains(&first.as_str())
+        || matches!(first.as_str(), "conin$" | "conout$" | "clock$")
+        || ["com", "lpt"].iter().any(|device| {
+            first
+                .strip_prefix(device)
+                .is_some_and(|n| matches!(n, "0" | "¹" | "²" | "³"))
+        })
 }
 
 /// `name` in `folder`, or `name (2)`, `name (3)`… — the first that is free.
@@ -170,6 +199,44 @@ mod tests {
         assert_eq!(safe_name("invoice_\u{202E}fdp.exe"), "invoice__fdp.exe");
         let long = format!("{}.pdf", "x".repeat(400));
         assert_eq!(safe_name(&long).chars().count(), MAX_STEM + 4);
+    }
+
+    #[test]
+    fn names_windows_takes_for_devices_are_changed() {
+        // Windows reads only the part before the first dot, spaces trimmed.
+        assert_eq!(safe_name("CON.tar.gz"), "CON_.tar.gz");
+        assert_eq!(safe_name("nul .txt"), "nul_.txt");
+        assert_eq!(safe_name("aux.a.b.pdf"), "aux_.a.b.pdf");
+        assert_eq!(safe_name("COM¹.txt"), "COM¹_.txt");
+        assert_eq!(safe_name("conout$.log"), "conout$_.log");
+        // Names that only start like one are left alone.
+        assert_eq!(safe_name("console.pdf"), "console.pdf");
+        assert_eq!(safe_name("com10.pdf"), "com10.pdf");
+    }
+
+    #[test]
+    fn a_long_name_still_fits_a_mac_and_lands() {
+        // 300 emoji (4 bytes each) and 300 Arabic letters: the stem keeps
+        // under 255 bytes even with " (n)" and the extension after it.
+        for raw in [
+            format!("{}.pdf", "😀".repeat(300)),
+            format!("{}.pdf", "ع".repeat(300)),
+            format!("{} .pdf", "x".repeat(MAX_STEM - 1)),
+            "x".repeat(MAX_STEM - 1) + " yz",
+        ] {
+            let name = safe_name(&raw);
+            assert!(name.len() + " (9999)".len() <= 255, "{} bytes", name.len());
+            assert!(!name.ends_with(['.', ' ']), "{name:?}");
+            let stem = name.strip_suffix(".pdf").unwrap_or(&name);
+            assert!(!stem.ends_with(['.', ' ']), "{name:?}");
+        }
+        let folder =
+            std::env::temp_dir().join(format!("zood-long-{}", crate::remote::seal::random_id()));
+        let data = base64::engine::general_purpose::STANDARD.encode(b"x");
+        let emoji = format!("{}.pdf", "😀".repeat(300));
+        assert!(save(&folder, &emoji, &data, 16).is_ok());
+        assert!(save(&folder, &emoji, &data, 16).is_ok());
+        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]

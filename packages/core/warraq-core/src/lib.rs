@@ -140,6 +140,27 @@ enum Reading {
 /// asked for; with, for each page, whether all its text was invisible.
 type Textless = (Box<dyn RenderDoc>, Vec<bool>);
 
+/// The rasterizer for `bytes`, which are `pdf` as written (or a copy of it
+/// with the same objects): given a tamed copy when the file has a shape that
+/// would make it overflow the stack or allocate without bound
+/// (`PdfDocument::for_rasterizer`).
+pub(crate) fn open_renderer(
+    pdf: &PdfDocument,
+    bytes: Vec<u8>,
+    password: Option<&str>,
+) -> Result<Box<dyn RenderDoc>, CoreError> {
+    if let Some(safe) = pdf.for_rasterizer()? {
+        // `bytes` can differ from `pdf` (a copy with its text taken out):
+        // tame that copy when it opens, else draw from `pdf` itself.
+        let safe = match PdfDocument::open(bytes, password) {
+            Ok(copy) => copy.for_rasterizer()?.unwrap_or(safe),
+            Err(_) => safe,
+        };
+        return Ok(warraq_render::open(safe, None)?);
+    }
+    Ok(warraq_render::open(bytes, password)?)
+}
+
 pub struct Document {
     pdf: PdfDocument,
     render: Box<dyn RenderDoc>,
@@ -160,7 +181,7 @@ impl Document {
         } else {
             (bytes, password)
         };
-        let render = warraq_render::open(render_bytes, render_password)?;
+        let render = open_renderer(&pdf, render_bytes, render_password)?;
         Ok(Self {
             pdf,
             render,
@@ -696,7 +717,7 @@ impl Document {
     ) -> Result<(warraq_render::Bitmap, bool), CoreError> {
         if self.textless.borrow().is_none() {
             let (bytes, shown) = self.pdf.without_text()?;
-            let render = warraq_render::open(bytes, None)?;
+            let render = open_renderer(&self.pdf, bytes, None)?;
             let hidden = shown.iter().map(|s| s.only_invisible()).collect();
             *self.textless.borrow_mut() = Some((render, hidden));
         }
@@ -737,8 +758,12 @@ impl Document {
         };
         let distance = |p: [f32; 3], q: [f32; 3]| (0..3).map(|c| (p[c] - q[c]).abs()).sum::<f32>();
         let pad = (0.3 * size).max(2.0);
-        let (left, top) = (((x - pad) * px) as i64, ((y_top - pad) * px) as i64);
-        let (right, bottom) = (((x + w + pad) * px) as i64, ((y_top + h + pad) * px) as i64);
+        // Kept on the picture: a box from a hostile file can be 10^30 points
+        // wide, and walking its edge pixel by pixel filled gigabytes.
+        let on_x = |v: f32| (v * px).clamp(0.0, (bw - 1) as f32) as i64;
+        let on_y = |v: f32| (v * px).clamp(0.0, (bh - 1) as f32) as i64;
+        let (left, top) = (on_x(x - pad), on_y(y_top - pad));
+        let (right, bottom) = (on_x(x + w + pad), on_y(y_top + h + pad));
         if right - left < 4 || bottom - top < 4 {
             return None;
         }
@@ -783,8 +808,8 @@ impl Document {
             [0, 1, 2].map(|c| f32::from(shown.rgba[i + c]) * a + 255.0 * (1.0 - a))
         };
         let (mut ink, mut ink_shown, mut seen) = (0usize, 0usize, 0usize);
-        for cy in (y_top * px) as i64..=((y_top + h) * px) as i64 {
-            for cx in (x * px) as i64..=((x + w) * px) as i64 {
+        for cy in on_y(y_top)..=on_y(y_top + h) {
+            for cx in on_x(x)..=on_x(x + w) {
                 seen += 1;
                 if distance(pixel(cx, cy), around) > 96.0 {
                     ink += 1;
@@ -816,7 +841,7 @@ impl Document {
     /// user would edit a page and see no change until they saved and reopened.
     pub fn refresh_after_edit(&mut self) -> Result<(), CoreError> {
         let bytes = self.pdf.save_to_vec()?;
-        self.render = warraq_render::open(bytes, None)?;
+        self.render = open_renderer(&self.pdf, bytes, None)?;
         self.lines_cache.borrow_mut().clear();
         self.textless.borrow_mut().take();
         Ok(())

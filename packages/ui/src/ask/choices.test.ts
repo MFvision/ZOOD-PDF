@@ -48,3 +48,14 @@ describe('pickByWords', () => {
     expect(pickByWords('', names)).toBeNull();
   });
 });
+
+describe('pickByWords and a "don’t"', () => {
+  const names = ['Compress', 'Convert to Word', 'ضغط'];
+  it('never picks a choice the words turn down', () => {
+    for (const words of ['not the second', "don't compress", 'لا تسوي ضغط', 'لا الثاني']) expect(pickByWords(words, names), words).toBeNull();
+  });
+  it('still picks a choice said plainly', () => {
+    expect(pickByWords('the second', names)).toBe(1);
+    expect(pickByWords('compress', names)).toBe(0);
+  });
+});

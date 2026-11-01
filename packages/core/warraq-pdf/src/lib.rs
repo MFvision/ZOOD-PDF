@@ -24,6 +24,7 @@ pub mod ownfont;
 pub mod pages;
 mod pagework;
 pub mod picture;
+pub mod rasterizer;
 mod rebase;
 pub mod redaction;
 mod show;

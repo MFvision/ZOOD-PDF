@@ -2,7 +2,7 @@ import { PAGE_COUNT, PAGE_NUMBER, withRuns } from './blocks';
 import type { Block, BlockAlign, ImageBlock, ReadDocument, SourcePage, SourcePicture, TableBlock, TableCell, TextBlock, TextRun } from './blocks';
 import { attr, childElements, descendants, firstChild, parseXml, textOf } from './xml';
 import type { XmlElement } from './xml';
-import { partText, pictureMime, readParts, relsPath, resolvePart } from './zip';
+import { hasPart, partText, pictureMime, readParts, relsPath, resolvePart } from './zip';
 
 /**
  * A Word document (.docx) read into blocks for the core to typeset: its
@@ -100,6 +100,8 @@ interface Context {
   pictures: SourcePicture[];
   pictureIndex: Map<string, number>;
   leftOut: number;
+  /** The body had more than is read. */
+  truncated?: boolean;
   theme: ThemeFonts;
 }
 
@@ -373,11 +375,16 @@ function roman(n: number): string {
   return out;
 }
 
+const MAX_LETTER_REPEAT = 8;
+/** The most paragraphs and tables a body is read into: some two thousand pages. */
+const MAX_BLOCKS = 60_000;
+
 function letters(n: number, alphabet: string): string {
   const chars = [...alphabet];
   const k = Math.max(1, n) - 1;
-  // Word repeats the letter past the end: a…z, aa…zz.
-  return chars[k % chars.length]!.repeat(Math.floor(k / chars.length) + 1);
+  // Word repeats the letter past the end: a…z, aa…zz. A list a file starts
+  // at two billion does not make each marker a string of millions of letters.
+  return chars[k % chars.length]!.repeat(Math.min(MAX_LETTER_REPEAT, Math.floor(k / chars.length) + 1));
 }
 
 /** Counter `n` written in a list format of Word's. */
@@ -830,7 +837,14 @@ function table(tbl: XmlElement, context: Context): TableBlock {
 function body(element: XmlElement | null, context: Context): { blocks: Block[]; section: XmlElement | null }[] {
   const sections: { blocks: Block[]; section: XmlElement | null }[] = [{ blocks: [], section: null }];
   const todo: XmlElement[] = [...childElements(element)].reverse();
+  let read = 0;
   while (todo.length > 0) {
+    // A body of hundreds of thousands of paragraphs: the first pages, and the reader told.
+    if (read >= MAX_BLOCKS) {
+      context.truncated = true;
+      break;
+    }
+    read += 1;
     const node = todo.pop()!;
     const current = sections[sections.length - 1]!;
     if (node.local === 'p') {
@@ -893,12 +907,7 @@ function furniturePart(section: XmlElement | null, kind: 'header' | 'footer', co
 
 /** Whether `bytes` is a Word document: a zip with `word/document.xml`. */
 export function isDocx(bytes: Uint8Array): boolean {
-  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return false;
-  try {
-    return 'word/document.xml' in readParts(bytes, (name) => name === 'word/document.xml');
-  } catch {
-    return false;
-  }
+  return hasPart(bytes, 'word/document.xml');
 }
 
 export function readDocx(bytes: Uint8Array): ReadDocument {
@@ -913,6 +922,7 @@ export function readDocx(bytes: Uint8Array): ReadDocument {
       name === 'docProps/core.xml' ||
       name === 'word/theme/theme1.xml' ||
       name.startsWith('word/media/'),
+    (name) => name.startsWith('word/media/'),
   );
   const documentXml = partText(parts, 'word/document.xml');
   const root = documentXml ? parseXml(documentXml) : null;
@@ -970,6 +980,6 @@ export function readDocx(bytes: Uint8Array): ReadDocument {
     title: title || undefined,
     page: first,
     picturesLeftOut: context.leftOut,
-    truncated: false,
+    truncated: root.truncated === true || context.truncated === true,
   };
 }

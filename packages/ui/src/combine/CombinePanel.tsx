@@ -149,7 +149,7 @@ export function CombinePanel() {
   const combine = async () => {
     setBusy(true);
     await services.combineFiles(
-      entries.map((e) => ({ name: e.name, bytes: e.bytes, password: e.password.length > 0 ? e.password : undefined })),
+      entries.map((e) => ({ name: e.name, bytes: e.bytes, password: e.password.length > 0 ? e.password : undefined, pages: e.pages ?? undefined })),
       t('combine.fileWord', { count: entries.length }),
     );
     setBusy(false);

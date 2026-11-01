@@ -18,7 +18,7 @@ licence text (`scripts/rust-licenses.mjs`).
 | unicode-bidi, unicode-normalization, icu4x crates | MIT OR Apache-2.0 / Unicode-3.0 | bidi, normalization, segmentation |
 | subsetter, pdf-writer, krilla | MIT OR Apache-2.0 | font subsetting and PDF writing |
 | lopdf | MIT | PDF object model |
-| hayro, hayro-syntax, hayro-interpret, vello_cpu | Apache-2.0 OR MIT | content interpretation, optional pure-Rust rasterizer |
+| hayro, hayro-syntax, hayro-interpret, vello_cpu | Apache-2.0 OR MIT | content interpretation, optional pure-Rust rasterizer; hayro-syntax and hayro-interpret are vendored with hostile-input hardening (`packages/core/vendor/*/ZOOD-PATCHES.md`) |
 | EmbedPDF (`@embedpdf/react-pdf-viewer`, `snippet`, `engines`, `models` and its plugins), © 2025 CloudPDF | MIT | the document view, and the Comment, Fill & sign, Prepare form, Redact and Protect tools. Modified as it is built into Warraq: strings its code writes in English are looked up in Warraq's translation (`packages/ui/vite/embedPatches.ts`, each change listed there); its licence and copyright notice ship unchanged |
 | `@embedpdf/pdfium` (PDFium compiled to WebAssembly), © 2024 CloudPDF, Ji Chang; PDFium itself | MIT; BSD-3-Clause (`LICENSE.pdfium` in the package) | rendering inside the interface, in every host |
 | EmbedPDF's standard stamps (`packages/ui/public/stamps/en/`, licence beside them) | MIT | the Fill & sign stamps |

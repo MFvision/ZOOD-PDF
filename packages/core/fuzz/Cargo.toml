@@ -49,5 +49,12 @@ path = "fuzz_targets/library_index.rs"
 test = false
 doc = false
 
+# The core's hardened hayro crates (packages/core/Cargo.toml and
+# packages/core/vendor/*/ZOOD-PATCHES.md): a [patch] applies only in the
+# workspace that declares it, so this one repeats it.
+[patch.crates-io]
+hayro-syntax = { path = "../vendor/hayro-syntax" }
+hayro-interpret = { path = "../vendor/hayro-interpret" }
+
 [profile.release]
 debug = 1

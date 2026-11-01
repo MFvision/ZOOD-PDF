@@ -212,4 +212,27 @@ test.describe('Combine files makes one file of several', () => {
     await expect(statusBar(page)).toContainText('Page 1 of 6');
     await expect.poll(async () => (await embedDocument(page)).pages).toBe(6);
   });
+
+  // A download cut short is listed with one page and gives none: "Combine 4
+  // pages" made a file of 3 and said "combined" (break-zood, files-ui).
+  test('a file whose pages cannot be read is never silently left out', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, THREE);
+    await chooseTool(page, 'Combine');
+    await expect(files(page).nth(0)).toContainText('3 pages');
+    await panel(page)
+      .locator('input[type="file"]')
+      .setInputFiles({
+        name: 'half-downloaded.pdf',
+        mimeType: 'application/pdf',
+        buffer: readFileSync(WORD_EXPORT).subarray(0, 20_000),
+      });
+    await expect(files(page)).toHaveCount(2);
+    await panel(page)
+      .getByRole('button', { name: /^Combine \d+ pages$/ })
+      .click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Nothing was combined' })).toBeVisible();
+    await expect(page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab')).toHaveCount(1);
+    await expect(statusBar(page)).toContainText('Page 1 of 3');
+  });
 });

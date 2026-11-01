@@ -248,6 +248,8 @@ export function ComparePanel() {
     if (!bytes) return;
     let cancelled = false;
     const pagesOf = async (prefix: ArrayBuffer) => {
+      // Another file, or the panel gone: the rest are not opened for nothing.
+      if (cancelled) throw new Error('E_CANCELLED: no longer wanted');
       try {
         const doc = await client.open(prefix, password);
         const pages = doc.pageCount;
@@ -506,7 +508,7 @@ export function ComparePanel() {
                 </span>
               </label>
             ))}
-            <p className="compare-option-note">{t('compare.current', { n: revisions.length })}</p>
+            <p className="compare-option-note">{t('compare.current', { n: revisions.at(-1)?.number ?? revisions.length })}</p>
           </fieldset>
         ))}
 

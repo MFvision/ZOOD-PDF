@@ -6,7 +6,7 @@ import { useI18n } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import type { OcrOutcome } from '../state/AppContext';
-import { DEFAULT_CREATE_OPTIONS, createKind, createPdf } from './createPdf';
+import { CreateError, DEFAULT_CREATE_OPTIONS, createKind, createPdf } from './createPdf';
 import type { CreateKind, CreateOptions, CreateReport } from './createPdf';
 import { recognizeFile } from '../ocr/run';
 import { appCreateEnvironment } from './environment';
@@ -43,7 +43,8 @@ type Status =
   | { kind: 'idle' }
   | { kind: 'working' }
   | { kind: 'reading'; page: number; of: number }
-  | { kind: 'done'; name: string; report: CreateReport; read?: OcrOutcome };
+  | { kind: 'done'; name: string; report: CreateReport; read?: OcrOutcome }
+  | { kind: 'failed'; unreadable: string[]; tooLarge: string[] };
 
 /**
  * Create PDF: Word, Excel and PowerPoint files, web pages, Markdown, text,
@@ -114,8 +115,9 @@ export function CreatePanel() {
       }
       setStatus({ kind: 'done', name: result.name, report: result.report, read });
       await services.openFiles([new File([bytes], result.name, { type: 'application/pdf' })], { unsaved: true });
-    } catch {
-      setStatus({ kind: 'idle' });
+    } catch (error) {
+      // Which files, and why: a file too large to read is not "unreadable".
+      setStatus(error instanceof CreateError ? { kind: 'failed', unreadable: error.unreadable, tooLarge: error.tooLarge } : { kind: 'idle' });
       dispatch({ type: 'DOCUMENT_FAILED', error: 'create.failed' });
     }
   };
@@ -181,6 +183,9 @@ export function CreatePanel() {
   const hasPictures = entries.some((e) => e.kind === 'image');
   const set = <K extends keyof CreateOptions>(key: K, value: CreateOptions[K]) => setOptions((o) => ({ ...o, [key]: value }));
   const report = status.kind === 'done' ? status.report : null;
+  const unreadable = status.kind === 'done' ? status.report.unreadable : status.kind === 'failed' ? status.unreadable : [];
+  const tooLarge = status.kind === 'done' ? status.report.tooLarge : status.kind === 'failed' ? status.tooLarge : [];
+  const listed = (names: readonly string[]) => [...new Set(names)].join(lang === 'ar' ? '، ' : ', ');
 
   return (
     <div className="tool-panel">
@@ -287,9 +292,14 @@ export function CreatePanel() {
           {t('create.alreadyPdf', { names: opened.join(lang === 'ar' ? '، ' : ', ') })}
         </p>
       )}
-      {[...refused, ...(report?.unreadable ?? [])].length > 0 && (
+      {[...refused, ...unreadable].length > 0 && (
         <p className="export-alert" role="alert">
-          {t('create.unreadable', { names: [...new Set([...refused, ...(report?.unreadable ?? [])])].join(lang === 'ar' ? '، ' : ', ') })}
+          {t('create.unreadable', { names: listed([...refused, ...unreadable]) })}
+        </p>
+      )}
+      {tooLarge.length > 0 && (
+        <p className="export-alert" role="alert">
+          {t('create.tooLarge', { names: listed(tooLarge) })}
         </p>
       )}
       {report && report.missingGlyphs > 0 && <p className="export-alert">{t('create.missingGlyphs', { count: report.missingGlyphs })}</p>}

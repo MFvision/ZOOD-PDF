@@ -221,6 +221,34 @@ test.describe('Export saves the document in other formats, Arabic in reading ord
     await expect(button).toBeEnabled();
   });
 
+  // Leaving the panel and coming back once showed an idle panel while the
+  // export ran on; Export again started a second beside it, and none could be
+  // stopped (break-zood, files-ui: a 1,320-page file exported four times at once).
+  test('an export under way is still shown after leaving the panel, and Stop ends it with nothing saved', async ({ page, stayLocal: _ }) => {
+    await page.goto('/');
+    await openPdf(page, HUNDRED_PAGES);
+    await chooseTool(page, 'Export');
+    await panel(page).getByRole('radio', { name: 'Page images (.png)' }).check();
+    await panel(page).getByRole('combobox', { name: 'Resolution' }).selectOption({ label: '300 dpi' });
+    const downloads: string[] = [];
+    page.on('download', (download) => downloads.push(download.suggestedFilename()));
+    await panel(page).getByRole('button', { name: 'Export', exact: true }).click();
+    await expect(panel(page).getByRole('status')).toHaveText(/^Page \d+ of 100…$/);
+
+    // Away to the tools list and back: the same export, not an idle panel.
+    await chooseTool(page, 'Compress');
+    await chooseTool(page, 'Export');
+    await expect(panel(page).getByRole('status')).toHaveText(/^Page \d+ of 100…$/);
+    await expect(panel(page).getByRole('button', { name: 'Export', exact: true })).toBeDisabled();
+
+    await panel(page).getByRole('button', { name: 'Stop', exact: true }).click();
+    await expect(panel(page).getByRole('status')).toHaveText('Export stopped. Nothing was saved.');
+    await expect(panel(page).getByRole('button', { name: 'Export', exact: true })).toBeEnabled();
+    await expect(panel(page).getByRole('button', { name: 'Stop', exact: true })).toHaveCount(0);
+    await page.waitForTimeout(1_000);
+    expect(downloads).toEqual([]);
+  });
+
   test('what was redacted in the viewer is in no export; the rest of the page is', async ({ page, stayLocal: _ }) => {
     await page.goto('/');
     await openPdf(page, INVOICE);

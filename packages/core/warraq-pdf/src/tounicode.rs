@@ -27,6 +27,9 @@ fn code_of(b: &[u8]) -> Option<u32> {
 
 /// Parse a ToUnicode CMap stream into code → text. Codes are 1 or 2 bytes wide.
 pub fn parse(cmap: &[u8]) -> BTreeMap<u32, String> {
+    // Every code of a 2-byte font has one entry at most, but a hostile map can
+    // repeat a range over every code thousands of times: the work is bounded.
+    let mut budget: usize = 1 << 20;
     let text = String::from_utf8_lossy(cmap);
     let toks: Vec<&str> = text.split_whitespace().collect();
     let mut map = BTreeMap::new();
@@ -71,6 +74,11 @@ pub fn parse(cmap: &[u8]) -> BTreeMap<u32, String> {
                         i = j + 1;
                     } else {
                         if let (Some(lo), Some(hi)) = (lo, hi) {
+                            let span = hi.min(lo + 65535).saturating_sub(lo) as usize + 1;
+                            if span > budget {
+                                break;
+                            }
+                            budget -= span;
                             let dst = hex(toks[i + 2]);
                             for (k, code) in (lo..=hi.min(lo + 65535)).enumerate() {
                                 let mut d = dst.clone();

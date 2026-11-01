@@ -250,9 +250,7 @@ impl PdfDocument {
         let js = self.form_value(dict.get(b"JS").ok()?);
         let bytes = match &js {
             Object::String(bytes, _) => bytes.clone(),
-            Object::Stream(stream) => stream
-                .decompressed_content()
-                .unwrap_or_else(|_| stream.content.clone()),
+            Object::Stream(stream) => crate::document::decoded(stream).ok()?,
             _ => return None,
         };
         if bytes.len() > 4 * MAX_SCRIPT {

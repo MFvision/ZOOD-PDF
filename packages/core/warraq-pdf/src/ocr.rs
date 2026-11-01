@@ -87,7 +87,7 @@ const BASELINE_UP: f32 = 0.22;
 impl PdfDocument {
     /// Whether page `index` already carries a text layer from Warraq.
     pub fn has_ocr_layer(&self, index: usize) -> Result<bool> {
-        let content = self.doc.get_page_content(self.page_id(index)?);
+        let content = self.page_content(self.page_id(index)?)?;
         let needle = [b"/".as_slice(), MARK].concat();
         Ok(content.windows(needle.len()).any(|w| w == needle))
     }
@@ -206,7 +206,7 @@ impl PdfDocument {
             ops.push(Operation::new("ET", vec![]));
             ops.push(Operation::new("EMC", vec![]));
             ops.push(Operation::new("Q", vec![]));
-            let mut content = self.doc.get_page_content(page_id);
+            let mut content = self.page_content(page_id)?;
             content.push(b'\n');
             content.extend(
                 Content { operations: ops }

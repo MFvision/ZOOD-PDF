@@ -473,6 +473,59 @@ struct Progress<'a> {
     total: u64,
 }
 
+/// Reads a download's `body` to its end, handing each piece to `take`.
+///
+/// Read on a thread of its own, so a connection that stalls neither keeps
+/// Stop from working nor hangs the download: this waits for it a second at
+/// a time, ends at once when `cancel` is set, and gives up after `stall`
+/// without a byte (a laptop that changes Wi-Fi mid-download leaves a
+/// connection that never answers again). A reader left blocked ends with
+/// its connection. Used for the model and the voices (`neural`).
+pub(crate) fn read_body(
+    body: impl Read + Send + 'static,
+    cancel: &AtomicBool,
+    stall: Duration,
+    mut take: impl FnMut(&[u8]) -> Result<(), String>,
+) -> Result<(), String> {
+    let (chunks, arrived) = mpsc::sync_channel::<std::io::Result<Vec<u8>>>(4);
+    std::thread::spawn(move || {
+        let mut body = body;
+        loop {
+            let mut chunk = vec![0u8; 256 * 1024];
+            let read = body.read(&mut chunk).map(|n| {
+                chunk.truncate(n);
+                chunk
+            });
+            let more = matches!(&read, Ok(chunk) if !chunk.is_empty());
+            if chunks.send(read).is_err() || !more {
+                break;
+            }
+        }
+    });
+    let mut last_byte = Instant::now();
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err("E_CANCELLED: the download was stopped".to_string());
+        }
+        let wait = stall.min(Duration::from_secs(1));
+        let buffer = match arrived.recv_timeout(wait) {
+            Ok(read) => read.map_err(|e| format!("E_NET: {e}"))?,
+            Err(mpsc::RecvTimeoutError::Timeout) if last_byte.elapsed() < stall => continue,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                return Err("E_NET: the download stalled".to_string())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err("E_NET: the download stopped".to_string())
+            }
+        };
+        last_byte = Instant::now();
+        if buffer.is_empty() {
+            return Ok(());
+        }
+        take(&buffer)?;
+    }
+}
+
 /// The body of `download_model`: everything that can fail, so a failure
 /// anywhere in it is cleaned up in one place.
 fn stream_download<R: Runtime>(
@@ -487,75 +540,44 @@ fn stream_download<R: Runtime>(
     let response = open_download(&spec.url)?;
     let mut file =
         std::fs::File::create(part).map_err(|e| format!("E_IO: {}: {e}", part.display()))?;
-    // Read on a thread of its own, so a connection that stalls neither keeps
-    // Stop from working nor hangs the download: the loop below waits for it
-    // a second at a time, and gives up after `STALL` without a byte. A
-    // reader left blocked ends with its connection.
-    let (chunks, arrived) = mpsc::sync_channel::<std::io::Result<Vec<u8>>>(4);
-    std::thread::spawn(move || {
-        let mut body = response.into_body().into_reader();
-        loop {
-            let mut chunk = vec![0u8; 256 * 1024];
-            let read = body.read(&mut chunk).map(|n| {
-                chunk.truncate(n);
-                chunk
-            });
-            let more = matches!(&read, Ok(chunk) if !chunk.is_empty());
-            if chunks.send(read).is_err() || !more {
-                break;
-            }
-        }
-    });
     let mut hasher = Sha256::new();
     let mut received: u64 = 0;
     let mut announced: u64 = 0;
-    let mut last_byte = Instant::now();
-    loop {
-        if cancel.load(Ordering::Relaxed) {
-            return Err("E_CANCELLED: the download was stopped".to_string());
-        }
-        let buffer = match arrived.recv_timeout(Duration::from_secs(1)) {
-            Ok(read) => read.map_err(|e| format!("E_NET: {e}"))?,
-            Err(mpsc::RecvTimeoutError::Timeout) if last_byte.elapsed() < STALL => continue,
-            Err(mpsc::RecvTimeoutError::Timeout) => {
-                return Err("E_NET: the download stalled".to_string())
+    read_body(
+        response.into_body().into_reader(),
+        cancel,
+        STALL,
+        |buffer| {
+            let n = buffer.len();
+            received += n as u64;
+            if received > spec.bytes {
+                return Err("E_VERIFY: the file is larger than the catalogue says".to_string());
             }
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                return Err("E_NET: the download stopped".to_string())
+            hasher.update(&buffer[..n]);
+            file.write_all(&buffer[..n])
+                .map_err(|e| format!("E_IO: {e}"))?;
+            if received - announced >= PROGRESS_EVERY {
+                announced = received;
+                if let Some(entry) = state
+                    .downloads
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .get_mut(progress.id)
+                {
+                    entry.received = progress.before + received;
+                }
+                let _ = app.emit(
+                    DOWNLOAD_EVENT,
+                    DownloadEvent {
+                        id: progress.id.to_string(),
+                        received: progress.before + received,
+                        total: progress.total,
+                    },
+                );
             }
-        };
-        last_byte = Instant::now();
-        let n = buffer.len();
-        if n == 0 {
-            break;
-        }
-        received += n as u64;
-        if received > spec.bytes {
-            return Err("E_VERIFY: the file is larger than the catalogue says".to_string());
-        }
-        hasher.update(&buffer[..n]);
-        file.write_all(&buffer[..n])
-            .map_err(|e| format!("E_IO: {e}"))?;
-        if received - announced >= PROGRESS_EVERY {
-            announced = received;
-            if let Some(entry) = state
-                .downloads
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .get_mut(progress.id)
-            {
-                entry.received = progress.before + received;
-            }
-            let _ = app.emit(
-                DOWNLOAD_EVENT,
-                DownloadEvent {
-                    id: progress.id.to_string(),
-                    received: progress.before + received,
-                    total: progress.total,
-                },
-            );
-        }
-    }
+            Ok(())
+        },
+    )?;
     file.sync_all().map_err(|e| format!("E_IO: {e}"))?;
     drop(file);
     let digest = hex::encode(hasher.finalize());
@@ -1275,6 +1297,94 @@ pub fn ai_cancel(state: State<'_, AiState>, id: String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A connection that sends `first` and then never answers again, as one
+    /// left behind when a laptop changes Wi-Fi.
+    struct GoesQuiet {
+        first: Option<Vec<u8>>,
+        never: mpsc::Receiver<()>,
+    }
+
+    impl Read for GoesQuiet {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            if let Some(first) = self.first.take() {
+                buf[..first.len()].copy_from_slice(&first);
+                return Ok(first.len());
+            }
+            let _ = self.never.recv();
+            Ok(0)
+        }
+    }
+
+    fn goes_quiet() -> (GoesQuiet, mpsc::Sender<()>) {
+        let (keep, never) = mpsc::channel();
+        (
+            GoesQuiet {
+                first: Some(b"abc".to_vec()),
+                never,
+            },
+            keep,
+        )
+    }
+
+    #[test]
+    fn a_download_that_goes_quiet_is_given_up() {
+        let (body, _keep) = goes_quiet();
+        let started = Instant::now();
+        let mut got = Vec::new();
+        let result = read_body(
+            body,
+            &AtomicBool::new(false),
+            Duration::from_millis(300),
+            |b| {
+                got.extend_from_slice(b);
+                Ok(())
+            },
+        );
+        assert_eq!(result.unwrap_err(), "E_NET: the download stalled");
+        assert_eq!(got, b"abc");
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn stop_works_while_a_download_waits() {
+        let (body, _keep) = goes_quiet();
+        let cancel = Arc::new(AtomicBool::new(false));
+        let later = cancel.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(200));
+            later.store(true, Ordering::Relaxed);
+        });
+        let started = Instant::now();
+        let result = read_body(body, &cancel, Duration::from_secs(60), |_| Ok(()));
+        assert!(result.unwrap_err().starts_with("E_CANCELLED"));
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn a_whole_download_is_read_to_its_end() {
+        let data: Vec<u8> = (0..700_000u32).map(|n| n as u8).collect();
+        let mut got = Vec::new();
+        read_body(
+            std::io::Cursor::new(data.clone()),
+            &AtomicBool::new(false),
+            STALL,
+            |b| {
+                got.extend_from_slice(b);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(got, data);
+        // A piece refused (the disk is full) ends the read with that error.
+        let refused = read_body(
+            std::io::Cursor::new(data),
+            &AtomicBool::new(false),
+            STALL,
+            |_| Err("E_IO: no space".to_string()),
+        );
+        assert_eq!(refused.unwrap_err(), "E_IO: no space");
+    }
 
     #[test]
     fn a_model_bigger_than_the_computer_is_never_run() {

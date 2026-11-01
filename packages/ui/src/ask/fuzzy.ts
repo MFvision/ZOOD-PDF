@@ -18,9 +18,9 @@ import { translate } from '../i18n/messages';
 /** Words that say nothing of which: "please", "it", "the", "لي". */
 const STOP = new Set(
   (
-    'the a an my me it its this that these those to of in on for with please i want would like can could you your be is are was ' +
+    'the a an my me it its this that these those to of in on for with please i want no not dont don would like can could you your be is are was ' +
     'and or at by from into up out now just some bit little so do does let lets im id ' +
-    'لي في علي على من الي الى عن هذا هذي هذه ذا ابي ابغي ابغى ابيك ممكن لو سمحت فضلك من فضلك يا زود zood شوي الحين الان'
+    'لا ما مو لي في علي على من الي الى عن هذا هذي هذه ذا ابي ابغي ابغى ابيك ممكن لو سمحت فضلك من فضلك يا زود zood شوي الحين الان'
   ).split(' '),
 );
 
@@ -81,6 +81,8 @@ interface Ranked {
 
 /** The commands and settings the words point to, best first, each with how sure. */
 export function fuzzyRank(words: string, entries: readonly BookEntry[], desktop = true): Ranked[] {
+  // More than ten words, or a page of the same few, is a message, not a command.
+  if (words.length > 500) return [];
   const said = [...new Set(wordsOf(words))];
   if (said.length === 0 || said.length > 10) return [];
   const candidates: Candidate[] = [

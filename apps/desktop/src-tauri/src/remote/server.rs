@@ -9,10 +9,10 @@
 //! that points its own name at this PC (DNS rebinding) gets nothing.
 
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
@@ -41,34 +41,83 @@ const MAX_PER_SECOND: u32 = 240;
 /// The most a connection may send before its hello is admitted: the upgrade
 /// request and a hello, nowhere near a full message.
 const HELLO_BUDGET: usize = MAX_HEAD + 64 * 1024;
-/// The most connections that may be waiting to say hello at once.
+/// The most connections that may be waiting to say hello at once, and the
+/// most of them from one address: one device on the Wi-Fi that keeps
+/// opening connections must not fill every place and keep the person's own
+/// paired phones out.
 const MAX_UNPAIRED: usize = 8;
+const MAX_UNPAIRED_FROM_ONE: usize = 2;
+/// The most connections that may be read for their request's head at once,
+/// in all and from one address, and how long one may take to send it: a
+/// connection that opens and then says nothing is let go, not kept forever
+/// (each one held is a socket, and a Mac gives an app only 256 files).
+const MAX_OPENING: usize = 64;
+const MAX_OPENING_FROM_ONE: usize = 16;
+const HEAD_WAIT: Duration = Duration::from_secs(5);
+/// How long the remote page or one of its files may take to go out: a
+/// browser that stops reading is let go.
+const PAGE_WAIT: Duration = Duration::from_secs(30);
 /// How often a phone is pinged, and how many pings it may leave unanswered
 /// before it is taken for gone.
 const PING_EVERY: Duration = Duration::from_secs(20);
 const MAX_MISSED_PINGS: u32 = 2;
 
-/// Connections still waiting to be admitted.
-static UNPAIRED: AtomicUsize = AtomicUsize::new(0);
+/// Places for connections in one stage (opening, or waiting to pair), in all
+/// and for each address. The PC itself (loopback) counts only towards the
+/// whole, so the app's own tests and tools are never held to one address's share.
+pub struct Gate {
+    total: usize,
+    per_address: usize,
+    taken: Mutex<Option<HashMap<IpAddr, usize>>>,
+}
 
-/// One place among the `MAX_UNPAIRED`, given back when dropped.
-struct Unpaired;
+impl Gate {
+    pub const fn new(total: usize, per_address: usize) -> Self {
+        Gate {
+            total,
+            per_address,
+            taken: Mutex::new(None),
+        }
+    }
 
-impl Unpaired {
-    fn take() -> Option<Self> {
-        if UNPAIRED.fetch_add(1, Ordering::Relaxed) >= MAX_UNPAIRED {
-            UNPAIRED.fetch_sub(1, Ordering::Relaxed);
+    /// A place for a connection from `from`, given back when dropped, or
+    /// none when the stage is full (in all, or for that address).
+    pub fn take(&self, from: IpAddr) -> Option<Place<'_>> {
+        let mut taken = self.taken.lock().unwrap_or_else(|e| e.into_inner());
+        let taken = taken.get_or_insert_with(HashMap::new);
+        let all: usize = taken.values().sum();
+        let mine = taken.get(&from).copied().unwrap_or(0);
+        if all >= self.total || (!from.is_loopback() && mine >= self.per_address) {
             return None;
         }
-        Some(Unpaired)
+        *taken.entry(from).or_insert(0) += 1;
+        Some(Place { gate: self, from })
     }
 }
 
-impl Drop for Unpaired {
+/// One place at a [`Gate`].
+pub struct Place<'a> {
+    gate: &'a Gate,
+    from: IpAddr,
+}
+
+impl Drop for Place<'_> {
     fn drop(&mut self) {
-        UNPAIRED.fetch_sub(1, Ordering::Relaxed);
+        let mut taken = self.gate.taken.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(taken) = taken.as_mut() {
+            if let Some(count) = taken.get_mut(&self.from) {
+                *count = count.saturating_sub(1);
+                if *count == 0 {
+                    taken.remove(&self.from);
+                }
+            }
+        }
     }
 }
+
+/// Connections being read for their head, and ones waiting to pair.
+static OPENING: Gate = Gate::new(MAX_OPENING, MAX_OPENING_FROM_ONE);
+static UNPAIRED: Gate = Gate::new(MAX_UNPAIRED, MAX_UNPAIRED_FROM_ONE);
 
 /// The connection under a phone's WebSocket, which reads at most `budget`
 /// bytes until the hello is admitted (`usize::MAX` after), so a peer that
@@ -278,18 +327,25 @@ pub async fn run<H: Host>(
         tokio::select! {
             _ = stop.changed() => break,
             accepted = listener.accept() => {
-                let Ok((stream, _)) = accepted else { continue };
+                let Ok((stream, from)) = accepted else { continue };
+                let from = from.ip();
                 let shared = shared.clone();
                 let stop = stop.clone();
                 tauri::async_runtime::spawn(async move {
-                    let Some(head) = peek_head(&stream).await else { return };
+                    let Some(opening) = OPENING.take(from) else { return };
+                    // Bounded: a connection that never sends a whole head
+                    // would otherwise wait here for ever.
+                    let head = tokio::time::timeout(HEAD_WAIT, peek_head(&stream)).await;
+                    drop(opening);
+                    let Ok(Some(head)) = head else { return };
                     if !host_is_address(head.host.as_deref()) {
                         return;
                     }
                     if head.upgrade {
-                        connect(shared, stream, stop).await;
+                        connect(shared, stream, from, stop).await;
                     } else {
-                        serve_page(&shared, stream, head).await;
+                        let page = serve_page(&shared, stream, head);
+                        let _ = tokio::time::timeout(PAGE_WAIT, page).await;
                     }
                 });
             }
@@ -384,10 +440,12 @@ pub fn opened_in(key: &SealKey, last: &mut u64, sealed: &[u8]) -> Option<Value> 
 async fn connect<H: Host>(
     shared: Arc<Shared<H>>,
     stream: TcpStream,
+    from: IpAddr,
     mut stop: watch::Receiver<bool>,
 ) {
-    // Only a few connections at a time may be waiting to pair.
-    let Some(unpaired) = Unpaired::take() else {
+    // Only a few connections at a time may be waiting to pair, and only a
+    // couple of them from any one device.
+    let Some(unpaired) = UNPAIRED.take(from) else {
         return;
     };
     // The socket's own limits are for an admitted phone and cannot change
@@ -864,6 +922,27 @@ mod tests {
         assert!(head.upgrade);
         assert_eq!(head.length, 74);
         assert!(parse_head(b"GET / HTTP/1.1\r\nHost: x").is_none());
+    }
+
+    #[test]
+    fn one_device_cannot_take_every_place() {
+        let gate = Gate::new(3, 2);
+        let stranger: IpAddr = "192.168.1.66".parse().unwrap();
+        let phone: IpAddr = "192.168.1.20".parse().unwrap();
+        let one = gate.take(stranger).expect("first place");
+        let two = gate.take(stranger).expect("second place");
+        // The stranger's share is spent; the person's phone still gets in.
+        assert!(gate.take(stranger).is_none());
+        let mine = gate.take(phone).expect("the phone's place");
+        // All three taken: nobody else, not even the PC itself.
+        assert!(gate.take("127.0.0.1".parse().unwrap()).is_none());
+        drop(one);
+        assert!(gate.take(stranger).is_some());
+        drop((two, mine));
+        // Every place given back: the PC itself may take them all.
+        let local: IpAddr = "127.0.0.1".parse().unwrap();
+        let all: Vec<_> = (0..3).filter_map(|_| gate.take(local)).collect();
+        assert_eq!(all.len(), 3);
     }
 
     #[test]

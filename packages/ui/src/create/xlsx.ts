@@ -1,7 +1,7 @@
 import type { Block, ReadDocument, SourcePage, TableCell } from './blocks';
 import { attr, childElements, firstChild, parseXml, textOf } from './xml';
 import type { XmlElement } from './xml';
-import { partText, readParts, relsPath, resolvePart } from './zip';
+import { hasPart, partText, readParts, relsPath, resolvePart } from './zip';
 
 /**
  * An Excel workbook (.xlsx) read into blocks: each visible sheet a heading
@@ -22,6 +22,8 @@ import { partText, readParts, relsPath, resolvePart } from './zip';
 
 const MAX_ROWS = 2_000;
 const MAX_COLUMNS = 60;
+/** The most cells of all sheets together: about a thousand pages. */
+const MAX_CELLS = 300_000;
 /** Excel's column width is in characters of the default font's "0" (7 px at Calibri 11) plus 5 px of padding. */
 const CHARACTER = 5.25;
 const PADDING = 3.75;
@@ -68,6 +70,8 @@ interface NumberShape {
   grouped: boolean;
   /** Dates: with a time of day, or only one. */
   time?: 'with' | 'only';
+  /** Dates in the Hijri calendar: Excel's `B2` prefix, or a `[$-…]` locale whose calendar is 06. */
+  hijri?: boolean;
   /** Text the format puts before and after the number: a currency ("SR", "€"), a unit. */
   prefix?: string;
   suffix?: string;
@@ -150,7 +154,15 @@ export function shapeOf(code: string | undefined): NumberShape {
   if (/[ymdhs]/i.test(bare) && !/[0#?]/.test(bare.replace(/[ymdhs:./\- ]/gi, ''))) {
     const hasDate = /[yd]/i.test(bare) || /m{3,}/i.test(bare);
     const hasTime = /[hs]/i.test(bare);
-    return { kind: 'date', decimals: 0, grouped: false, time: hasTime ? (hasDate ? 'with' : 'only') : undefined };
+    const locale = /\[\$[^\]]*?([0-9a-f]{6,8})\]/i.exec(first)?.[1] ?? '';
+    const hijri = /^B2/i.test(bare.trim()) || (locale.length >= 6 && parseInt(locale.slice(-6, -4), 16) === 6);
+    return {
+      kind: 'date',
+      decimals: 0,
+      grouped: false,
+      time: hasTime ? (hasDate ? 'with' : 'only') : undefined,
+      ...(hijri && hasDate ? { hijri: true } : {}),
+    };
   }
   const decimals = (/\.([0#?]+)/.exec(bare)?.[1] ?? '').length;
   const grouped = /[0#?],[0#?]/.test(bare);
@@ -164,15 +176,34 @@ export function shapeOf(code: string | undefined): NumberShape {
   };
 }
 
-/** A serial day number (Excel's, 1900 or 1904 based) as an ISO date and time. */
-export function excelDate(serial: number, from1904: boolean, time?: 'with' | 'only'): string {
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const isoDate = (d: Date) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+
+/**
+ * A day in the Hijri calendar as Excel's Hijri formats show it, by the
+ * tabular (Kuwaiti) reckoning Excel uses: `1448-05-19`. Null where this
+ * browser has no Hijri calendar.
+ */
+export function hijriDate(d: Date): string | null {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-civil-nu-latn', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' }).formatToParts(d);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value;
+    const [year, month, day] = [part('year'), part('month'), part('day')];
+    return year && month && day ? `${year}-${month}-${day}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A serial day number (Excel's, 1900 or 1904 based) as an ISO date and time; `hijri`, in the Hijri calendar. */
+export function excelDate(serial: number, from1904: boolean, time?: 'with' | 'only', hijri = false): string {
   // 1900's day 60 is Excel's own 29 February 1900, which never was.
   const days = from1904 ? serial + 1462 : serial < 60 ? serial + 1 : serial;
   const ms = Math.round((days - 25569) * 86_400_000);
   const d = new Date(ms);
   if (!Number.isFinite(d.getTime())) return String(serial);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  const date = hijri ? (hijriDate(d) ?? isoDate(d)) : isoDate(d);
   const clock = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}${d.getUTCSeconds() ? `:${pad(d.getUTCSeconds())}` : ''}`;
   if (time === 'only') return clock;
   return time === 'with' ? `${date} ${clock}` : date;
@@ -183,7 +214,7 @@ export function showNumber(value: number, shape: NumberShape, from1904 = false):
   if (!Number.isFinite(value)) return String(value);
   switch (shape.kind) {
     case 'date':
-      return excelDate(value, from1904, shape.time);
+      return excelDate(value, from1904, shape.time, shape.hijri === true);
     case 'percent':
       return `${showNumber(value * 100, { ...shape, kind: 'number', prefix: undefined, suffix: undefined })}%`;
     case 'number': {
@@ -333,6 +364,27 @@ interface SheetCell {
   font?: string;
 }
 
+/**
+ * A worksheet's XML with only its first `max` rows: the rows past them are
+ * cut from the text before it is read, so a sheet of a million rows (a few
+ * megabytes zipped) costs no more than one of `max`. Rows come in order in
+ * a sheet Excel wrote, so these are the rows that would be shown.
+ */
+export function firstRows(xml: string, max: number): { xml: string; cut: boolean } {
+  const row = /<(?:[A-Za-z_][\w.-]*:)?row[\s>/]/g;
+  let count = 0;
+  let match: RegExpExecArray | null;
+  while ((match = row.exec(xml)) !== null) {
+    count += 1;
+    if (count <= max) continue;
+    const end = /<\/(?:[A-Za-z_][\w.-]*:)?sheetData\s*>/g;
+    end.lastIndex = match.index;
+    const close = end.exec(xml);
+    return { xml: xml.slice(0, match.index) + (close ? xml.slice(close.index) : ''), cut: true };
+  }
+  return { xml, cut: false };
+}
+
 /** One sheet as blocks: its name, then its used cells as a table. */
 function sheetBlocks(
   name: string,
@@ -341,11 +393,12 @@ function sheetBlocks(
   styles: Styles,
   from1904: boolean,
 ): { blocks: Block[]; rtl: boolean; width: number; truncated: boolean } | null {
-  const root = parseXml(xml);
+  const kept = firstRows(xml, MAX_ROWS);
+  const root = parseXml(kept.xml);
   if (!root) return null;
   const view = firstChild(firstChild(root, 'sheetViews'), 'sheetView');
   const rtl = ['1', 'true'].includes(attr(view, 'rightToLeft') ?? '');
-  let truncated = false;
+  let truncated = kept.cut || root.truncated === true;
   const cells = new Map<number, SheetCell>();
   let lastRow = -1;
   let lastColumn = -1;
@@ -405,14 +458,21 @@ function sheetBlocks(
   // Merged ranges: each row of one is a single cell as wide as the range,
   // its text in the first row only.
   const regions = new Map<number, { r0: number; c0: number; c1: number }>();
+  // Merged ranges do not overlap in a sheet Excel wrote, so together they
+  // cover the table at most once: past that, a file repeating one range
+  // thousands of times (seconds of work each) is taken no further.
+  let budget = (lastRow + 1) * MAX_COLUMNS;
   for (const mergeCell of childElements(firstChild(root, 'mergeCells'), 'mergeCell')) {
     const [from, to] = (attr(mergeCell, 'ref') ?? '').split(':');
     const a = cellRef(from ?? '');
     const b = cellRef(to ?? from ?? '');
     if (!a || !b) continue;
     const [r0, c0] = [Math.min(a[0], b[0]), Math.min(a[1], b[1])];
-    const [r1, c1] = [Math.min(Math.max(a[0], b[0]), MAX_ROWS - 1), Math.min(Math.max(a[1], b[1]), MAX_COLUMNS - 1)];
-    if ((r1 - r0 + 1) * (c1 - c0 + 1) > 100_000) continue;
+    const [r1, c1] = [Math.min(Math.max(a[0], b[0]), lastRow), Math.min(Math.max(a[1], b[1]), MAX_COLUMNS - 1)];
+    if (r1 < r0 || c1 < c0) continue;
+    const area = (r1 - r0 + 1) * (c1 - c0 + 1);
+    if (area > budget) continue;
+    budget -= area;
     for (let r = r0; r <= r1; r += 1) {
       for (let c = c0; c <= c1; c += 1) regions.set(r * MAX_COLUMNS + c, { r0, c0, c1 });
     }
@@ -471,12 +531,7 @@ function sheetBlocks(
 
 /** Whether `bytes` is an Excel workbook: a zip with `xl/workbook.xml`. */
 export function isXlsx(bytes: Uint8Array): boolean {
-  if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return false;
-  try {
-    return 'xl/workbook.xml' in readParts(bytes, (name) => name === 'xl/workbook.xml');
-  } catch {
-    return false;
-  }
+  return hasPart(bytes, 'xl/workbook.xml');
 }
 
 export function readXlsx(bytes: Uint8Array): ReadDocument {
@@ -500,13 +555,21 @@ export function readXlsx(bytes: Uint8Array): ReadDocument {
     const target = attr(rel, 'Target');
     if (id && target) rels.set(id, resolvePart('xl/workbook.xml', target));
   }
-  const strings = childElements(parseXml(partText(parts, 'xl/sharedStrings.xml') ?? ''), 'si').map(stringOf);
+  const shared = parseXml(partText(parts, 'xl/sharedStrings.xml') ?? '');
+  const strings = childElements(shared, 'si').map(stringOf);
   const styles = readStyles(partText(parts, 'xl/styles.xml'), readThemeColours(partText(parts, 'xl/theme/theme1.xml')));
   const blocks: Block[] = [];
   let page: SourcePage | undefined;
-  let truncated = false;
+  // Strings past what could be read leave their cells empty: the reader is told.
+  let truncated = shared?.truncated === true;
+  let cells = 0;
   for (const sheet of childElements(firstChild(workbook, 'sheets'), 'sheet')) {
     if ((attr(sheet, 'state') ?? 'visible') !== 'visible') continue;
+    // A workbook of hundreds of full sheets: the first ones, and the reader told.
+    if (cells >= MAX_CELLS) {
+      truncated = true;
+      break;
+    }
     const id = attr(sheet, 'id', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships') ?? attr(sheet, 'id');
     const part = id ? rels.get(id) : undefined;
     const xml = part ? partText(parts, part) : null;
@@ -514,6 +577,7 @@ export function readXlsx(bytes: Uint8Array): ReadDocument {
     const read = sheetBlocks(attr(sheet, 'name') ?? '', xml, strings, styles, from1904);
     if (!read) continue;
     truncated ||= read.truncated;
+    for (const block of read.blocks) if (block.type === 'table') cells += block.rows.reduce((sum, row) => sum + row.length, 0);
     // A sheet wider than a portrait page goes on landscape pages.
     const landscape = read.width > A4[0] - 2 * MARGIN;
     const [width, height] = landscape ? [A4[1], A4[0]] : A4;
