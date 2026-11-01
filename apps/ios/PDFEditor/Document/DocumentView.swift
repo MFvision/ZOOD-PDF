@@ -17,6 +17,9 @@ struct DocumentView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The Library, where the document was opened from it (not in a
+    /// document window of its own): it offers to keep a copy.
+    @Environment(LibraryModel.self) private var library: LibraryModel?
     @AppStorage(ViewSettingsKey.layout) private var layout: PageLayout = .continuous
     @AppStorage(ViewSettingsKey.night) private var night = false
     /// What the screen has open, kept across a fold (`DocumentScreen`).
@@ -97,8 +100,24 @@ struct DocumentView: View {
         }
     }
 
+    /// A file opened from Files, a cloud drive, a link or another app is
+    /// not in the Library: it can be added from here or from More.
+    private var canAddToLibrary: Bool {
+        guard let library, model.isReady, model.url != nil else { return false }
+        return !library.isInLibrary(model.url, size: model.original.count)
+    }
+
+    private func addToLibrary() {
+        library?.addToLibrary(model)
+        screen.libraryOfferClosed = true
+    }
+
     private var stack: some View {
         VStack(spacing: 0) {
+            if canAddToLibrary, !screen.libraryOfferClosed, !editing, !markup {
+                AddToLibraryStrip(add: addToLibrary) { screen.libraryOfferClosed = true }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
             if showingSearch, model.isReady, !readerMode {
                 SearchBar(search: search, model: model) {
                     closeSearch()
@@ -206,6 +225,7 @@ struct DocumentView: View {
             .animation(Motion.travel(reduceMotion: reduceMotion), value: showingSearch)
             .animation(Motion.travel(reduceMotion: reduceMotion), value: markup)
             .animation(Motion.travel(reduceMotion: reduceMotion), value: showingThumbnails)
+            .animation(Motion.travel(reduceMotion: reduceMotion), value: screen.libraryOfferClosed)
             .navigationTitle(model.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
@@ -634,6 +654,10 @@ struct DocumentView: View {
                 Button("Pages", systemImage: "square.grid.2x2") { showingPages = true }
             }
             Divider()
+            if canAddToLibrary {
+                Button("Add to My documents", systemImage: "tray.and.arrow.down", action: addToLibrary)
+                    .accessibilityIdentifier("document.addToLibrary")
+            }
             Button("Export…", systemImage: "square.and.arrow.up.on.square") { showingExport = true }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
                 .accessibilityIdentifier("document.export")
@@ -926,5 +950,44 @@ private extension View {
         } else {
             self
         }
+    }
+}
+
+/// The strip over a document the Library does not keep yet: one tap keeps
+/// a copy in My documents; the cross puts it away for this document.
+struct AddToLibraryStrip: View {
+    let add: () -> Void
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: Space.x3) {
+            Image(systemName: "tray.and.arrow.down")
+                .foregroundStyle(Color.accentColor)
+            Text("This file is not in your library.")
+                .themeFont(.callout)
+                .foregroundStyle(Surface.label)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Add", action: add)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .accessibilityIdentifier("document.addToLibrary.strip")
+            Button {
+                close()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(TextStyle.caption)
+                    .foregroundStyle(Surface.secondaryLabel)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(Text("Close"))
+        }
+        .padding(.horizontal, Space.x5)
+        .padding(.vertical, Space.x3)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("document.addToLibrary.offer")
     }
 }

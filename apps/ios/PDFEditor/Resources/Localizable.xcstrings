@@ -1,6 +1,71 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Cloud drives": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "التخزين السحابي" } }
+      }
+    },
+    "Quick tools": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أدوات سريعة" } }
+      }
+    },
+    "Sort with ZOOD": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "رتّب مع زود" } }
+      }
+    },
+    "Help & Support": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "المساعدة والدعم" } }
+      }
+    },
+    "More tools": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أدوات أخرى" } }
+      }
+    },
+    "OneDrive and Google Drive": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "OneDrive و Google Drive" } }
+      }
+    },
+    "Ask about a PDF, or anything": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "اسأل عن ملف PDF أو عن أي شيء" } }
+      }
+    },
+    "Convert, split, shrink, protect": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "تحويل وتقسيم وتصغير وحماية" } }
+      }
+    },
+    "Name, merge and file PDFs": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "تسمية ودمج وترتيب ملفات PDF" } }
+      }
+    },
+    "Guides, and a message to us": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أدلة، ورسالة إلينا" } }
+      }
+    },
+    "Add to My documents": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أضف إلى مستنداتي" } }
+      }
+    },
+    "Added to My documents": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أُضيف إلى مستنداتي" } }
+      }
+    },
+    "This file is not in your library.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "هذا الملف ليس في مكتبتك." } }
+      }
+    },
     "Ask ZOOD": {
       "localizations": {
         "ar": { "stringUnit": { "state": "translated", "value": "اسأل زود" } }

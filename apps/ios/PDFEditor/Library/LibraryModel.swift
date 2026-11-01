@@ -251,6 +251,65 @@ final class LibraryModel {
         return destination
     }
 
+    // MARK: - Adding to the Library
+
+    /// A short line shown over the Library for a moment ("Added to My
+    /// documents"), then cleared by the banner.
+    var notice: LocalizedStringKey?
+
+    /// Whether a file is one the Library already keeps: in My documents, in
+    /// the chosen folder, or a copy of it already added (same name and size).
+    func isInLibrary(_ url: URL?, size: Int? = nil) -> Bool {
+        guard let url else { return true }
+        let folder = url.deletingLastPathComponent().resolvingSymlinksInPath().standardizedFileURL.path
+        if folder == documentsFolder.resolvingSymlinksInPath().standardizedFileURL.path { return true }
+        if let chosen = chosenFolder?.url {
+            let root = chosen.resolvingSymlinksInPath().standardizedFileURL.path
+            if url.resolvingSymlinksInPath().standardizedFileURL.path.hasPrefix(root + "/") { return true }
+        }
+        let name = url.deletingPathExtension().lastPathComponent
+        return documents.contains { $0.name == name && (size == nil || $0.size == size) }
+    }
+
+    /// Keeps a copy of an open document — one opened from Files, a cloud
+    /// drive, a link or another app — in My documents, with whatever edits
+    /// it has, and reads it into the index. The document stays open as it
+    /// is, so a cloud file still saves back to its drive.
+    @discardableResult
+    func addToLibrary(_ model: DocumentModel) -> URL? {
+        do {
+            let url = try adopt(bytes: model.bytes, name: model.name, open: false)
+            notice = "Added to My documents"
+            return url
+        } catch {
+            self.error = LocalizedStringKey(error.localizedDescription)
+            return nil
+        }
+    }
+
+    /// Keeps a copy of a file that is not open (a recent from Files, a
+    /// cloud drive's PDF) in My documents.
+    @discardableResult
+    func addToLibrary(url: URL) -> URL? {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            var bytes = Data()
+            var readError: NSError?
+            var innerError: (any Error)?
+            NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &readError) { readURL in
+                do { bytes = try Data(contentsOf: readURL) } catch { innerError = error }
+            }
+            if let failure = readError ?? (innerError as NSError?) { throw failure }
+            let added = try adopt(bytes: bytes, name: url.deletingPathExtension().lastPathComponent, open: false)
+            notice = "Added to My documents"
+            return added
+        } catch {
+            self.error = LocalizedStringKey(error.localizedDescription)
+            return nil
+        }
+    }
+
     // MARK: - The index
 
     /// Opens the index file (or starts a new one) and reads what it holds.

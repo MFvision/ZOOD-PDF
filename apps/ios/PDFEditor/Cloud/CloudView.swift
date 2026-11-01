@@ -5,6 +5,7 @@ import SwiftUI
 /// the provider's own page, browse and search, open a PDF (it is saved back
 /// when you save it), or save a document of this iPhone's into a folder.
 struct CloudView: View {
+    @Environment(LibraryModel.self) private var library: LibraryModel?
     /// Opens a fetched copy in the editor.
     let open: (URL) -> Void
     /// A document to save into a drive instead of opening one (Save to…).
@@ -45,6 +46,10 @@ struct CloudView: View {
             } message: {
                 Text(error ?? "")
             }
+        }
+        // "Added to My documents", over the drive's list.
+        .overlay(alignment: .top) {
+            if let library { LibraryNoticeBanner(library: library) }
         }
     }
 
@@ -224,6 +229,7 @@ struct CloudFolderView: View {
 
 /// A PDF in a drive: tapping fetches it and opens it in the editor.
 struct CloudEntryRow: View {
+    @Environment(LibraryModel.self) private var library: LibraryModel?
     let entry: CloudEntry
     let provider: CloudProvider
     let saving: URL?
@@ -263,7 +269,62 @@ struct CloudEntryRow: View {
             }
         }
         .foregroundStyle(saving == nil ? Surface.label : Surface.secondaryLabel)
+        .contextMenu {
+            if saving == nil, let library {
+                addButton(library)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if saving == nil, let library {
+                addButton(library).tint(.accentColor)
+            }
+        }
         .accessibilityIdentifier("cloud.file")
+    }
+
+    /// Downloads the PDF and keeps a copy in My documents, without opening it.
+    private func addButton(_ library: LibraryModel) -> some View {
+        Button("Add to My documents", systemImage: "tray.and.arrow.down") {
+            guard !fetching else { return }
+            fetching = true
+            Task {
+                defer { fetching = false }
+                do {
+                    let copy = try await CloudCenter.shared.fetch(entry, from: provider)
+                    library.addToLibrary(url: copy)
+                } catch {
+                    self.error = error.localizedDescription
+                }
+            }
+        }
+        .accessibilityIdentifier("cloud.file.add")
+    }
+}
+
+/// "Added to My documents", for a moment, over the Library.
+struct LibraryNoticeBanner: View {
+    let library: LibraryModel
+
+    var body: some View {
+        Group {
+            if let notice = library.notice {
+                Label { Text(notice) } icon: { Image(systemName: "checkmark.circle") }
+                    .font(TextStyle.callout)
+                    .foregroundStyle(Surface.label)
+                    .padding(.horizontal, Space.x5)
+                    .padding(.vertical, Space.x3)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.top, Space.x3)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .onTapGesture { library.notice = nil }
+                    .task {
+                        try? await Task.sleep(for: .seconds(3))
+                        library.notice = nil
+                    }
+                    .accessibilityIdentifier("library.notice")
+            }
+        }
+        .animation(Motion.travel, value: library.notice != nil)
     }
 }
 
