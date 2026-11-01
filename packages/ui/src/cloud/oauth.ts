@@ -1,5 +1,5 @@
 import type { GoogleConfig, OneDriveConfig, ProviderId } from './config';
-import { CloudError } from './errors';
+import { CloudError, needsAdminConsent } from './errors';
 
 /**
  * OAuth 2.0 authorization code grant with PKCE (RFC 6749 §4.1, RFC 7636),
@@ -120,6 +120,7 @@ export function readCallback(params: Record<string, string>, expectedState: stri
   if (params.state !== expectedState) throw new CloudError('state');
   if (params.error) {
     const detail = [params.error, params.error_description].filter(Boolean).join(': ');
+    if (needsAdminConsent(detail)) throw new CloudError('adminConsent', detail);
     throw new CloudError(params.error === 'access_denied' ? 'cancelled' : 'denied', detail);
   }
   if (!params.code) throw new CloudError('denied', 'the answer carried no code');

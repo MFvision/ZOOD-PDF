@@ -87,6 +87,9 @@ describe('the answer to the redirect URI', () => {
     };
     expect(kind({ state: 'mine', error: 'access_denied', error_description: 'the user cancelled' })).toBe('cancelled');
     expect(kind({ state: 'mine', error: 'unauthorized_client' })).toBe('denied');
+    // A work account whose organisation lets only its admin allow apps.
+    expect(kind({ state: 'mine', error: 'access_denied', error_description: 'AADSTS90094: Admin consent is required.' })).toBe('adminConsent');
+    expect(kind({ state: 'mine', error: 'consent_required', error_description: 'AADSTS65001: The user or administrator has not consented' })).toBe('adminConsent');
     expect(kind({ state: 'mine' })).toBe('denied');
   });
 

@@ -1,6 +1,11 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Your organisation's admin must allow ZOOD PDF before work accounts can open OneDrive. An admin signs in once and ticks \"Consent on behalf of your organization\"; after that everyone can sign in.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "يجب أن يسمح مسؤول جهتك لمحرر زود PDF قبل أن تفتح حسابات العمل OneDrive. يسجّل المسؤول الدخول مرة واحدة ويختار «الموافقة نيابة عن مؤسستك»، وبعدها يستطيع الجميع تسجيل الدخول." } }
+      }
+    },
     "Sign in with a work or school account": {
       "localizations": {
         "ar": { "stringUnit": { "state": "translated", "value": "سجّل الدخول بحساب العمل أو الجهة التعليمية" } }

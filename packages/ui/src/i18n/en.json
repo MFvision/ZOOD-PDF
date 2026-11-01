@@ -678,6 +678,7 @@
   "cloud.error.signedOut": "The sign-in has ended. Sign in again to continue.",
   "cloud.error.cancelled": "The sign-in was cancelled.",
   "cloud.error.denied": "The provider did not allow the sign-in.",
+  "cloud.error.adminConsent": "Your organisation's admin must allow ZOOD PDF before work accounts can open OneDrive. An admin signs in once and ticks \"Consent on behalf of your organization\"; after that everyone can sign in.",
   "cloud.error.timeout": "The sign-in took too long and was stopped. Try again.",
   "cloud.error.popupBlocked": "The browser blocked the sign-in window. Allow pop-ups for this site, then try again.",
   "cloud.error.state": "A sign-in answer that was not for this request was ignored. Try again.",
