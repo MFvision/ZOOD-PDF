@@ -20,6 +20,11 @@ export const CLOUD_RECENT_LIMIT = 8;
 const isProvider = (value: unknown): value is ProviderId => PROVIDERS.includes(value as ProviderId);
 const text = (value: unknown, max = 400): value is string => typeof value === 'string' && value.length <= max;
 
+/** OneDrive's kind of account (personal, or work or school) is kept too, so "Signed in as" still says it after a restart. */
+function withKind(account: Account, kind: unknown): Account {
+  return kind === 'personal' || kind === 'business' ? { ...account, kind } : account;
+}
+
 export function readAccounts(): Partial<Record<ProviderId, Account>> {
   const raw = readJson<unknown>(ACCOUNTS_KEY, {});
   const accounts: Partial<Record<ProviderId, Account>> = {};
@@ -27,7 +32,7 @@ export function readAccounts(): Partial<Record<ProviderId, Account>> {
   for (const [provider, value] of Object.entries(raw as Record<string, unknown>)) {
     const account = value as Partial<Account> | null;
     if (isProvider(provider) && account && text(account.name) && text(account.email)) {
-      accounts[provider] = { name: account.name, email: account.email };
+      accounts[provider] = withKind({ name: account.name, email: account.email }, account.kind);
     }
   }
   return accounts;
@@ -35,7 +40,7 @@ export function readAccounts(): Partial<Record<ProviderId, Account>> {
 
 export function keepAccount(provider: ProviderId, account: Account | null): void {
   const accounts = readAccounts();
-  if (account) accounts[provider] = { name: account.name, email: account.email };
+  if (account) accounts[provider] = withKind({ name: account.name, email: account.email }, account.kind);
   else delete accounts[provider];
   writeJson(ACCOUNTS_KEY, accounts);
 }
