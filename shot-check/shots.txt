@@ -1,0 +1,33 @@
+screen: 1024x768; Windows 10.0.26100.0
+
+== without ZOOD ==
+  clipboard over 5 s: 0 of 371 tries found the clipboard held
+  Print Screen as a program's hotkey: free
+  Print Screen: NO PICTURE (clipboard changed 0 times); in front after: ScreenClippingHost [Windows.UI.Core.CoreWindow] 'Screen Snipping'
+  Alt+Print Screen: PICTURE ON THE CLIPBOARD (clipboard changed 4 times); in front after: explorer [CabinetWClass] 'ring-check - File Explorer'
+  Print Screen, then a rectangle dragged: PICTURE ON THE CLIPBOARD (clipboard changed 13 times); in front after: ScreenClippingHost [Windows.UI.Core.CoreWindow] 'Screen Snipping'
+  Win+Shift+S, then a rectangle dragged: PICTURE ON THE CLIPBOARD (clipboard changed 35 times); in front after: explorer [CabinetWClass] 'ring-check - File Explorer'
+  Win+Shift+S, then a rectangle dragged with Shift still down: PICTURE ON THE CLIPBOARD (clipboard changed 35 times); in front after: explorer [CabinetWClass] 'ring-check - File Explorer'
+
+== with ZOOD ==
+  ZOOD's windows on the screen:
+    warraq-desktop [Tauri Window] 'ZOOD PDF' at 407,0 210x34 topmost no-activate
+    warraq-desktop [Tauri Window] 'ZOOD PDF' at -20000,-20000 420x420 topmost no-activate
+    warraq-desktop [Tauri Window] 'ZOOD' at 944,256 64x64 topmost no-activate
+    warraq-desktop [Tauri Window] 'ZOOD PDF' at 0,0 1044x788
+    warraq-desktop [app.warraq.desktop-sic] 'app.warraq.desktop-siw' at 0,0 16x16 click-through layered no-activate
+    warraq-desktop [Tao Thread Event Target] '' at 0,0 16x16 click-through layered no-activate
+  clipboard over 5 s: 0 of 329 tries found the clipboard held
+  Print Screen as a program's hotkey: free
+  Print Screen: NO PICTURE (clipboard changed 0 times); in front after: ScreenClippingHost [Windows.UI.Core.CoreWindow] 'Screen Snipping'
+  Alt+Print Screen: PICTURE ON THE CLIPBOARD (clipboard changed 4 times); in front after: warraq-desktop [Tauri Window] 'ZOOD PDF'
+  Print Screen, then a rectangle dragged: PICTURE ON THE CLIPBOARD (clipboard changed 33 times); in front after: warraq-desktop [Tauri Window] 'ZOOD PDF'
+  Win+Shift+S, then a rectangle dragged: PICTURE ON THE CLIPBOARD (clipboard changed 33 times); in front after: warraq-desktop [Tauri Window] 'ZOOD PDF'
+  Win+Shift+S, then a rectangle dragged with Shift still down: PICTURE ON THE CLIPBOARD (clipboard changed 33 times); in front after: warraq-desktop [Tauri Window] 'ZOOD PDF'
+
+stall.log:
+     0.0s started, version 0.1.0
+     0.0s started, version 0.1.0
+
+
+every way that works without ZOOD works with it

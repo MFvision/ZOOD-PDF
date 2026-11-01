@@ -1,0 +1,11 @@
+status: success
+commit: 7f6523c9332d375b57b8f5bc7ab62b7d0c372cd9
+run: https://github.com/MFvision/ZOOD-PDF/actions/runs/41282093388
+release: windows-20261101-0713
+ring check: success
+remote check: success
+quick check: success
+ask check: success
+perf check: success
+screenshot check: success
+finished: 2026-11-01T08:09Z
