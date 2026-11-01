@@ -89,6 +89,13 @@ enum CloudConfig {
         }
     }
 
+    /// Microsoft's page for one kind of account. One e-mail address can be
+    /// both a personal Microsoft account and a work account, each with its
+    /// own OneDrive (owner, 2026-11-01: ZOOD showed his personal OneDrive,
+    /// with Personal Vault, not the work one his OneDrive app shows).
+    static let oneDriveWork: [String: String] = ["domain_hint": "organizations"]
+    static let oneDrivePersonal: [String: String] = ["domain_hint": "consumers"]
+
     /// Google's picker inside its consent screen: PDFs and folders to open.
     static let googlePicker: [String: String] = [
         "trigger_onepick": "true",

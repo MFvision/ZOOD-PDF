@@ -1,6 +1,41 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Sign in with a work or school account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "سجّل الدخول بحساب العمل أو الجهة التعليمية" } }
+      }
+    },
+    "Sign in with a personal account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "سجّل الدخول بحساب شخصي" } }
+      }
+    },
+    "Personal account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "حساب شخصي" } }
+      }
+    },
+    "Work or school account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "حساب عمل أو جهة تعليمية" } }
+      }
+    },
+    "Use my work or school OneDrive": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "استخدم OneDrive العمل" } }
+      }
+    },
+    "Use my personal OneDrive": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "استخدم OneDrive الشخصي" } }
+      }
+    },
+    "This is the personal OneDrive of this account. Files from work (Teams, Meetings, company folders) are in the work OneDrive.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "هذا هو OneDrive الشخصي لهذا الحساب. ملفات العمل (Teams والاجتماعات ومجلدات الشركة) موجودة في OneDrive العمل." } }
+      }
+    },
     "Cloud drives": {
       "localizations": {
         "ar": { "stringUnit": { "state": "translated", "value": "التخزين السحابي" } }

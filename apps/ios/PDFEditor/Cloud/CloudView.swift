@@ -16,6 +16,8 @@ struct CloudView: View {
     @State private var busy: CloudProvider?
     @State private var error: String?
     @State private var picked: [CloudEntry] = []
+    /// "personal" or "business", once read from Microsoft.
+    @State private var oneDriveType: String?
 
     var body: some View {
         NavigationStack {
@@ -30,6 +32,7 @@ struct CloudView: View {
                 }
             }
             .themedScrollBackground()
+            .task { await readOneDriveType() }
             .navigationTitle(saving == nil ? "Cloud drives" : "Save to a cloud drive")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,6 +73,10 @@ struct CloudView: View {
                         VStack(alignment: .leading) {
                             Text(provider == .gdrive ? "Files ZOOD can open" : "All files")
                             Text(verbatim: email).font(TextStyle.caption).foregroundStyle(Surface.secondaryLabel)
+                            if provider == .onedrive, let oneDriveType {
+                                Text(oneDriveType == "personal" ? LocalizedStringKey("Personal account") : LocalizedStringKey("Work or school account"))
+                                    .font(TextStyle.caption).foregroundStyle(Surface.secondaryLabel)
+                            }
                         }
                     } icon: {
                         Image(systemName: "folder")
@@ -87,23 +94,59 @@ struct CloudView: View {
                         CloudEntryRow(entry: entry, provider: .gdrive, saving: saving, open: finish)
                     }
                 }
-                Button("Sign out", role: .destructive) { center.signOut(provider) }
-            } else {
-                Button {
-                    Task { await signIn(provider) }
-                } label: {
-                    HStack {
-                        Label("Sign in to \(provider.title)", systemImage: provider.symbol)
-                        Spacer()
-                        if busy == provider { ProgressView() }
+                if provider == .onedrive, oneDriveType != nil {
+                    let personal = oneDriveType == "personal"
+                    Button {
+                        Task { await switchOneDrive(to: personal ? CloudConfig.oneDriveWork : CloudConfig.oneDrivePersonal) }
+                    } label: {
+                        Label(personal ? LocalizedStringKey("Use my work or school OneDrive") : LocalizedStringKey("Use my personal OneDrive"),
+                              systemImage: personal ? "building.2" : "person")
                     }
+                    .disabled(busy != nil)
+                    .accessibilityIdentifier("cloud.onedrive.switch")
                 }
-                .disabled(busy != nil)
-                .accessibilityIdentifier("cloud.\(provider.rawValue).signin")
+                Button("Sign out", role: .destructive) { center.signOut(provider); if provider == .onedrive { oneDriveType = nil } }
+            } else if provider == .onedrive {
+                // One e-mail can be both kinds of account, each with its own
+                // OneDrive: the person says which one up front.
+                signInButton(.onedrive, title: "Sign in with a work or school account", symbol: "building.2", extra: CloudConfig.oneDriveWork, id: "cloud.onedrive.signin.work")
+                signInButton(.onedrive, title: "Sign in with a personal account", symbol: "person", extra: CloudConfig.oneDrivePersonal, id: "cloud.onedrive.signin")
+            } else {
+                signInButton(provider, title: "Sign in to \(provider.title)", symbol: provider.symbol, extra: [:], id: "cloud.\(provider.rawValue).signin")
             }
         } header: {
             Text(verbatim: provider.title)
+        } footer: {
+            if provider == .onedrive, center.accounts[.onedrive] != nil, oneDriveType == "personal" {
+                Text("This is the personal OneDrive of this account. Files from work (Teams, Meetings, company folders) are in the work OneDrive.")
+            }
         }
+    }
+
+    private func signInButton(_ provider: CloudProvider, title: LocalizedStringKey, symbol: String, extra: [String: String], id: String) -> some View {
+        Button {
+            Task { await signIn(provider, extra: extra) }
+        } label: {
+            HStack {
+                Label(title, systemImage: symbol)
+                Spacer()
+                if busy == provider { ProgressView() }
+            }
+        }
+        .disabled(busy != nil)
+        .accessibilityIdentifier(id)
+    }
+
+    /// Signs in to the other kind of account; the new sign-in takes the
+    /// old one's place only once it has worked.
+    private func switchOneDrive(to extra: [String: String]) async {
+        await signIn(.onedrive, extra: extra)
+    }
+
+    /// Which OneDrive is signed in: personal, or work or school.
+    private func readOneDriveType() async {
+        guard center.accounts[.onedrive] != nil else { oneDriveType = nil; return }
+        oneDriveType = try? await OneDriveClient().driveType()
     }
 
     private func authenticate(_ url: URL) async throws -> URL {
@@ -122,6 +165,7 @@ struct CloudView: View {
             _ = result
             let email = (try? await CloudDrives.drive(provider).account()) ?? provider.title
             center.signedIn(provider, as: email)
+            if provider == .onedrive { await readOneDriveType() }
             if provider == .gdrive, let ids = result.params["picked_file_ids"] {
                 picked = try await GoogleDriveClient().entries(ids.split(separator: ",").map(String.init))
             }
