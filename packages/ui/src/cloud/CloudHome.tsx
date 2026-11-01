@@ -1,7 +1,7 @@
 import { Cloud, FileText } from 'lucide-react';
 import { Icon } from '../components/Icon';
 import { useT } from '../i18n/useT';
-import { isolate } from './CloudBrowser';
+import { accountWho, isolate } from './CloudBrowser';
 import { useCloud } from './CloudContext';
 import { recentId } from './store';
 
@@ -37,7 +37,7 @@ export function CloudHome() {
               </span>
               <span className="cloud-drive-text">
                 <strong>{drive}</strong>
-                <span>{account ? t('cloud.account.as', { who: isolate(account.email || account.name) }) : t('cloud.account.none')}</span>
+                <span>{account ? t('cloud.account.as', { who: accountWho(account, t) }) : t('cloud.account.none')}</span>
               </span>
               <span className="cloud-drive-actions">
                 {account && (

@@ -94,6 +94,8 @@ struct CreateSheet: View {
 /// My files: every place the Library keeps documents, one row each.
 struct FilesTab: View {
     let library: LibraryModel
+    /// OneDrive and Google Drive sit with the files, too.
+    var cloud: () -> Void = {}
 
     var body: some View {
         List {
@@ -110,6 +112,15 @@ struct FilesTab: View {
                 }
             } footer: {
                 Text("Nothing leaves this device.")
+            }
+            Section {
+                Button(action: cloud) {
+                    Label("Cloud drives", systemImage: "cloud")
+                }
+                .foregroundStyle(Surface.label)
+                .accessibilityIdentifier("files.cloud")
+            } footer: {
+                Text("OneDrive and Google Drive")
             }
         }
         .themedScrollBackground()

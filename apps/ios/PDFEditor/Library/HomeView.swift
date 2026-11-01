@@ -94,6 +94,10 @@ struct HomeView: View {
 
     private var compactSections: some View {
         VStack(spacing: 0) {
+            sectionRow(.documents, detail: library.documents.count)
+            Divider().padding(.leading, Space.x10)
+            sectionRow(.recents, detail: library.recents.count)
+            Divider().padding(.leading, Space.x10)
             sectionRow(.starred, detail: library.starredItems.count)
             Divider().padding(.leading, Space.x10)
             sectionRow(.tags, detail: library.indexer?.stats.tags.count ?? 0)
@@ -139,26 +143,143 @@ struct HomeActions {
     var search: () -> Void
     var settings: () -> Void
     var batch: () -> Void = {}
+    /// Every other tool (Ask ZOOD, Quick tools, Sort, Cloud drives, Help):
+    /// the shell opens its screen.
+    var tool: (LibraryTool) -> Void = { _ in }
+    /// The phone remote for ZOOD PDF on a computer.
+    var remote: () -> Void = {}
+
+    func run(_ tool: LibraryTool) {
+        switch tool {
+        case .scan: scan()
+        case .create: create()
+        case .combine: combine()
+        case .search: search()
+        case .batch: batch()
+        default: self.tool(tool)
+        }
+    }
 }
 
-/// The six large cards: an icon tile in its own pastel, a title, a hint.
-/// Every one does something today — there is no Convert and no AI on this
-/// device, so they are not shown.
+extension LibraryTool {
+    /// The large cards on Home, in order; every other tool is a small tile
+    /// under them. Together they are every tool (`HomeToolsTests`), so Home
+    /// reaches all of them in both menu styles — Classic has no Tools tab.
+    static let homeCards: [LibraryTool] = [.scan, .create, .combine, .cloud, .askZood, .quickTools, .sort]
+    static var homeTiles: [LibraryTool] { allCases.filter { !homeCards.contains($0) } }
+
+    /// The card's title on Home: shorter than the Tools list's where the
+    /// hint says the rest.
+    var cardTitle: LocalizedStringKey {
+        switch self {
+        case .create: "Create"
+        case .combine: "Combine"
+        default: title
+        }
+    }
+
+    var hint: LocalizedStringKey {
+        switch self {
+        case .scan: "Paper into a PDF"
+        case .create: "A PDF from pictures"
+        case .combine: "Several files into one PDF"
+        case .cloud: "OneDrive and Google Drive"
+        case .askZood: "Ask about a PDF, or anything"
+        case .quickTools: "Convert, split, shrink, protect"
+        case .sort: "Name, merge and file PDFs"
+        case .search: "Words inside every document"
+        case .batch: "Steps run over many files"
+        case .help: "Guides, and a message to us"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .scan: .teal
+        case .create: .purple
+        case .combine: .orange
+        case .cloud: .cyan
+        case .askZood: .pink
+        case .quickTools: .yellow
+        case .sort: .brown
+        case .search: .indigo
+        case .batch: .green
+        case .help: .mint
+        }
+    }
+}
+
+/// Home's tools: Open and the large cards (each a thing the app does now),
+/// then every other tool, the phone remote and Settings as small tiles —
+/// so nothing the Tools tab has is missing from Home, in either menu style.
 struct ActionCardsRow: View {
     let actions: HomeActions
     private let columns = [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: Space.x4)]
+    private let tileColumns = [GridItem(.adaptive(minimum: 96, maximum: 160), spacing: Space.x3)]
 
     var body: some View {
-        LazyVGrid(columns: columns, spacing: Space.x4) {
-            ActionCard(title: "Open", hint: "A PDF from Files or iCloud Drive", symbol: "folder", tint: .blue, id: "home.open", action: actions.open)
-            ActionCard(title: "Scan", hint: "Paper into a PDF", symbol: "doc.viewfinder", tint: .teal, id: "home.scan", action: actions.scan)
-            ActionCard(title: "Create", hint: "A PDF from pictures", symbol: "photo.on.rectangle.angled", tint: .purple, id: "home.create", action: actions.create)
-            ActionCard(title: "Combine", hint: "Several files into one PDF", symbol: "doc.on.doc", tint: .orange, id: "home.combine", action: actions.combine)
-            ActionCard(title: "Batch", hint: "Steps run over many files", symbol: "square.stack.3d.down.forward", tint: .green, id: "home.batch", action: actions.batch)
-            ActionCard(title: "Search", hint: "Words inside every document", symbol: "text.magnifyingglass", tint: .indigo, id: "home.search", action: actions.search)
-            ActionCard(title: "Settings", hint: "Language, scanning, the lock", symbol: "gearshape", tint: .gray, id: "home.settings", action: actions.settings)
+        VStack(alignment: .leading, spacing: Space.x5) {
+            LazyVGrid(columns: columns, spacing: Space.x4) {
+                ActionCard(title: "Open", hint: "A PDF from Files or iCloud Drive", symbol: "folder", tint: .blue, id: "home.open", action: actions.open)
+                ForEach(LibraryTool.homeCards) { tool in
+                    ActionCard(title: tool.cardTitle, hint: tool.hint, symbol: tool.symbol, tint: tool.tint,
+                               id: "home.\(tool.rawValue)") { actions.run(tool) }
+                }
+            }
+            Text("More tools")
+                .themeFont(.headline)
+                .foregroundStyle(Surface.secondaryLabel)
+            LazyVGrid(columns: tileColumns, spacing: Space.x3) {
+                ForEach(LibraryTool.homeTiles) { tool in
+                    ToolTile(title: tool.title, symbol: tool.symbol, tint: tool.tint, id: "home.\(tool.rawValue)") { actions.run(tool) }
+                }
+                ToolTile(title: "Phone remote", symbol: "iphone.radiowaves.left.and.right", tint: .blue, id: "home.remote", action: actions.remote)
+                ToolTile(title: "Settings", symbol: "gearshape", tint: .gray, id: "home.settings", action: actions.settings)
+            }
         }
         .accessibilityIdentifier("home.actions")
+    }
+}
+
+/// A small tool on Home: the icon in its pastel over the name.
+struct ToolTile: View {
+    let title: LocalizedStringKey
+    let symbol: String
+    let tint: Color
+    let id: String
+    let action: () -> Void
+    @Environment(\.appTheme) private var theme
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var style: ThemeStyle {
+        ThemeStyle(theme: theme, scheme: scheme, reduceTransparency: reduceTransparency)
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: Space.x2) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: style.glyphWeight))
+                    .foregroundStyle(style.tile(tint).glyph)
+                    .frame(width: 36, height: 36)
+                    .background(style.tile(tint).plate, in: RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
+                Text(title)
+                    .themeFont(.caption)
+                    .foregroundStyle(Surface.label)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 84)
+            .padding(Space.x3)
+            .glassCard(radius: Radius.card)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(title))
+        .accessibilityIdentifier(id)
     }
 }
 
@@ -385,6 +506,12 @@ struct DocumentRow: View {
             Button("Open in New Window", systemImage: "macwindow.badge.plus") {
                 openWindow(id: "document", value: reference)
             }
+        }
+        if item.key == nil, let url = item.url, !library.isInLibrary(url) {
+            Button("Add to My documents", systemImage: "tray.and.arrow.down") {
+                library.addToLibrary(url: url)
+            }
+            .accessibilityIdentifier("home.add.\(item.name)")
         }
         if let id = item.recentID, let recent = library.recents.first(where: { $0.id == id }) {
             Button("Remove from Recents", systemImage: "clock.badge.xmark") {

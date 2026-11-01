@@ -31,6 +31,9 @@ final class DocumentScreen {
     var showingGoTo = false
     var showingPages = false
     var showingExport = false
+    /// The "Add to My documents" strip over a file the Library does not
+    /// keep: closed, or done, for this document.
+    var libraryOfferClosed = false
     var showingProtect = false
     var showingCompare = false
     var showingSignatures = false

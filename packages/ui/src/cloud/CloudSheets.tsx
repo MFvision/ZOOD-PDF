@@ -99,14 +99,32 @@ function SignIn({ provider, next }: { provider: ProviderId; next: Next }) {
         <button type="button" className="icon-btn icon-btn-labeled" onClick={cloud.cancel}>
           {t('cloud.cancel')}
         </button>
-        <button
-          type="button"
-          className="icon-btn icon-btn-labeled icon-btn-primary"
-          disabled={waiting}
-          onClick={() => cloud.signIn(provider, stay)}
-        >
-          {picking ? t('cloud.pick.open') : t('cloud.signIn.button')}
-        </button>
+        {provider === 'onedrive' ? (
+          // One e-mail can be both kinds of Microsoft account, each with its
+          // own OneDrive: the person says which one up front.
+          <>
+            <button type="button" className="icon-btn icon-btn-labeled" disabled={waiting} onClick={() => cloud.signIn(provider, stay, 'personal')}>
+              {t('cloud.signIn.personal')}
+            </button>
+            <button
+              type="button"
+              className="icon-btn icon-btn-labeled icon-btn-primary"
+              disabled={waiting}
+              onClick={() => cloud.signIn(provider, stay, 'business')}
+            >
+              {t('cloud.signIn.business')}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="icon-btn icon-btn-labeled icon-btn-primary"
+            disabled={waiting}
+            onClick={() => cloud.signIn(provider, stay)}
+          >
+            {picking ? t('cloud.pick.open') : t('cloud.signIn.button')}
+          </button>
+        )}
       </div>
     </div>
   );

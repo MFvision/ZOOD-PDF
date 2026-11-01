@@ -189,6 +189,14 @@ struct OneDriveClient: CloudDrive {
         return me.mail ?? me.userPrincipalName ?? me.displayName ?? ""
     }
 
+    /// "personal" (a personal Microsoft account's OneDrive) or "business"
+    /// (OneDrive for work or school).
+    func driveType() async throws -> String {
+        struct Drive: Decodable { let driveType: String? }
+        let drive = try await http.json(Drive.self, URLRequest(url: URL(string: "\(Self.graph)/me/drive?$select=driveType")!))
+        return drive.driveType ?? ""
+    }
+
     private func listing(_ url: URL) async throws -> CloudListing {
         struct Page: Decodable {
             let value: [Item]?

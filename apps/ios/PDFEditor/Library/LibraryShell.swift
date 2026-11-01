@@ -181,7 +181,9 @@ struct LibraryShell: View {
             combine: { showingCombiner = true },
             search: { library.requestedSearch = "" },
             settings: { showingSettings = true },
-            batch: { showingBatch = true }
+            batch: { showingBatch = true },
+            tool: { tool in run(tool) },
+            remote: { showingRemote = true }
         )
     }
 
@@ -228,6 +230,10 @@ struct LibraryShell: View {
         // A save that went back to OneDrive or Google Drive, for a moment.
         .overlay(alignment: .top) {
             CloudSaveBanner()
+        }
+        // "Added to My documents", for a moment.
+        .overlay(alignment: .top) {
+            LibraryNoticeBanner(library: library)
         }
         .fullScreenCover(isPresented: $showingRemote) {
             // A PDF sent from the computer joins the Library and opens.
@@ -510,7 +516,7 @@ struct LibraryShell: View {
             }
             Tab("My files", systemImage: "folder", value: AppTab.files) {
                 tabStack(.files) {
-                    FilesTab(library: library)
+                    FilesTab(library: library, cloud: { run(.cloud) })
                         .navigationTitle("My files")
                 }
             }
@@ -843,6 +849,11 @@ struct DocumentGrid: View {
             if supportsMultipleWindows, let url = recent.resolveURL(), let reference = DocumentReference(url: url) {
                 Button("Open in New Window", systemImage: "macwindow.badge.plus") {
                     openWindow(id: "document", value: reference)
+                }
+            }
+            if let url = recent.resolveURL(), !library.isInLibrary(url) {
+                Button("Add to My documents", systemImage: "tray.and.arrow.down") {
+                    library.addToLibrary(url: url)
                 }
             }
             Button("Remove from Recents", systemImage: "clock.badge.xmark") {

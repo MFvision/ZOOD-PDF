@@ -89,6 +89,13 @@ enum CloudConfig {
         }
     }
 
+    /// Microsoft's page for one kind of account. One e-mail address can be
+    /// both a personal Microsoft account and a work account, each with its
+    /// own OneDrive (owner, 2026-11-01: ZOOD showed his personal OneDrive,
+    /// with Personal Vault, not the work one his OneDrive app shows).
+    static let oneDriveWork: [String: String] = ["domain_hint": "organizations"]
+    static let oneDrivePersonal: [String: String] = ["domain_hint": "consumers"]
+
     /// Google's picker inside its consent screen: PDFs and folders to open.
     static let googlePicker: [String: String] = [
         "trigger_onepick": "true",
@@ -101,6 +108,9 @@ enum CloudConfig {
 enum CloudError: Error, LocalizedError, Equatable {
     case cancelled
     case denied
+    /// A work account whose organisation lets only its admin allow apps
+    /// (Microsoft's "Need admin approval", AADSTS90094 / 65001).
+    case adminConsent
     case timeout
     case notSignedIn
     case notFound
@@ -112,6 +122,7 @@ enum CloudError: Error, LocalizedError, Equatable {
         switch self {
         case .cancelled: String(localized: "Sign-in was cancelled.")
         case .denied: String(localized: "The account did not allow ZOOD to reach its files.")
+        case .adminConsent: String(localized: "Your organisation's admin must allow ZOOD PDF before work accounts can open OneDrive. An admin signs in once and ticks \"Consent on behalf of your organization\"; after that everyone can sign in.")
         case .timeout: String(localized: "Sign-in took too long. Try again.")
         case .notSignedIn: String(localized: "Sign in again to reach these files.")
         case .notFound: String(localized: "That file is no longer there.")
@@ -119,6 +130,13 @@ enum CloudError: Error, LocalizedError, Equatable {
         case .offline: String(localized: "No connection. Check the internet and try again.")
         case let .server(message): String(localized: "The cloud drive answered with a problem: \(message)")
         }
+    }
+}
+
+extension CloudError {
+    /// Microsoft's answer that the organisation's admin must allow ZOOD first.
+    static func needsAdminConsent(_ text: String) -> Bool {
+        ["AADSTS90094", "AADSTS90095", "AADSTS65001"].contains { text.contains($0) }
     }
 }
 
@@ -308,6 +326,7 @@ enum CloudAuth {
         }
         let params = try await listener.wait()
         if let error = params["error"] {
+            if CloudError.needsAdminConsent("\(error) \(params["error_description"] ?? "")") { throw CloudError.adminConsent }
             throw error == "access_denied" ? CloudError.cancelled : CloudError.denied
         }
         guard let code = params["code"], !code.isEmpty else { throw CloudError.denied }
@@ -382,6 +401,7 @@ enum CloudAuth {
         let answer = try? JSONDecoder().decode(Answer.self, from: data)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200, let access = answer?.access_token else {
+            if CloudError.needsAdminConsent(answer?.error_description ?? "") { throw CloudError.adminConsent }
             if answer?.error == "invalid_grant" {
                 signOut(server.provider)
                 throw CloudError.notSignedIn

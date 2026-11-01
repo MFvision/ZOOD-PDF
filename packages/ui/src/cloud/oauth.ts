@@ -1,5 +1,5 @@
 import type { GoogleConfig, OneDriveConfig, ProviderId } from './config';
-import { CloudError } from './errors';
+import { CloudError, needsAdminConsent } from './errors';
 
 /**
  * OAuth 2.0 authorization code grant with PKCE (RFC 6749 §4.1, RFC 7636),
@@ -61,6 +61,15 @@ export function googleServer(config: GoogleConfig): AuthServer {
 }
 
 /**
+ * Microsoft's page for one kind of account. One e-mail can be both a
+ * personal Microsoft account and a work account, each with its own OneDrive
+ * (owner, 2026-11-01: ZOOD showed his personal OneDrive, not his work one).
+ */
+export function oneDriveAccountHint(kind: 'business' | 'personal'): Record<string, string> {
+  return { domain_hint: kind === 'business' ? 'organizations' : 'consumers' };
+}
+
+/**
  * Google's picker in the consent screen: PDFs and folders to open, as many
  * as the person likes, or one folder to save into.
  */
@@ -111,6 +120,7 @@ export function readCallback(params: Record<string, string>, expectedState: stri
   if (params.state !== expectedState) throw new CloudError('state');
   if (params.error) {
     const detail = [params.error, params.error_description].filter(Boolean).join(': ');
+    if (needsAdminConsent(detail)) throw new CloudError('adminConsent', detail);
     throw new CloudError(params.error === 'access_denied' ? 'cancelled' : 'denied', detail);
   }
   if (!params.code) throw new CloudError('denied', 'the answer carried no code');

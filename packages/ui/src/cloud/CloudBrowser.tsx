@@ -6,13 +6,19 @@ import { useI18n } from '../i18n/useT';
 import { useAppState } from '../state/AppContext';
 import { errorKey, useCloud } from './CloudContext';
 import type { ProviderId } from './config';
-import type { Entry } from './drive';
+import type { Account, Entry } from './drive';
 import { kindOf } from './errors';
 import type { CloudErrorKind } from './errors';
 import { oneDriveName } from './onedrive';
 
 /** A name set apart from the sentence around it, whatever its direction (FSI … PDI). */
 export const isolate = (text: string) => `\u2068${text}\u2069`;
+
+/** The account as "Signed in as …" names it: the e-mail, and for OneDrive which kind of drive. */
+export function accountWho(account: Account, t: (key: 'cloud.account.personal' | 'cloud.account.business') => string): string {
+  const who = isolate(account.email || account.name);
+  return account.kind ? `${who} · ${t(account.kind === 'personal' ? 'cloud.account.personal' : 'cloud.account.business')}` : who;
+}
 
 interface Place {
   key: string | null;
@@ -155,7 +161,7 @@ export function CloudBrowser({
     <div className="cloud-browser">
       {account && (
         <div className="cloud-account-line">
-          <span>{t('cloud.account.as', { who: isolate(account.email || account.name) })}</span>
+          <span>{t('cloud.account.as', { who: accountWho(account, t) })}</span>
           <button type="button" className="link-btn" disabled={busy} onClick={() => void cloud.signOut(provider)}>
             {t('cloud.signOut')}
           </button>

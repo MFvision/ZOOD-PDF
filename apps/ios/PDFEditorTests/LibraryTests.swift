@@ -233,4 +233,43 @@ final class LibraryTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(100))
         }
     }
+
+    // MARK: - Home and adding to the Library
+
+    /// Home is the only way to the tools in the Classic menu: its cards and
+    /// tiles together are every tool, each once.
+    func testHomeReachesEveryTool() {
+        let shown = LibraryTool.homeCards + LibraryTool.homeTiles
+        XCTAssertEqual(Set(shown), Set(LibraryTool.allCases))
+        XCTAssertEqual(shown.count, LibraryTool.allCases.count, "no tool twice")
+        XCTAssertTrue(LibraryTool.homeCards.contains(.cloud), "Cloud drives is a card on Home")
+    }
+
+    /// A file from outside (Files, a cloud drive's copy) is added as a copy
+    /// in My documents; the original stays where it was.
+    @MainActor
+    func testAddingAFileFromOutsideKeepsACopyInMyDocuments() throws {
+        let documents = folder.appending(path: "Documents", directoryHint: .isDirectory)
+        let outside = folder.appending(path: "Cloud", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        let file = try copyFixture("coretext-sfarabic-mixed-invoice", into: outside, as: "فاتورة.pdf")
+        let library = LibraryModel(documentsFolder: documents, indexURL: folder.appending(path: "index/library.wlx"))
+        library.refresh()
+        XCTAssertFalse(library.isInLibrary(file))
+
+        let added = try XCTUnwrap(library.addToLibrary(url: file))
+        XCTAssertEqual(added.deletingLastPathComponent().standardizedFileURL, documents.standardizedFileURL)
+        XCTAssertEqual(added.lastPathComponent, "فاتورة.pdf")
+        XCTAssertEqual(try Data(contentsOf: added), try Data(contentsOf: file))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path), "the original is left where it was")
+        XCTAssertTrue(library.isInLibrary(added))
+        XCTAssertTrue(library.isInLibrary(file), "a copy with the same name and size counts as added")
+        XCTAssertEqual(library.documents.count, 1)
+        XCTAssertNotNil(library.notice)
+
+        // Added again (another file of that name): a second copy, not an overwrite.
+        let again = try XCTUnwrap(library.addToLibrary(url: file))
+        XCTAssertEqual(again.lastPathComponent, "فاتورة 2.pdf")
+    }
 }

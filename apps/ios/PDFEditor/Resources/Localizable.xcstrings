@@ -1,6 +1,111 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Your organisation's admin must allow ZOOD PDF before work accounts can open OneDrive. An admin signs in once and ticks \"Consent on behalf of your organization\"; after that everyone can sign in.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "يجب أن يسمح مسؤول جهتك لمحرر زود PDF قبل أن تفتح حسابات العمل OneDrive. يسجّل المسؤول الدخول مرة واحدة ويختار «الموافقة نيابة عن مؤسستك»، وبعدها يستطيع الجميع تسجيل الدخول." } }
+      }
+    },
+    "Sign in with a work or school account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "سجّل الدخول بحساب العمل أو الجهة التعليمية" } }
+      }
+    },
+    "Sign in with a personal account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "سجّل الدخول بحساب شخصي" } }
+      }
+    },
+    "Personal account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "حساب شخصي" } }
+      }
+    },
+    "Work or school account": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "حساب عمل أو جهة تعليمية" } }
+      }
+    },
+    "Use my work or school OneDrive": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "استخدم OneDrive العمل" } }
+      }
+    },
+    "Use my personal OneDrive": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "استخدم OneDrive الشخصي" } }
+      }
+    },
+    "This is the personal OneDrive of this account. Files from work (Teams, Meetings, company folders) are in the work OneDrive.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "هذا هو OneDrive الشخصي لهذا الحساب. ملفات العمل (Teams والاجتماعات ومجلدات الشركة) موجودة في OneDrive العمل." } }
+      }
+    },
+    "Cloud drives": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "التخزين السحابي" } }
+      }
+    },
+    "Quick tools": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أدوات سريعة" } }
+      }
+    },
+    "Sort with ZOOD": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "رتّب مع زود" } }
+      }
+    },
+    "Help & Support": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "المساعدة والدعم" } }
+      }
+    },
+    "More tools": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أدوات أخرى" } }
+      }
+    },
+    "OneDrive and Google Drive": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "OneDrive و Google Drive" } }
+      }
+    },
+    "Ask about a PDF, or anything": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "اسأل عن ملف PDF أو عن أي شيء" } }
+      }
+    },
+    "Convert, split, shrink, protect": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "تحويل وتقسيم وتصغير وحماية" } }
+      }
+    },
+    "Name, merge and file PDFs": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "تسمية ودمج وترتيب ملفات PDF" } }
+      }
+    },
+    "Guides, and a message to us": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أدلة، ورسالة إلينا" } }
+      }
+    },
+    "Add to My documents": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أضف إلى مستنداتي" } }
+      }
+    },
+    "Added to My documents": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "أُضيف إلى مستنداتي" } }
+      }
+    },
+    "This file is not in your library.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "هذا الملف ليس في مكتبتك." } }
+      }
+    },
     "Ask ZOOD": {
       "localizations": {
         "ar": { "stringUnit": { "state": "translated", "value": "اسأل زود" } }

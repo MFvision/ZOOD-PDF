@@ -1,5 +1,5 @@
 import type { ProviderId } from './config';
-import { CloudError, kindOf } from './errors';
+import { CloudError, kindOf, needsAdminConsent } from './errors';
 import { jsonOf, ok } from './http';
 import type { CloudResponse, Transport } from './http';
 import { parseTokenAnswer, refreshForm } from './oauth';
@@ -111,7 +111,13 @@ function tokenFailure(response: CloudResponse): CloudError {
   } catch {
     /* not JSON */
   }
-  const kind = error === 'invalid_grant' || response.status === 401 ? 'signedOut' : response.status >= 500 ? 'server' : 'denied';
+  const kind = needsAdminConsent(description)
+    ? 'adminConsent'
+    : error === 'invalid_grant' || response.status === 401
+      ? 'signedOut'
+      : response.status >= 500
+        ? 'server'
+        : 'denied';
   return new CloudError(kind, `token ${response.status} ${error}: ${description}`);
 }
 

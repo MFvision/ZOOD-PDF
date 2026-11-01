@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { ArrowUpRight, ChevronLeft, ChevronRight, Cloud, FileText, Folder, FolderSearch, Loader, Plus } from 'lucide-react';
 import { errorKey, useCloud } from '../cloud/CloudContext';
-import { isolate } from '../cloud/CloudBrowser';
+import { accountWho, isolate } from '../cloud/CloudBrowser';
 import { recentId } from '../cloud/store';
 import type { ProviderId } from '../cloud/config';
 import type { Entry } from '../cloud/drive';
@@ -181,7 +181,7 @@ function DriveFolder({ provider, onOpen, onChoose }: { provider: ProviderId; onO
     <div className="folders-drive">
       <FolderCard
         name={drive}
-        detail={account ? t('cloud.account.as', { who: isolate(account.email || account.name) }) : t('folders.signIn')}
+        detail={account ? t('cloud.account.as', { who: accountWho(account, t) }) : t('folders.signIn')}
         tone={provider}
         pages={pages}
         badge={<Icon of={Plus} size={15} />}
@@ -279,7 +279,7 @@ function DriveFiles({ provider, onBack, onChoose }: { provider: ProviderId; onBa
             </span>
           ))}
         </h2>
-        {account && <span className="folders-open-count">{t('cloud.account.as', { who: isolate(account.email || account.name) })}</span>}
+        {account && <span className="folders-open-count">{t('cloud.account.as', { who: accountWho(account, t) })}</span>}
         {account && (
           <button type="button" className="link-btn" onClick={() => void cloud.signOut(provider).then(onBack)}>
             {t('cloud.signOut')}

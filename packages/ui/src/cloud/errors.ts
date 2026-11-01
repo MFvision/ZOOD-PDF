@@ -12,6 +12,11 @@ export type CloudErrorKind =
   | 'cancelled'
   /** The provider declined: consent refused, or the app is not allowed. */
   | 'denied'
+  /**
+   * A work account whose organisation lets only its admin allow apps
+   * (Microsoft's "Need admin approval", AADSTS90094 / 65001).
+   */
+  | 'adminConsent'
   /** The browser never came back. */
   | 'timeout'
   /** The browser blocked the sign-in window. */
@@ -42,6 +47,11 @@ export class CloudError extends Error {
   }
 }
 
+/** Microsoft's answer that the organisation's admin must allow ZOOD first. */
+export function needsAdminConsent(text: string): boolean {
+  return /AADSTS(90094|90095|65001)\b/.test(text);
+}
+
 export function isCloudError(error: unknown, kind?: CloudErrorKind): error is CloudError {
   return error instanceof CloudError && (kind === undefined || error.kind === kind);
 }
@@ -53,7 +63,7 @@ export function kindOf(error: unknown): CloudErrorKind {
   if (text.startsWith('E_CLOUD_SIGNED_OUT')) return 'signedOut';
   if (text.startsWith('E_CLOUD_CANCELLED')) return 'cancelled';
   if (text.startsWith('E_CLOUD_TIMEOUT')) return 'timeout';
-  if (text.startsWith('E_CLOUD_DENIED')) return 'denied';
+  if (text.startsWith('E_CLOUD_DENIED')) return needsAdminConsent(text) ? 'adminConsent' : 'denied';
   if (text.startsWith('E_NET') || error instanceof TypeError) return 'network';
   return 'server';
 }
