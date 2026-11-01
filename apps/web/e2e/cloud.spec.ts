@@ -94,12 +94,17 @@ async function fileMenu(page: Page, item: string | RegExp): Promise<void> {
   await page.getByRole('menuitem', { name: item, exact: true }).click();
 }
 
-/** Signs in from the sheet on screen: the pop-up opens, the person consents, it closes. */
+/**
+ * Signs in from the sheet on screen with a work or school account (the sheet
+ * offers both kinds of Microsoft account): the pop-up opens, the person
+ * consents, it closes.
+ */
 async function signIn(page: Page, stay = false): Promise<void> {
   const dialog = sheet(page);
   await expect(dialog.getByRole('heading', { name: 'Sign in to OneDrive' })).toBeVisible();
   if (stay) await dialog.getByRole('checkbox', { name: 'Stay signed in on this browser' }).check();
-  const [popup] = await Promise.all([page.waitForEvent('popup'), dialog.getByRole('button', { name: 'Sign In', exact: true }).click()]);
+  await expect(dialog.getByRole('button', { name: 'Personal Account', exact: true })).toBeVisible();
+  const [popup] = await Promise.all([page.waitForEvent('popup'), dialog.getByRole('button', { name: 'Work or School Account', exact: true }).click()]);
   await popup.waitForEvent('close');
 }
 
