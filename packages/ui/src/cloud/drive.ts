@@ -8,6 +8,11 @@
 export interface Account {
   name: string;
   email: string;
+  /**
+   * OneDrive only: a personal Microsoft account's drive, or work or school
+   * (OneDrive for Business). One e-mail can be both, each with its own drive.
+   */
+  kind?: 'personal' | 'business';
 }
 
 export interface Entry {

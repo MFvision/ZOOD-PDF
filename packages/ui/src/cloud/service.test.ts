@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { challengeOf } from './pkce';
-import { googlePicker } from './oauth';
+import { googlePicker, oneDriveAccountHint } from './oauth';
 import { CloudService } from './service';
 import type { CloudHost } from './service';
 import type { HostSignIn } from './signin';
@@ -64,6 +64,14 @@ describe('signing in on the desktop', () => {
     expect(form).toMatchObject({ grant_type: 'authorization_code', code: 'CODE', redirect_uri: 'http://127.0.0.1:50123/callback' });
     expect(await challengeOf(form.code_verifier ?? '')).toBe(request.searchParams.get('code_challenge'));
     expect(seen[0]?.headers?.authorization).toBe('Bearer AT');
+  });
+
+  it('sends Microsoft to the chosen kind of account, work or personal', async () => {
+    for (const [kind, hint] of [['business', 'organizations'], ['personal', 'consumers']] as const) {
+      const { service, opened } = desktop((params) => ({ code: 'CODE', state: params.get('state') ?? '' }));
+      await service.signIn('onedrive', { extra: oneDriveAccountHint(kind) });
+      expect(new URL(opened[0] ?? '').searchParams.get('domain_hint')).toBe(hint);
+    }
   });
 
   it('asks Google for its picker in the consent screen and hands back the file picked', async () => {

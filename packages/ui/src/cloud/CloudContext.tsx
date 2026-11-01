@@ -15,7 +15,7 @@ import { MAX_TABS } from '../state/tabs';
 import { PDF_SNIFF_BYTES, looksLikePdf, typeForName } from '../state/pdfFile';
 import { pickedIds } from './gdrive';
 import { currentHost } from './host';
-import { googlePicker } from './oauth';
+import { googlePicker, oneDriveAccountHint } from './oauth';
 import { CloudService } from './service';
 import type { CloudDrive } from './service';
 import { openSignInWindow } from './signin';
@@ -97,7 +97,7 @@ export interface CloudApi {
   openRecent: (entry: CloudRecent) => void;
   clearRecent: () => void;
   /** In the click: a browser opens its sign-in window before anything else. */
-  signIn: (provider: ProviderId, stay: boolean) => void;
+  signIn: (provider: ProviderId, stay: boolean, kind?: 'business' | 'personal') => void;
   /** Google's picker, in the consent screen (desktop): a PDF to open, or a folder to save `name` in. */
   pickWithGoogle: (purpose: 'open' | 'folder', name?: string) => void;
   signOut: (provider: ProviderId) => Promise<void>;
@@ -558,7 +558,7 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   );
 
   const begin = useCallback(
-    (provider: ProviderId, next: Next, stay: boolean) => {
+    (provider: ProviderId, next: Next, stay: boolean, kind?: 'business' | 'personal') => {
       let popup: Window | undefined;
       if (!service.host.desktop) {
         try {
@@ -581,7 +581,9 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
       const extra =
         provider === 'gdrive' && (next.kind === 'open' || next.kind === 'pickFolder')
           ? googlePicker(next.kind === 'open' ? 'open' : 'folder')
-          : undefined;
+          : provider === 'onedrive' && kind
+            ? oneDriveAccountHint(kind)
+            : undefined;
       void (async () => {
         try {
           if (earlier && service.host.desktop) await service.cancelSignIn();
@@ -603,9 +605,9 @@ function CloudProviderFor({ service, children }: { service: CloudService; childr
   );
 
   const signIn = useCallback(
-    (provider: ProviderId, stay: boolean) => {
+    (provider: ProviderId, stay: boolean, kind?: 'business' | 'personal') => {
       const current = sheetRef.current;
-      begin(provider, current?.kind === 'signIn' ? current.next : { kind: 'browse' }, stay);
+      begin(provider, current?.kind === 'signIn' ? current.next : { kind: 'browse' }, stay, kind);
     },
     [begin],
   );

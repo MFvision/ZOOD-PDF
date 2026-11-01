@@ -20,7 +20,7 @@ import {
 } from '../core/host-tauri';
 import type { RingDragKey, RingSettings, ShellMenuState } from '../core/host-tauri';
 import { AiSettingsSection } from '../ai/AiSettings';
-import { isolate } from '../cloud/CloudBrowser';
+import { accountWho } from '../cloud/CloudBrowser';
 import { useCloud } from '../cloud/CloudContext';
 import { AskSettings } from '../ask/AskSettings';
 import { askAvailable } from '../ask/settings';
@@ -951,7 +951,7 @@ export function CloudPage() {
           <ActionRow
             key={provider}
             label={drive}
-            hint={t('cloud.account.as', { who: isolate(account.email || account.name) })}
+            hint={t('cloud.account.as', { who: accountWho(account, t) })}
             action={t('cloud.signOut')}
             onClick={() => void cloud.signOut(provider)}
           />

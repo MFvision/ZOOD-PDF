@@ -61,6 +61,15 @@ export function googleServer(config: GoogleConfig): AuthServer {
 }
 
 /**
+ * Microsoft's page for one kind of account. One e-mail can be both a
+ * personal Microsoft account and a work account, each with its own OneDrive
+ * (owner, 2026-11-01: ZOOD showed his personal OneDrive, not his work one).
+ */
+export function oneDriveAccountHint(kind: 'business' | 'personal'): Record<string, string> {
+  return { domain_hint: kind === 'business' ? 'organizations' : 'consumers' };
+}
+
+/**
  * Google's picker in the consent screen: PDFs and folders to open, as many
  * as the person likes, or one folder to save into.
  */

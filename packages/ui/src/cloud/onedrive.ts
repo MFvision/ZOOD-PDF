@@ -163,7 +163,17 @@ export class OneDrive {
     const response = await this.api({ method: 'GET', url: `${GRAPH}/me?$select=displayName,mail,userPrincipalName` });
     if (!ok(response)) throw failure(response, 'me');
     const me = jsonOf<{ displayName?: string; mail?: string | null; userPrincipalName?: string }>(response);
-    return { name: me.displayName ?? '', email: me.mail ?? me.userPrincipalName ?? '' };
+    const account: Account = { name: me.displayName ?? '', email: me.mail ?? me.userPrincipalName ?? '' };
+    // Which OneDrive this is: best effort, the account works without it.
+    try {
+      const drive = await this.api({ method: 'GET', url: `${GRAPH}/me/drive?$select=driveType` });
+      const type = ok(drive) ? jsonOf<{ driveType?: string }>(drive).driveType : undefined;
+      if (type === 'personal') account.kind = 'personal';
+      else if (type === 'business' || type === 'documentLibrary') account.kind = 'business';
+    } catch {
+      // No kind shown.
+    }
+    return account;
   }
 
   /** A folder's folders, PDFs and files Create PDF reads (`null`: the top of the person's drive), or the page after `next`. */
