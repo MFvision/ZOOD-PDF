@@ -1,0 +1,11 @@
+{
+  "01-home":       {"ar": ["ملفاتك كلها", "في مكان واحد"], "en": ["All your files", "in one place"]},
+  "03-read":       {"ar": ["عربي يبقى", "عربياً"], "en": ["Arabic that", "stays Arabic"]},
+  "04-search":     {"ar": ["ابحث بتشكيل", "أو بدونه"], "en": ["Find any word,", "tashkeel or not"]},
+  "05-markup":     {"ar": ["علّم وأبرز", "بإصبعك أو بالقلم"], "en": ["Mark up with your", "finger or Pencil"]},
+  "06-sign":       {"ar": ["وقّع", "في ثوانٍ"], "en": ["Sign", "in seconds"]},
+  "07-pages":      {"ar": ["رتّب الصفحات", "وادمج الملفات"], "en": ["Reorder pages,", "combine files"]},
+  "08-two-pages":  {"ar": ["صفحتان متجاورتان", "على الآيباد وiPhone Duo"], "en": ["Two pages side by side", "on iPad and iPhone Duo"]},
+  "09-tools":      {"ar": ["كل الأدوات", "ومساعد ZOOD على جهازك"], "en": ["Every tool, plus", "Ask ZOOD on your device"]},
+  "02-home-dark":  {"ar": ["مريح للعين", "ليلاً"], "en": ["Easy on the eyes", "at night"]}
+}
