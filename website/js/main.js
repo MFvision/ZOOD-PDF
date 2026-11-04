@@ -184,8 +184,8 @@ export function headlineFont() {
 // download comes first. Phones and unknown systems keep the list's own order.
 function visitorSystem() {
   const p = `${navigator.userAgentData?.platform ?? ''} ${navigator.platform ?? ''} ${navigator.userAgent}`;
-  if (/iPhone|iPad|iPod|Android/i.test(p) || (navigator.maxTouchPoints > 1 && /Mac/i.test(p)))
-    return '';
+  if (/iPhone|iPad|iPod/i.test(p) || (navigator.maxTouchPoints > 1 && /Mac/i.test(p))) return 'ios';
+  if (/Android/i.test(p)) return '';
   if (/Win/i.test(p)) return 'windows';
   if (/Mac/i.test(p)) return 'mac';
   return '';
@@ -210,9 +210,9 @@ function chapterBody(c, index) {
     body += `<ul class="downloads">${list
       .map(
         (d, k) => `<li style="--li:${k}"${d.id === mine ? ' class="mine"' : ''}>
-        <a href="${escape(d.href)}" rel="noopener" download><span>${escape(t(d.label))}</span>${d.id === mine ? `<span class="tag">${escape(t(UI.yours))}</span>` : ''}</a>
-        <p class="first-run"><strong>${escape(t(UI.firstRun))}:</strong> ${escape(t(d.steps))}</p>
-        <details class="sum"><summary>${escape(t(UI.checksum))}</summary><code class="ltr">${escape(d.sha256)}</code></details>
+        <a href="${escape(d.href)}" rel="noopener"${d.store ? '' : ' download'}><span>${escape(t(d.label))}</span>${d.id === mine ? `<span class="tag">${escape(t(d.store ? UI.yoursPhone : UI.yours))}</span>` : ''}</a>
+        <p class="first-run"><strong>${escape(t(d.store ? UI.firstOpen : UI.firstRun))}:</strong> ${escape(t(d.steps))}</p>
+        ${d.sha256 ? `<details class="sum"><summary>${escape(t(UI.checksum))}</summary><code class="ltr">${escape(d.sha256)}</code></details>` : ''}
       </li>`,
       )
       .join('')}</ul>`;
