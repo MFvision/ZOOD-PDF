@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   shots:
@@ -104,3 +104,16 @@ jobs:
             build.log
             test-*.log
           if-no-files-found: warn
+      # The same pictures on a DRAFT release (private to the repository's
+      # owners, never the latest release), for where artifact storage is
+      # out of reach.
+      - name: Draft release with the pictures
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d shots ] || exit 0
+          (cd shots && zip -qr ../store-shots.zip .)
+          gh release delete store-shots -R "$GITHUB_REPOSITORY" -y 2>/dev/null || true
+          gh release create store-shots -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "App Store screenshots (draft, not a release)" --notes "Raw pictures from run $GITHUB_RUN_ID." store-shots.zip

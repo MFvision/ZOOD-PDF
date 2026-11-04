@@ -80,6 +80,35 @@ final class StoreScreenshotTests: XCTestCase {
         return try PartBApp.launch(language: language, appearance: appearance, file: file, arguments: ["-theme", "zood", "-warraqFresh", "1"] + extra)
     }
 
+    /// What a person's own document looks like: no "not in your library"
+    /// strip, no keyboard tip, and on the iPad the document across the
+    /// whole screen (the sidebar and the Library folded away).
+    private func tidy(_ ui: PartBApp) {
+        let app = ui.app
+        let strip = app.buttons["document.addToLibrary.strip"]
+        if strip.waitForExistence(timeout: 5) {
+            let y = strip.frame.midY
+            let closes = app.buttons.matching(NSPredicate(format: "label IN %@", ["Close", "إغلاق"])).allElementsBoundByIndex
+            if let close = closes.first(where: { abs($0.frame.midY - y) < 30 && $0.isHittable }) { close.tap() }
+        }
+        if isPad {
+            for _ in 0..<3 {
+                let width = ui.page.frame.width
+                if width > app.frame.width * 0.8 { break }
+                let toggle = app.buttons.matching(NSPredicate(format: "identifier == 'ToggleSidebar' OR label IN %@", ["Hide Sidebar", "إخفاء الشريط الجانبي", "Sidebar", "الشريط الجانبي"])).firstMatch
+                guard toggle.exists, toggle.isHittable else { break }
+                toggle.tap()
+                RunLoop.current.run(until: Date(timeIntervalSinceNow: 1))
+            }
+        }
+    }
+
+    /// The keyboard's first-time tip, when it is up.
+    private func dismissKeyboardTip(_ app: XCUIApplication) {
+        let tip = app.buttons.matching(NSPredicate(format: "label IN %@", ["Continue", "متابعة"])).firstMatch
+        if tip.waitForExistence(timeout: 2), tip.isHittable { tip.tap() }
+    }
+
     /// The screen at full resolution, as the App Store takes it.
     private func shot(_ name: String, _ language: String) {
         guard let directory = Self.directory else { return }
@@ -96,6 +125,16 @@ final class StoreScreenshotTests: XCTestCase {
     }
 
     // MARK: - The screens
+
+    /// The first launch on a fresh CI simulator can time out; this one
+    /// takes that cost so the pictures after it do not.
+    func test00WarmUp() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-warraqFresh", "1"]
+        app.launch()
+        _ = app.descendants(matching: .any)["library.home"].firstMatch.waitForExistence(timeout: 120)
+        app.terminate()
+    }
 
     func test01Home() throws {
         for language in Self.languages {
@@ -117,6 +156,7 @@ final class StoreScreenshotTests: XCTestCase {
         for language in Self.languages {
             let ui = try openDocument(PartBApp.outlines, ar: "نظام حماية حقوق المؤلف", en: "Copyright law", language: language)
             ui.waitForPage(containing: "الفصل")
+            tidy(ui)
             shot("03-read", language)
             ui.app.terminate()
         }
@@ -126,9 +166,14 @@ final class StoreScreenshotTests: XCTestCase {
         for language in Self.languages {
             let ui = try openDocument(PartBApp.outlines, ar: "نظام حماية حقوق المؤلف", en: "Copyright law", language: language)
             ui.waitForPage(containing: "الفصل")
+            tidy(ui)
             ui.app.buttons["document.search"].tap()
+            dismissKeyboardTip(ui.app)
             ui.type("الفصل", into: "search.field")
+            dismissKeyboardTip(ui.app)
             _ = ui.app.buttons["search.count"].waitForExistence(timeout: 20)
+            // The hits, without the keyboard over them.
+            ui.app.textFields["search.field"].typeText("\n")
             shot("04-search", language)
             ui.app.terminate()
         }
@@ -138,6 +183,7 @@ final class StoreScreenshotTests: XCTestCase {
         for language in Self.languages {
             let ui = try openDocument(PartBApp.threePages, ar: "تقرير الربع الثالث", en: "Q3 report", language: language)
             ui.waitForPage(containing: "ال")
+            tidy(ui)
             ui.app.buttons["document.markup"].tap()
             ui.tapMarkup("markup.highlight")
             // A stroke of the highlighter over the first lines.
@@ -158,16 +204,25 @@ final class StoreScreenshotTests: XCTestCase {
         for language in Self.languages {
             let ui = try openDocument(PartBApp.invoice, ar: "فاتورة أكتوبر", en: "October invoice", language: language)
             ui.waitForPage(containing: "فاتورة")
+            tidy(ui)
             ui.app.buttons["document.markup"].tap()
             let canvas = ui.openSignatureCanvas()
             if canvas.waitForExistence(timeout: 10) {
-                // A signature in three strokes, not a straight line.
-                let strokes: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [(0.15, 0.65, 0.35, 0.3), (0.35, 0.3, 0.55, 0.7), (0.55, 0.7, 0.85, 0.35)]
-                for s in strokes {
-                    let a = canvas.coordinate(withNormalizedOffset: CGVector(dx: s.0, dy: s.1))
-                    let b = canvas.coordinate(withNormalizedOffset: CGVector(dx: s.2, dy: s.3))
-                    a.press(forDuration: 0.05, thenDragTo: b, withVelocity: .slow, thenHoldForDuration: 0.05)
+                // A handwritten-looking signature: a looping line drawn in
+                // short joined strokes, then an underline.
+                var points: [CGVector] = []
+                for k in 0...28 {
+                    let t = CGFloat(k) / 28
+                    let x = 0.12 + 0.72 * t + 0.05 * sin(t * .pi * 8)
+                    let y = 0.5 - 0.22 * sin(t * .pi * 4) * (1 - 0.5 * t) - 0.06 * cos(t * .pi * 8)
+                    points.append(CGVector(dx: x, dy: y))
                 }
+                for (a, b) in zip(points, points.dropFirst()) {
+                    canvas.coordinate(withNormalizedOffset: a)
+                        .press(forDuration: 0.01, thenDragTo: canvas.coordinate(withNormalizedOffset: b), withVelocity: .fast, thenHoldForDuration: 0)
+                }
+                canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.18, dy: 0.8))
+                    .press(forDuration: 0.02, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.86, dy: 0.76)), withVelocity: .fast, thenHoldForDuration: 0)
             }
             shot("06-sign", language)
             ui.app.terminate()
@@ -178,6 +233,7 @@ final class StoreScreenshotTests: XCTestCase {
         for language in Self.languages {
             let ui = try openDocument(PartBApp.threePages, ar: "تقرير الربع الثالث", en: "Q3 report", language: language)
             ui.waitForPage(containing: "ال")
+            tidy(ui)
             ui.viewControl("document.thumbnails.toggle", menuLabel: language == PartBApp.arabic ? "المصغّرات" : "Thumbnails")
             _ = ui.app.buttons["thumbnail.0"].waitForExistence(timeout: 10)
             shot("07-pages", language)
@@ -191,6 +247,7 @@ final class StoreScreenshotTests: XCTestCase {
         for language in Self.languages {
             let ui = try openDocument(PartBApp.threePages, ar: "تقرير الربع الثالث", en: "Q3 report", language: language, extra: ["-view.layout", "book"])
             ui.waitForPage(containing: "ال")
+            tidy(ui)
             shot("08-two-pages", language)
             ui.app.terminate()
         }
