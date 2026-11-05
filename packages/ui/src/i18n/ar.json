@@ -1986,6 +1986,8 @@
   "home.card.aiHint": "تلخيص وشرح وترجمة",
   "home.card.more": "المزيد",
   "home.card.moreHint": "كل الأدوات العشرين",
+  "home.card.remote": "التحكم في الكمبيوتر",
+  "home.card.remoteHint": "امسح رمز الكمبيوتر: اعرض، وحرّك المؤشر، وأرسل الملفات",
   "home.actions": "إجراءات سريعة",
   "home.recentMenu": "مزيد من الإجراءات لـ {name}",
   "home.recentRemove": "إزالة من الأخيرة",

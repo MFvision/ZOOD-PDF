@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZOOD PDF</string>
+    <string name="remote_title">Control your computer</string>
+    <string name="remote_short">Remote</string>
+    <string name="remote_scan_prompt">Scan the code shown in ZOOD PDF on your computer (Phone remote)</string>
+    <string name="remote_not_zood">That code is not a ZOOD PDF remote code. Open ZOOD PDF on your computer, then Phone remote, and scan the code shown there.</string>
+    <string name="remote_lost">Can\'t reach your computer. Make sure the phone and the computer are on the same Wi‑Fi and ZOOD PDF is open there.</string>
+    <string name="remote_retry">Try again</string>
+    <string name="remote_scan_again">Scan the code again</string>
+    <string name="saved">Saved</string>
+    <string name="save_failed">The file could not be saved. Please try again.</string>
+    <string name="open_failed">This file could not be opened.</string>
+    <string name="share_with">Share with</string>
+    <string name="no_app_for_this">There is no app on this phone that can do this.</string>
+    <string name="camera_needed">ZOOD PDF needs the camera for this. You can allow it in Settings.</string>
+    <string name="mic_needed">ZOOD PDF needs the microphone for this. You can allow it in Settings.</string>
+</resources>

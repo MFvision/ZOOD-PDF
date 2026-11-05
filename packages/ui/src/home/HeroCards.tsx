@@ -1,4 +1,4 @@
-import { FileOutput, FilePlus2, FolderOpen, LayoutGrid, Pencil, Sparkles } from 'lucide-react';
+import { FileOutput, FilePlus2, FolderOpen, LayoutGrid, MonitorSmartphone, Pencil, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { Icon } from '../components/Icon';
@@ -6,6 +6,7 @@ import { useT } from '../i18n/useT';
 import type { TKey } from '../i18n/messages';
 import { useAppDispatch, useServices } from '../state/AppContext';
 import { toolColor } from '../tools/ToolIcon';
+import { isAndroidHost, openPhoneRemote } from '../core/host-android';
 
 interface Card {
   id: string;
@@ -25,6 +26,9 @@ const CARDS: Card[] = [
   { id: 'ai', title: 'home.card.ai', hint: 'home.card.aiHint', icon: Sparkles, color: toolColor('ai') },
   { id: 'more', title: 'home.card.more', hint: 'home.card.moreHint', icon: LayoutGrid, color: toolColor('organize') },
 ];
+
+/** The Android app's phone remote: control the computer, as the iPhone app's Remote tab does. */
+const REMOTE_CARD: Card = { id: 'remote', title: 'home.card.remote', hint: 'home.card.remoteHint', icon: MonitorSmartphone, color: toolColor('compare') };
 
 interface HeroCardsProps {
   /** The AI card's question field, which the AI action card puts the caret in. */
@@ -63,13 +67,16 @@ export function HeroCards({ onAi, onMore }: HeroCardsProps) {
       case 'ai':
         onAi();
         break;
+      case 'remote':
+        openPhoneRemote();
+        break;
       default:
         onMore(from);
     }
   };
   return (
     <ul className="home-cards" aria-label={t('home.actions')}>
-      {CARDS.map((card) => (
+      {(isAndroidHost() ? [...CARDS.slice(0, 5), REMOTE_CARD, CARDS[5]!] : CARDS).map((card) => (
         <li key={card.id}>
           <button type="button" className="home-card glass" aria-label={card.name ? t(card.name) : undefined} onClick={(event) => act(card.id, event.currentTarget)}>
             <span className="tool-icon tool-icon-large" style={{ '--tool-color': card.color } as CSSProperties} aria-hidden="true">

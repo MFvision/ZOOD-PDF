@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ZOOD navy and paper (docs/design/README.md). -->
+    <color name="zood_navy">#041E42</color>
+    <color name="zood_paper">#F7F5F0</color>
+    <color name="window_background">#F7F5F0</color>
+</resources>

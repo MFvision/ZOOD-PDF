@@ -46,6 +46,7 @@ import { RightPane } from './RightPane';
 import { Toolbar } from './Toolbar';
 import { intentAt, intentOfDrop } from './dropIntent';
 import { useFileDrop } from './useFileDrop';
+import { onAndroidFiles } from '../core/host-android';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { useNativeMenu } from './useNativeMenu';
 import { useShellMenuSync } from '../quick/QuickSettings';
@@ -110,6 +111,8 @@ export function Shell() {
     [services],
   );
   const { dragging, at } = useFileDrop(onFiles);
+  // Android: a PDF opened with or shared to ZOOD PDF opens as a document.
+  useEffect(() => onAndroidFiles((files) => services.dropFiles(files, 'open')), [services]);
   const split = state.document !== null && !services.dropClaimed;
   const intent = intentAt(at, openZone);
   useEffect(() => {

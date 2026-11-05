@@ -1,0 +1,202 @@
+# The Android app (apps/android): the web build with the WASM engine, inside a
+# small native app. Builds the Play bundle (.aab) and a phone install file
+# (.apk), signed with the upload key when its secrets exist, and publishes both
+# as a GitHub pre-release `android-<version>-<run>`. With the Play service
+# account's secret it also sends the bundle to a Google Play track.
+#
+# Secrets (Settings > Secrets and variables > Actions), all optional:
+#   ANDROID_UPLOAD_KEYSTORE           the upload keystore, base64
+#   ANDROID_UPLOAD_KEYSTORE_PASSWORD  its password (the key's too)
+#   ANDROID_UPLOAD_KEY_ALIAS          the key's alias (default: upload)
+#   PLAY_SERVICE_ACCOUNT_JSON         a Google Play Console service account's JSON key
+# Without the keystore the files are signed with a throwaway debug key: they
+# install on a phone, Google Play refuses them.
+name: Android
+
+on:
+  push:
+    branches: ['claude/**', app]
+    paths:
+      - 'apps/android/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name shown in Google Play (e.g. 0.1.0)'
+        required: false
+        default: ''
+      track:
+        description: 'Google Play track to send the bundle to (needs PLAY_SERVICE_ACCOUNT_JSON)'
+        required: false
+        default: 'none'
+        type: choice
+        options: [none, internal, alpha, beta, production]
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      tag: android-${{ steps.version.outputs.name }}-${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/core
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+      - name: Build the WASM core
+        run: pnpm build:core
+      - name: Test the shared UI (the Android hooks live there)
+        run: pnpm --filter @warraq/ui test
+      - name: Build the web app
+        run: pnpm --filter @warraq/web build
+      - name: Put the web app inside the Android app
+        run: |
+          rm -rf apps/android/app/src/main/assets/www
+          cp -R apps/web/dist apps/android/app/src/main/assets/www
+          # The PWA's own worker and manifest are not used inside the app.
+          rm -f apps/android/app/src/main/assets/www/sw.js
+          du -sh apps/android/app/src/main/assets/www
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Version
+        id: version
+        run: |
+          name="${{ inputs.version }}"
+          if [ -z "$name" ]; then name="0.1.0"; fi
+          # Google Play orders builds by this number; the run number only grows.
+          code=$(( 1000 + ${{ github.run_number }} ))
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "ZOOD_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "ZOOD_VERSION_CODE=$code" >> "$GITHUB_ENV"
+
+      - name: Upload key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "No upload key: signing with the debug key (installs on a phone; Google Play refuses it)."
+            exit 0
+          fi
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=${ALIAS:-upload}" >> "$GITHUB_ENV"
+
+      - name: Build (bundle + apk, with lint)
+        working-directory: apps/android
+        run: gradle --no-daemon lintRelease bundleRelease assembleRelease
+
+      - name: Collect
+        id: collect
+        run: |
+          mkdir -p out
+          cp apps/android/app/build/outputs/bundle/release/app-release.aab "out/ZOOD-PDF-${{ steps.version.outputs.name }}.aab"
+          cp apps/android/app/build/outputs/apk/release/app-release.apk "out/ZOOD-PDF-${{ steps.version.outputs.name }}.apk"
+          signed=debug
+          if [ -n "$ANDROID_KEYSTORE_PATH" ]; then signed=upload; fi
+          echo "signed=$signed" >> "$GITHUB_OUTPUT"
+          ls -la out
+          sha256sum out/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zood-pdf-android
+          path: out/
+          retention-days: 30
+
+      - name: Publish as a pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="android-${{ steps.version.outputs.name }}-${{ github.run_number }}"
+          gh release create "$tag" -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" \
+            --title "ZOOD PDF for Android ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.code }})" \
+            --notes "Built from ${GITHUB_SHA::8} on ${GITHUB_REF_NAME}. Signed with the ${{ steps.collect.outputs.signed }} key. The .apk installs on a phone directly; the .aab is for Google Play." \
+            out/*
+
+      - name: Send to Google Play
+        if: ${{ inputs.track != '' && inputs.track != 'none' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: sa.zood.pdf
+          releaseFiles: out/ZOOD-PDF-${{ steps.version.outputs.name }}.aab
+          track: ${{ inputs.track }}
+          status: ${{ inputs.track == 'production' && 'draft' || 'completed' }}
+
+  # Starts the built app on an Android emulator, opens a PDF in it the way
+  # "Open with" does, and keeps pictures and the log in the pre-release, so a
+  # build that opens to a blank screen is caught before anyone installs it.
+  smoke:
+    name: smoke (emulator)
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: zood-pdf-android
+          path: out
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: bash apps/android/scripts/smoke.sh out shots
+      - name: Keep the pictures with the build
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la shots || exit 0
+          gh release upload "${{ needs.android.outputs.tag }}" -R "$GITHUB_REPOSITORY" --clobber shots/* || true
+      - name: Fail when the app did not start
+        run: test -f shots/ok

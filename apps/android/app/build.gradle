@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Version and signing come from the build's environment (.github/workflows/android.yml):
+//   ZOOD_VERSION_NAME / ZOOD_VERSION_CODE   what Google Play shows and orders by
+//   ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+//       the upload key (Play App Signing re-signs with Google's own app key).
+// Without a keystore the release build is signed with the debug key: fine to try
+// on a phone, refused by Google Play.
+def env = System.getenv()
+def keystore = env['ANDROID_KEYSTORE_PATH']
+
+android {
+    namespace 'sa.zood.pdf'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'sa.zood.pdf'
+        minSdk 26
+        targetSdk 36
+        versionCode((env['ZOOD_VERSION_CODE'] ?: '1') as int)
+        versionName env['ZOOD_VERSION_NAME'] ?: '0.1.0'
+    }
+
+    signingConfigs {
+        upload {
+            if (keystore) {
+                storeFile file(keystore)
+                storePassword env['ANDROID_KEYSTORE_PASSWORD']
+                keyAlias env['ANDROID_KEY_ALIAS'] ?: 'upload'
+                keyPassword env['ANDROID_KEY_PASSWORD'] ?: env['ANDROID_KEYSTORE_PASSWORD']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig keystore ? signingConfigs.upload : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Arabic and English both stay in every download: the app switches language
+    // inside itself, not only with the phone's.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.16.0'
+    // The phone remote's QR scanner. Apache-2.0 (zxing-android-embedded and ZXing).
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+}

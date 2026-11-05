@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The phone remote talks to the computer on the local network over plain
+     http/ws (its own page, sealed end to end by the remote's key, see
+     packages/ui/src/remote/phone/seal.ts). Addresses there are numbers that
+     cannot be listed here, so plain traffic stays allowed; the app's own
+     page is served from inside the app and everything else it fetches is https. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
