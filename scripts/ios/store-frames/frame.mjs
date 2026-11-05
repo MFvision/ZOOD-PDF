@@ -53,7 +53,7 @@ for (const device of fs.readdirSync(shotsDir)) {
   // its pictures are the iPad's, framed at the Duo's size.
   const duo = /duo/i.test(device);
   const pad = duo || /ipad/i.test(device);
-  const [w, h] = duo ? [1878, 2670] : pad ? [2064, 2752] : [1320, 2868];
+  const [w, h] = duo ? [2007, 2853] : pad ? [2064, 2752] : [1320, 2868];
   for (const lang of fs.readdirSync(path.join(shotsDir, device))) {
     const dir = path.join(shotsDir, device, lang);
     for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort()) {
