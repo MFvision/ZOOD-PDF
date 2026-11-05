@@ -111,7 +111,7 @@ targets:
         # is of the exempt kind and App Store Connect need not ask each upload.
         ITSAppUsesNonExemptEncryption: false
         CFBundleName: محرر PDF
-        CFBundleShortVersionString: "0.1.0"
+        CFBundleShortVersionString: "0.2.0"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # The String Catalogs' source language, so a missing table falls back to it.
         CFBundleDevelopmentRegion: en
@@ -262,7 +262,7 @@ targets:
         # published algorithms, no proprietary cryptography — so the encryption
         # is of the exempt kind and App Store Connect need not ask each upload.
         ITSAppUsesNonExemptEncryption: false
-        CFBundleShortVersionString: "0.1.0"
+        CFBundleShortVersionString: "0.2.0"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # The String Catalogs' source language, so a missing table falls back to it.
         CFBundleDevelopmentRegion: en
@@ -301,7 +301,7 @@ targets:
         # published algorithms, no proprietary cryptography — so the encryption
         # is of the exempt kind and App Store Connect need not ask each upload.
         ITSAppUsesNonExemptEncryption: false
-        CFBundleShortVersionString: "0.1.0"
+        CFBundleShortVersionString: "0.2.0"
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         # The String Catalogs' source language, so a missing table falls back to it.
         CFBundleDevelopmentRegion: en

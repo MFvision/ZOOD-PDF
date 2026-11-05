@@ -1,0 +1,119 @@
+# Photographs the App Store's pictures on GitHub's Mac: StoreScreenshotTests
+# on the largest iPhone and the largest iPad simulator (the two sizes App
+# Store Connect asks for), in Arabic and English, at full resolution.
+# Nothing is signed or published: the raw PNGs come back as an artifact and
+# are framed with captions afterwards (scripts/ios/store-frames/).
+name: App Store screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - 'apps/ios/PDFEditorUITests/StoreScreenshotTests.swift'
+      - '.github/workflows/app-store-screenshots.yml'
+
+concurrency:
+  group: app-store-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  shots:
+    name: Store pictures
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Newest Xcode on the runner
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Using $xcode"
+          sudo xcode-select -s "$xcode"
+          echo "DEVELOPER_DIR=$xcode/Contents/Developer" >> "$GITHUB_ENV"
+          xcodebuild -version
+          xcrun simctl list devices available | grep -E 'iPhone|iPad' | sort -u
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/core -> ../../apps/ios/.build/cargo
+      - name: Core for the simulator
+        env:
+          WARRAQ_IOS_SIM_ONLY: '1'
+          WARRAQ_IOS_DEBUG: '1'
+        run: zsh scripts/ios/build-core.sh
+      - name: llama.cpp for the on-device model
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash scripts/ios/fetch-llama.sh
+      - name: Project
+        run: |
+          brew install xcodegen
+          cd apps/ios && xcodegen generate --quiet
+      - name: Build the app and its UI tests
+        run: |
+          status=0
+          xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor \
+            -destination 'generic/platform=iOS Simulator' ARCHS=arm64 \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO build-for-testing > build.log 2>&1 || status=$?
+          grep -E 'error:|BUILD (SUCCEEDED|FAILED)' build.log | sort -u | head -100 || true
+          exit $status
+      - name: Photograph on the iPhone and the iPad
+        run: |
+          mkdir -p shots
+          pick() {
+            xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          prefs = sys.argv[1].split("|")
+          d = json.load(sys.stdin)["devices"]
+          devs = [x for k, v in d.items() if "iOS" in k for x in v]
+          for p in prefs:
+              for x in devs:
+                  if x["name"] == p:
+                      print(x["udid"], x["name"].replace(" ", "-").replace("(", "").replace(")", ""), sep="\t"); sys.exit(0)
+          sys.exit(1)' "$1"
+          }
+          for prefs in "iPhone 17 Pro Max|iPhone 16 Pro Max|iPhone 17 Pro" "iPad Pro 13-inch (M5)|iPad Pro 13-inch (M4)"; do
+            line=$(pick "$prefs") || { echo "no simulator for $prefs"; continue; }
+            udid=${line%%$'\t'*}; slug=${line#*$'\t'}
+            echo "== $slug ($udid)"
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+            # A clean status bar, as the App Store pictures have.
+            xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 \
+              --cellularMode active --cellularBars 4 --wifiBars 3 --dataNetwork wifi || true
+            TEST_RUNNER_WARRAQ_STORE_DIR="$PWD/shots" TEST_RUNNER_WARRAQ_DEVICE_SLUG="$slug" \
+              xcodebuild -project apps/ios/PDFEditor.xcodeproj -scheme PDFEditor -derivedDataPath dd \
+              -destination "id=$udid" CODE_SIGNING_ALLOWED=NO \
+              -only-testing:PDFEditorUITests/StoreScreenshotTests test-without-building > "test-$slug.log" 2>&1 || true
+            grep -E "Test Case .*(passed|failed|skipped)|error:|\*\* TEST" "test-$slug.log" | sort -u | head -80 || true
+            xcrun simctl shutdown "$udid" || true
+          done
+          find shots -name '*.png' | sort
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: store-screenshots
+          path: |
+            shots
+            build.log
+            test-*.log
+          if-no-files-found: warn
+      # The same pictures on a DRAFT release (private to the repository's
+      # owners, never the latest release), for where artifact storage is
+      # out of reach.
+      - name: Draft release with the pictures
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d shots ] || exit 0
+          (cd shots && zip -qr ../store-shots.zip .)
+          gh release delete store-shots -R "$GITHUB_REPOSITORY" -y 2>/dev/null || true
+          gh release create store-shots -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "App Store screenshots (draft, not a release)" --notes "Raw pictures from run $GITHUB_RUN_ID." store-shots.zip

@@ -1,12 +1,12 @@
 // The page the desktop app's welcome tour code leads to (/app/).
 //
-// IPHONE_LINK is the one place the phone app's link lives. Put the TestFlight
+// IPHONE_LINK is the phone app's App Store page (also APP_STORE_URL in js/story.js). Put the TestFlight
 // public link here now, or the App Store link once the app is approved, and
 // upload the site: an iPhone or iPad that scans the code then goes straight
 // to it, and the button below shows. Nothing in the desktop app changes.
 // While it is null, the page says the app is coming and how to connect with
 // the camera instead.
-var IPHONE_LINK = null;
+var IPHONE_LINK = 'https://apps.apple.com/app/id6816571917';
 
 (function () {
   var ua = navigator.userAgent;

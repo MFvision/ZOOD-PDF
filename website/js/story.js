@@ -33,6 +33,8 @@ export const UI = {
   getIt: { ar: 'حمّل', en: 'Download' },
   watch: { ar: 'شاهد الفيلم', en: 'Watch the film' },
   yours: { ar: 'لجهازك', en: 'For your computer' },
+  yoursPhone: { ar: 'لجوالك', en: 'For your phone' },
+  firstOpen: { ar: 'التنزيل', en: 'Getting it' },
   checksum: { ar: 'تحقّق من الملف (SHA-256)', en: 'Check the file (SHA-256)' },
   firstRun: { ar: 'أول تشغيل', en: 'The first time you open it' },
   where: { ar: 'متوفر في: ', en: 'Available on: ' },
@@ -90,6 +92,7 @@ export const CHAPTERS = [
       label: { ar: 'حمّل التطبيق مجانًا', en: 'Download free' },
       windows: { ar: 'حمّل لويندوز، مجانًا', en: 'Download for Windows, free' },
       mac: { ar: 'حمّل لماك، مجانًا', en: 'Download for Mac, free' },
+      ios: { ar: 'حمّل من App Store، مجانًا', en: 'Get it on the App Store, free' },
     },
     more: { href: '#film', label: { ar: 'شاهد 30 ثانية', en: 'Watch 30 seconds' } },
   },
@@ -381,16 +384,16 @@ export const PLATFORMS = [
     id: 'iphone',
     name: { ar: 'آيفون', en: 'iPhone' },
     status: {
-      ar: 'قيد الاختبار في TestFlight، ثم App Store.',
-      en: 'In TestFlight testing, then the App Store.',
+      ar: 'متاح الآن في App Store، مجانًا.',
+      en: 'On the App Store now, free.',
     },
   },
   {
     id: 'ipad',
     name: { ar: 'آيباد', en: 'iPad' },
     status: {
-      ar: 'قيد الاختبار في TestFlight، ثم App Store.',
-      en: 'In TestFlight testing, then the App Store.',
+      ar: 'متاح الآن في App Store، مجانًا.',
+      en: 'On the App Store now, free.',
     },
   },
 ];
@@ -399,6 +402,9 @@ export const PLATFORMS = [
 // The visitor's own system comes first as the big button. `sha256` is the
 // release asset's digest on GitHub; update it with the link on every release.
 // `steps` is the one thing to do the first time, while the app is unsigned.
+// The App Store page of the iPhone and iPad app (also js/phone-app.js).
+export const APP_STORE_URL = 'https://apps.apple.com/app/id6816571917';
+
 export const DOWNLOADS = [
   {
     id: 'windows',
@@ -418,6 +424,16 @@ export const DOWNLOADS = [
     steps: {
       ar: 'اسحب زود PDF إلى التطبيقات وافتحه. إن منعه ماك، افتح الإعدادات › الخصوصية والأمن واختر «فتح على أي حال» مرة واحدة.',
       en: 'Drag ZOOD PDF to Applications and open it. If your Mac stops it, open System Settings › Privacy & Security and choose Open Anyway, once.',
+    },
+  },
+  {
+    id: 'ios',
+    label: { ar: 'آيفون وآيباد من App Store', en: 'iPhone and iPad on the App Store' },
+    href: APP_STORE_URL,
+    store: true,
+    steps: {
+      ar: 'يفتح App Store، فاضغط «تنزيل». مجاني وبلا حساب.',
+      en: 'Opens the App Store. Tap Get. Free, and no account needed.',
     },
   },
 ];
