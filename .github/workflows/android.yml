@@ -71,8 +71,12 @@ jobs:
           tool: wasm-pack
       - name: pnpm install
         run: pnpm install --frozen-lockfile
-      - name: Build the WASM core
-        run: pnpm build:core
+      # Without wasm-opt: its `--all-features` (packages/core/warraq-core/Cargo.toml)
+      # writes stringref, which Android WebViews before Chrome ~150 refuse, and the
+      # app would quietly fall back to the mock core. rustc's own output uses only
+      # long-shipped features (bulk memory, reference types, sign-ext...).
+      - name: Build the WASM core (for every Android WebView)
+        run: wasm-pack build packages/core/warraq-core --target web --release --no-opt --out-dir ../../ui/src/core-wasm --out-name warraq_core
       - name: Test the shared UI (the Android hooks live there)
         run: pnpm --filter @warraq/ui test
       - name: Build the web app

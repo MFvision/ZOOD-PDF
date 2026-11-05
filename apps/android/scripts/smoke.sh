@@ -45,6 +45,10 @@ if grep -q "FATAL EXCEPTION" "$shots/logcat.txt"; then
   echo "The app crashed:"; grep -A20 "FATAL EXCEPTION" "$shots/logcat.txt" | head -40
   exit 0
 fi
+if grep -q "falling back to the mock core" "$shots/logcat.txt"; then
+  echo "The engine did not load in this WebView:"; grep "mock core" "$shots/logcat.txt" | head -3
+  exit 0
+fi
 if adb shell pidof "$pkg" >/dev/null; then
   touch "$shots/ok"
 fi
