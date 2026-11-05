@@ -124,6 +124,8 @@ abstract class WebHostActivity extends Activity implements Bridge.Host {
         }
     }
 
+    /** Android 8 to 12 only: from 13 on, Back reaches {@link #back} through the OnBackInvokedDispatcher above. */
+    @SuppressLint("GestureBackNavigation")
     @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
