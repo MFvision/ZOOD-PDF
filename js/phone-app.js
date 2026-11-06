@@ -7,6 +7,8 @@
 // While it is null, the page says the app is coming and how to connect with
 // the camera instead.
 var IPHONE_LINK = 'https://apps.apple.com/app/id6816571917';
+// ANDROID_LINK is the Android app's Google Play page (also PLAY_STORE_URL in js/story.js).
+var ANDROID_LINK = 'https://play.google.com/store/apps/details?id=sa.zood.pdf';
 
 (function () {
   var ua = navigator.userAgent;
@@ -14,6 +16,10 @@ var IPHONE_LINK = 'https://apps.apple.com/app/id6816571917';
   var apple = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   if (IPHONE_LINK && apple) {
     location.replace(IPHONE_LINK);
+    return;
+  }
+  if (ANDROID_LINK && /Android/i.test(ua)) {
+    location.replace(ANDROID_LINK);
     return;
   }
   var english = !/^ar\b/i.test(navigator.language || '');
