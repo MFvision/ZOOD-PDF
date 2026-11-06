@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Files handed to another app (Share): written here, deleted on the next start. -->
+    <cache-path name="outgoing" path="outgoing/" />
+</paths>

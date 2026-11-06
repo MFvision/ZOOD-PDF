@@ -185,7 +185,7 @@ export function headlineFont() {
 function visitorSystem() {
   const p = `${navigator.userAgentData?.platform ?? ''} ${navigator.platform ?? ''} ${navigator.userAgent}`;
   if (/iPhone|iPad|iPod/i.test(p) || (navigator.maxTouchPoints > 1 && /Mac/i.test(p))) return 'ios';
-  if (/Android/i.test(p)) return '';
+  if (/Android/i.test(p)) return 'android';
   if (/Win/i.test(p)) return 'windows';
   if (/Mac/i.test(p)) return 'mac';
   return '';

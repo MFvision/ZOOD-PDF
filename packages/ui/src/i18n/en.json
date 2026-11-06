@@ -1986,6 +1986,8 @@
   "home.card.aiHint": "Summarize, explain, translate",
   "home.card.more": "More",
   "home.card.moreHint": "All twenty tools",
+  "home.card.remote": "Control your computer",
+  "home.card.remoteHint": "Scan the code on your PC: present, trackpad, send files",
   "home.actions": "Quick actions",
   "home.recentMenu": "More actions for {name}",
   "home.recentRemove": "Remove from recents",

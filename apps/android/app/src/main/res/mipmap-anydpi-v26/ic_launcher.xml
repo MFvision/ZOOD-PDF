@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The App Store icon (apps/ios/.../AppIcon.png) at 70 % inside the 108 dp
+     canvas, its edges carried out to the canvas so any launcher mask keeps the
+     whole mark and the PDF band. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/zood_navy" />
+    <foreground android:drawable="@mipmap/ic_launcher_full" />
+</adaptive-icon>

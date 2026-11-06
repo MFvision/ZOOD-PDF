@@ -1,0 +1,8 @@
+.gradle/
+build/
+app/build/
+local.properties
+# The web app, copied in by scripts/android/prepare-web.sh before every build.
+app/src/main/assets/www/
+*.jks
+*.keystore

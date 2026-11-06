@@ -93,6 +93,7 @@ export const CHAPTERS = [
       windows: { ar: 'حمّل لويندوز، مجانًا', en: 'Download for Windows, free' },
       mac: { ar: 'حمّل لماك، مجانًا', en: 'Download for Mac, free' },
       ios: { ar: 'حمّل من App Store، مجانًا', en: 'Get it on the App Store, free' },
+      android: { ar: 'حمّل من Google Play، مجانًا', en: 'Get it on Google Play, free' },
     },
     more: { href: '#film', label: { ar: 'شاهد 30 ثانية', en: 'Watch 30 seconds' } },
   },
@@ -396,6 +397,14 @@ export const PLATFORMS = [
       en: 'On the App Store now, free.',
     },
   },
+  {
+    id: 'android',
+    name: { ar: 'أندرويد', en: 'Android' },
+    status: {
+      ar: 'متاح الآن في Google Play، مجانًا.',
+      en: 'On Google Play now, free.',
+    },
+  },
 ];
 
 // The download chapter: only versions people can install today (no "Coming soon").
@@ -404,6 +413,8 @@ export const PLATFORMS = [
 // `steps` is the one thing to do the first time, while the app is unsigned.
 // The App Store page of the iPhone and iPad app (also js/phone-app.js).
 export const APP_STORE_URL = 'https://apps.apple.com/app/id6816571917';
+// The Google Play page of the Android app (also js/phone-app.js).
+export const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=sa.zood.pdf';
 
 export const DOWNLOADS = [
   {
@@ -434,6 +445,16 @@ export const DOWNLOADS = [
     steps: {
       ar: 'يفتح App Store، فاضغط «تنزيل». مجاني وبلا حساب.',
       en: 'Opens the App Store. Tap Get. Free, and no account needed.',
+    },
+  },
+  {
+    id: 'android',
+    label: { ar: 'أندرويد من Google Play', en: 'Android on Google Play' },
+    href: PLAY_STORE_URL,
+    store: true,
+    steps: {
+      ar: 'يفتح Google Play، فاضغط «تثبيت». مجاني وبلا حساب.',
+      en: 'Opens Google Play. Tap Install. Free, and no account needed.',
     },
   },
 ];

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="remote"
+        android:shortcutLongLabel="@string/remote_title"
+        android:shortcutShortLabel="@string/remote_short">
+        <intent
+            android:action="sa.zood.pdf.REMOTE"
+            android:targetClass="sa.zood.pdf.MainActivity"
+            android:targetPackage="sa.zood.pdf" />
+    </shortcut>
+</shortcuts>

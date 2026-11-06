@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">محرر زود PDF</string>
+    <string name="remote_title">التحكم في الكمبيوتر</string>
+    <string name="remote_short">التحكم عن بعد</string>
+    <string name="remote_scan_prompt">امسح الرمز الظاهر في محرر زود PDF على الكمبيوتر (الهاتف كجهاز تحكم)</string>
+    <string name="remote_not_zood">هذا الرمز ليس رمز تحكم من محرر زود PDF. افتح محرر زود PDF على الكمبيوتر، ثم الهاتف كجهاز تحكم، وامسح الرمز الظاهر هناك.</string>
+    <string name="remote_lost">تعذّر الوصول إلى الكمبيوتر. تأكد أن الهاتف والكمبيوتر على شبكة Wi‑Fi نفسها وأن محرر زود PDF مفتوح عليه.</string>
+    <string name="remote_retry">حاول مرة أخرى</string>
+    <string name="remote_scan_again">امسح الرمز من جديد</string>
+    <string name="saved">تم الحفظ</string>
+    <string name="save_failed">تعذّر حفظ الملف. حاول مرة أخرى.</string>
+    <string name="open_failed">تعذّر فتح هذا الملف.</string>
+    <string name="share_with">مشاركة عبر</string>
+    <string name="no_app_for_this">لا يوجد على هذا الهاتف تطبيق يستطيع القيام بذلك.</string>
+    <string name="camera_needed">يحتاج محرر زود PDF إلى الكاميرا لهذا. يمكنك السماح بها من الإعدادات.</string>
+    <string name="mic_needed">يحتاج محرر زود PDF إلى الميكروفون لهذا. يمكنك السماح به من الإعدادات.</string>
+</resources>
