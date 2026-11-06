@@ -211,7 +211,12 @@ struct RemoteScanner: UIViewControllerRepresentable {
     let found: (String) -> Void
 
     @MainActor static var available: Bool {
-        DataScannerViewController.isSupported && DataScannerViewController.isAvailable
+        #if DEBUG
+        // The App Store pictures are taken on a simulator, which has no
+        // camera: they show the screen as an iPhone shows it.
+        if UserDefaults.standard.bool(forKey: "warraqStoreShots") { return true }
+        #endif
+        return DataScannerViewController.isSupported && DataScannerViewController.isAvailable
     }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {

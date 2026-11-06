@@ -198,7 +198,7 @@ def duo_slot(asc, loc_id):
         asc.call("POST", "/appScreenshotSets", req_body)
     except SystemExit as e:
         text = str(e)
-        names = [w.strip("[]\",. ") for w in text.replace(",", " ").split() if w.strip("[]\",. ").startswith("APP_")]
+        names = [w.strip("[]\"',. ") for w in text.replace(",", " ").split() if w.strip("[]\"',. ").startswith("APP_")]
         duo = [n for n in names if "DUO" in n or "FOLD" in n]
         print("slots Apple accepts:", ", ".join(sorted(set(names))) or text[:400])
         return duo[0] if duo else None
@@ -291,6 +291,14 @@ def main():
                 files = sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith(".png"))
                 print(f"{l['attributes']['locale']}: {len(files)} pictures for {slot}")
                 upload_set(asc, l["id"], slot, files)
+            # Older phone and iPad slots carried over from the last version
+            # would keep showing its pictures on those sizes: the new ones
+            # are scaled down for them instead.
+            for s in asc.all(f"/appStoreVersionLocalizations/{l['id']}/appScreenshotSets"):
+                kind = s["attributes"]["screenshotDisplayType"]
+                if kind.startswith(("APP_IPHONE_", "APP_IPAD_")) and kind not in slots.values():
+                    asc.call("DELETE", f"/appScreenshotSets/{s['id']}")
+                    print(f"{l['attributes']['locale']}: removed the old {kind} pictures")
     if a.submit:
         submit(asc, vid)
 

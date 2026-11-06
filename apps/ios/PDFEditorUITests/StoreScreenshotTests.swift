@@ -67,6 +67,7 @@ final class StoreScreenshotTests: XCTestCase {
             "-theme", "zood",
             "-warraqFresh", "1",
             "-warraqImport", try demoLibrary(language).path,
+            "-warraqStoreShots", "1",
         ]
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["library.home"].firstMatch.waitForExistence(timeout: 60), "the home screen")
@@ -262,6 +263,72 @@ final class StoreScreenshotTests: XCTestCase {
                 tools.tap()
                 shot("09-tools", language)
             }
+            app.terminate()
+        }
+    }
+
+    /// The phone remote for ZOOD PDF on a computer: present, a trackpad,
+    /// the clipboard and files sent across.
+    func test10Remote() throws {
+        for language in Self.languages {
+            let app = try launchHome(language)
+            if isPad {
+                let remote = app.buttons["library.remote"].firstMatch
+                if remote.waitForExistence(timeout: 10) { remote.tap() }
+            } else {
+                let tools = app.tabBars.buttons.element(boundBy: 3)
+                if tools.waitForExistence(timeout: 10) { tools.tap() }
+                let remote = app.buttons["tools.remote"].firstMatch
+                if remote.waitForExistence(timeout: 10) { remote.tap() }
+            }
+            let done = app.buttons.matching(NSPredicate(format: "label IN %@", ["Done", "تم"])).firstMatch
+            _ = done.waitForExistence(timeout: 10)
+            shot("10-remote", language)
+            app.terminate()
+        }
+    }
+
+    /// Copy, AirDrop, Mail, Save to Files: the system's share sheet with the PDF.
+    func test11Share() throws {
+        for language in Self.languages {
+            let ui = try openDocument(PartBApp.invoice, ar: "فاتورة أكتوبر", en: "October invoice", language: language)
+            ui.waitForPage(containing: "فاتورة")
+            tidy(ui)
+            let share = ui.app.buttons["document.share"].firstMatch
+            if !share.waitForExistence(timeout: 3) || !share.isHittable {
+                let more = ui.app.buttons["document.more"].firstMatch
+                if more.waitForExistence(timeout: 10) { more.tap() }
+            }
+            let item = ui.app.descendants(matching: .any)["document.share"].firstMatch
+            if item.waitForExistence(timeout: 10) { item.tap() }
+            // The sheet and its row of actions, drawn.
+            let copy = ui.app.descendants(matching: .any).matching(NSPredicate(format: "label IN %@", ["Copy", "نسخ"])).firstMatch
+            _ = copy.waitForExistence(timeout: 20)
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 10))
+            shot("11-share", language)
+            ui.app.terminate()
+        }
+    }
+
+    func test12Settings() throws {
+        for language in Self.languages {
+            let app = try launchHome(language)
+            let tile = app.descendants(matching: .any)["home.settings"].firstMatch
+            let home = app.descendants(matching: .any)["library.home"].firstMatch
+            for _ in 0..<10 where !(tile.exists && tile.isHittable) {
+                home.swipeUp()
+            }
+            if tile.exists { tile.tap() }
+            _ = app.descendants(matching: .any)["settings.form"].firstMatch.waitForExistence(timeout: 10)
+            // The sheet settled, at its full height on the phone.
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 2))
+            if !isPad {
+                let grabber = app.descendants(matching: .any)["settings.form"].firstMatch
+                grabber.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
+                    .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)))
+            }
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 3))
+            shot("12-settings", language)
             app.terminate()
         }
     }
