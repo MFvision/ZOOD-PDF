@@ -1,0 +1,118 @@
+# Reopen where you left off, tried in the released app before it goes to
+# everyone: the pre-release's own Windows installer and Mac disk image (not a
+# fresh build), installed on a clean Windows and a clean Mac, files opened,
+# pages turned, a tab group made, the app quit and started again
+# (scripts/ci/reopen/). Each job writes what it saw, with screenshots and the
+# app's session.json, to the `ci-logs-reopen-windows` and
+# `ci-logs-reopen-mac` branches, so it can be read with nothing but git.
+#
+# Run it by pushing to the `ship/reopen-check` branch with VERSION set to the
+# pre-release (release/desktop-v<VERSION>) to try.
+name: reopen check (released app)
+
+on:
+  push:
+    branches: ['ship/reopen-check']
+
+permissions:
+  contents: write
+
+env:
+  VERSION: '0.4.36'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install the pre-release
+        shell: pwsh
+        run: |
+          # Waits for the pre-release when it is still being built.
+          $url = "https://github.com/${{ github.repository }}/releases/download/desktop-v$env:VERSION/ZOOD-PDF-Setup-$env:VERSION.exe"
+          $until = (Get-Date).AddMinutes(60)
+          while ($true) {
+            try { Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\setup.exe"; break }
+            catch { if ((Get-Date) -gt $until) { throw "no installer at $url" }; Start-Sleep -Seconds 30 }
+          }
+          Start-Process -FilePath "$env:RUNNER_TEMP\setup.exe" -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem -Path "$env:LOCALAPPDATA\ZOOD PDF", "$env:ProgramFiles\ZOOD PDF" -Filter 'warraq-desktop.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { Get-ChildItem "$env:LOCALAPPDATA" -Directory | Format-Table Name | Out-String | Write-Host; throw 'the installed app was not found' }
+          Write-Host "installed: $($exe.FullName)"
+          "APP_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: get Playwright (to read the app's window over DevTools)
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright-core@1.63.0
+      - name: reopen where you left off
+        id: reopen
+        continue-on-error: true
+        shell: bash
+        run: |
+          node scripts/ci/reopen/make-pdfs.mjs "$RUNNER_TEMP/reopen-pdfs"
+          node scripts/ci/reopen/windows.mjs --app "$APP_EXE" --pdfs "$RUNNER_TEMP/reopen-pdfs" --out reopen-out --playwright "$RUNNER_TEMP/pw/node_modules/playwright-core"
+      - name: record the outcome
+        if: always()
+        shell: bash
+        run: |
+          mkdir ci-out && cd ci-out
+          git init -q && git checkout -q -b ci-logs-reopen-windows
+          {
+            echo "status: ${{ steps.reopen.outcome }}"
+            echo "version: $VERSION"
+            echo "commit: $GITHUB_SHA"
+            echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
+          } > status.txt
+          [ -d ../reopen-out ] && cp -r ../reopen-out reopen
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "reopen check (Windows): ${{ steps.reopen.outcome }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-logs-reopen-windows
+
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install the pre-release
+        run: |
+          # Waits for the pre-release when it is still being built.
+          url="https://github.com/${{ github.repository }}/releases/download/desktop-v$VERSION/ZOOD-PDF-$VERSION-mac.dmg"
+          for i in $(seq 1 120); do curl -fsSL -o "$RUNNER_TEMP/zood.dmg" "$url" && break; sleep 30; done
+          [ -s "$RUNNER_TEMP/zood.dmg" ] || { echo "no disk image at $url"; exit 1; }
+          hdiutil attach -nobrowse -mountpoint "$RUNNER_TEMP/zood" "$RUNNER_TEMP/zood.dmg"
+          mkdir -p "$HOME/Applications"
+          cp -R "$RUNNER_TEMP/zood/ZOOD PDF.app" "$HOME/Applications/"
+          hdiutil detach "$RUNNER_TEMP/zood"
+          codesign -dv "$HOME/Applications/ZOOD PDF.app" 2>&1 | grep -E 'Identifier|Authority=Developer' || true
+      - name: reopen where you left off
+        id: reopen
+        continue-on-error: true
+        run: |
+          node scripts/ci/reopen/make-pdfs.mjs "$RUNNER_TEMP/reopen-pdfs"
+          node scripts/ci/reopen/mac.mjs --app "$HOME/Applications/ZOOD PDF.app" --pdfs "$RUNNER_TEMP/reopen-pdfs" --out reopen-out
+      - name: record the outcome
+        if: always()
+        run: |
+          mkdir ci-out && cd ci-out
+          git init -q && git checkout -q -b ci-logs-reopen-mac
+          {
+            echo "status: ${{ steps.reopen.outcome }}"
+            echo "version: $VERSION"
+            echo "commit: $GITHUB_SHA"
+            echo "run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "finished: $(date -u +%Y-%m-%dT%H:%MZ)"
+          } > status.txt
+          [ -d ../reopen-out ] && cp -r ../reopen-out reopen
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "reopen check (Mac): ${{ steps.reopen.outcome }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-logs-reopen-mac
