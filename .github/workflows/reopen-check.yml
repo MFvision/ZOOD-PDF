@@ -88,6 +88,8 @@ jobs:
           mkdir -p "$HOME/Applications"
           cp -R "$RUNNER_TEMP/zood/ZOOD PDF.app" "$HOME/Applications/"
           hdiutil detach "$RUNNER_TEMP/zood"
+          # Known to Launch Services by its id, as an app installed from the disk image is.
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$HOME/Applications/ZOOD PDF.app" || true
           codesign -dv "$HOME/Applications/ZOOD PDF.app" 2>&1 | grep -E 'Identifier|Authority=Developer' || true
       - name: reopen where you left off
         id: reopen

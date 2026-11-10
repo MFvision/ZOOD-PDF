@@ -70,7 +70,13 @@ const hands = {
   },
   async front() {
     try {
-      script(`tell application id "${ID}" to activate`);
+      try {
+        script(`tell application id "${ID}" to activate`);
+      } catch {
+        // Not known to Launch Services by its id: the process itself, by its number.
+        const pid = spawnSync('pgrep', ['-x', 'warraq-desktop'], { encoding: 'utf8' }).stdout.trim().split(/\s+/)[0];
+        script(`tell application "System Events" to set frontmost of (first process whose unix id is ${pid}) to true`);
+      }
       await new Promise((resolve) => setTimeout(resolve, 400));
       const name = script('tell application "System Events" to get name of first process whose frontmost is true');
       const pid = script('tell application "System Events" to get unix id of first process whose frontmost is true');

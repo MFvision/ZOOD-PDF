@@ -5,9 +5,9 @@
 // through the app's insides. The steps and checks are flow.mjs's.
 //   node windows.mjs --app <warraq-desktop.exe> --pdfs <folder> --out <folder>
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, openSync } from 'node:fs';
+import { appendFileSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
 import { release, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { run } from './flow.mjs';
@@ -30,7 +30,10 @@ function helper() {
   });
   const waiting = [];
   createInterface({ input: child.stdout }).on('line', (line) => waiting.shift()?.(line));
-  child.stderr.on('data', (chunk) => console.log(`(hands.ps1: ${String(chunk).trim()})`));
+  child.stderr.on('data', (chunk) => {
+    console.log(`(hands.ps1: ${String(chunk).trim()})`);
+    appendFileSync(join(OUT, 'hands.log'), chunk);
+  });
   child.on('exit', (code) => {
     for (const next of waiting.splice(0)) next(`error hands.ps1 ended (${code})`);
   });
@@ -66,7 +69,6 @@ function running() {
 }
 
 const hand = helper();
-await hand.ready;
 
 const hands = {
   platform: 'Windows',
@@ -89,11 +91,20 @@ const hands = {
   },
   front: () => hand.ask('front'),
   keys: (chord) => hand.ask(`keys ${chord}`),
-  shot: (file) => hand.ask(`shot ${file}`),
+  shot: (file) => hand.ask(`shot ${resolve(file)}`),
   // The close button's message to the main window, as a person closes it.
   quit: () => hand.ask('close'),
 };
 
-const failed = await run(hands, { pdfs: PDFS, out: OUT });
+let failed = 1;
+try {
+  await hand.ready;
+  failed = await run(hands, { pdfs: PDFS, out: OUT });
+} catch (error) {
+  // Only when the hands themselves did not start: run() reports everything else.
+  const text = `ZOOD reopen check on Windows\nFAIL  the check's hands (hands.ps1) did not start (${error.message}; see hands.log)\nRESULT: FAILED\n`;
+  console.log(text);
+  writeFileSync(join(OUT, 'reopen.txt'), text);
+}
 hand.end();
 process.exit(failed ? 1 : 0);

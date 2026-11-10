@@ -52,7 +52,7 @@ public static class Hands {
   }
 
   // The largest visible top-level window of the process; every one in `seen`.
-  public static IntPtr Main(string process, List<string> seen) {
+  public static IntPtr Largest(string process, List<string> seen) {
     var pids = Pids(process);
     IntPtr best = IntPtr.Zero; long area = -1;
     EnumWindows((hwnd, data) => {
@@ -70,12 +70,12 @@ public static class Hands {
 
   public static string Windows(string process) {
     var seen = new List<string>();
-    Main(process, seen);
+    Largest(process, seen);
     return seen.Count == 0 ? "no visible ZOOD window" : string.Join(" | ", seen);
   }
 
   public static string Front(string process) {
-    IntPtr main = Main(process, null);
+    IntPtr main = Largest(process, null);
     if (main == IntPtr.Zero) return "no visible ZOOD window";
     if (GetForegroundWindow() != main) {
       if (IsIconic(main)) ShowWindow(main, 9);
@@ -123,7 +123,7 @@ public static class Hands {
   }
 
   public static string Close(string process) {
-    IntPtr main = Main(process, null);
+    IntPtr main = Largest(process, null);
     if (main == IntPtr.Zero) return "no visible ZOOD window to close";
     PostMessageW(main, 0x0010, IntPtr.Zero, IntPtr.Zero);
     return "WM_CLOSE sent to " + Describe(main) + " at " + DateTime.Now.ToString("HH:mm:ss.fff");
