@@ -1,0 +1,5 @@
+status: success
+version: 0.4.37
+commit: a541ae9923aff44fdf5f26bda903a924f9cbb765
+run: https://github.com/MFvision/ZOOD-PDF/actions/runs/42800091321
+finished: 2026-11-10T10:55Z

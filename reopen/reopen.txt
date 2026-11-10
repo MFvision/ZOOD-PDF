@@ -1,0 +1,49 @@
+ZOOD reopen check on Windows, 2026-11-10T10:53:48.486Z
+app: C:\Users\runneradmin\AppData\Local\ZOOD PDF\warraq-desktop.exe
+Windows 10.0.26100, screen 1024x768
+-- 1. three files opened as from the file manager: the first starts ZOOD, the next two go to it
+PASS  three files, three tabs, the last one in front (A p1, B p1, C p1 (front); groups: none)
+PASS  C, just opened, shows its first page (C of 5 pages; the screen shows page 1: page 1 98%; 2-C-opened.png)
+-- 2. each file sent to its own page (Go to page), Ctrl+Tab between the tabs
+PASS  Go to page takes C to page 4 (the keys reach ZOOD) (A p1, B p1, C p4 (front); groups: none)
+PASS  C shows page 4 after Go to page (the check reads the screen) (C of 5 pages; the screen shows page 4: page 4 97%; 3-C-page-4.png)
+PASS  Ctrl+Tab goes on to the next tab, round to the first (A) (A p1 (front), B p1, C p4; groups: none)
+PASS  A shows page 6 after Go to page (A of 8 pages; the screen shows page 6: page 6 72%; 4-A-page-6.png)
+PASS  B shows page 4 after Go to page (B of 6 pages; the screen shows page 4: page 4 72%; 5-B-page-4.png)
+-- 3. back to the other tabs in the same run
+PASS  C, shown again, is still on page 4 on screen (C of 5 pages; the screen shows page 4: page 4 72%; 6-C-again.png)
+PASS  ... and ZOOD says page 4 for C (A p6, B p4, C p4 (front); groups: none)
+PASS  A, shown again, is still on page 6 on screen (A of 8 pages; the screen shows page 6: page 6 72%; 7-A-again.png)
+PASS  ... and ZOOD says page 6 for A (A p6 (front), B p4, C p4; groups: none)
+PASS  ZOOD keeps A on 6, B on 4, C on 4, with B in front (A p6, B p4 (front), C p4; groups: none)
+-- 4. ZOOD closed, then started again with nothing
+      first close: WM_CLOSE sent to 'ZOOD PDF' [Tauri Window] 1044x788 at 0,0 at 10:54:25.370
+PASS  first close: ZOOD ends
+PASS  the same three tabs come back, in the same order (A p6, B p4 (front), C p4; groups: none)
+PASS  the same tab is in front (B) (A p6, B p4 (front), C p4; groups: none)
+PASS  ZOOD says B is on page 4 (A p6, B p4 (front), C p4; groups: none)
+PASS  B, in front at the start, shows page 4 on screen (B of 6 pages; the screen shows page 4: page 4 97%; 9-start-B.png)
+PASS  C, asleep until shown, shows page 4 on screen (C of 5 pages; the screen shows page 4: page 4 97%; 10-start-C.png)
+PASS  ... and ZOOD says page 4 for C (A p6, B p4, C p4 (front); groups: none)
+PASS  A, asleep until shown, shows page 6 on screen (A of 8 pages; the screen shows page 6: page 6 97%; 11-start-A.png)
+PASS  ... and ZOOD says page 6 for A (A p6 (front), B p4, C p4; groups: none)
+-- 5. a page turned just before closing ZOOD
+      closed at once: WM_CLOSE sent to 'ZOOD PDF' [Tauri Window] 1044x788 at 0,0 at 10:54:43.808
+PASS  quick close: ZOOD ends
+NOTE  a page turned just before closing is kept (A on 2) (A came back on page 6)
+PASS  A shows on screen the page ZOOD says (6) (A of 8 pages; the screen shows page 6: page 6 97%; 12-quick-close.png)
+      close: WM_CLOSE sent to 'ZOOD PDF' [Tauri Window] 1044x788 at 0,0 at 10:54:52.542
+PASS  close: ZOOD ends
+-- 6. a session left with a tab group (A and C) and B in front
+PASS  the group "Restore test" comes back, green, holding A and C (A p6 g1, C p4 g1, B p4 (front); groups: 1 "Restore test" green)
+PASS  the tabs come back in the order they were left (A, C, B) (A p6 g1, C p4 g1, B p4 (front); groups: 1 "Restore test" green)
+PASS  ZOOD says B is on page 4 (A p6 g1, C p4 g1, B p4 (front); groups: 1 "Restore test" green)
+PASS  B shows page 4 on screen (B of 6 pages; the screen shows page 4: page 4 97%; 13-group-B.png)
+      close: WM_CLOSE sent to 'ZOOD PDF' [Tauri Window] 1044x788 at 0,0 at 10:55:01.280
+PASS  close: ZOOD ends
+-- 7. C deleted while ZOOD was closed
+PASS  C's tab is gone; A and B are back (A p6 g1, B p4 (front); groups: 1 "Restore test" green)
+PASS  A and B keep their pages (6 and 4) (A p6 g1, B p4 (front); groups: 1 "Restore test" green)
+      last close: WM_CLOSE sent to 'ZOOD PDF' [Tauri Window] 1044x788 at 0,0 at 10:55:09.079
+PASS  last close: ZOOD ends
+RESULT: PASSED

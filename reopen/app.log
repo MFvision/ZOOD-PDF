@@ -1,0 +1,129 @@
+warraq: no pdfium.dll found next to the app; falling back to the pure-Rust renderer
+warraq: core engine = hayro
+warraq: command line file = Some("D:\\a\\_temp\\reopen-pdfs\\A-restore.pdf")
+warraq: the UI asked which engine it got
+warraq: startup file = Some("D:\\a\\_temp\\reopen-pdfs\\A-restore.pdf")
+warraq: read D:\a\_temp\reopen-pdfs\A-restore.pdf -> 3198 bytes
+warraq: opened #1, 3198 bytes, 8 page(s)
+warraq: rendered #1 page 0 at 0.3800475x, 289288 bytes
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf ready
+warraq: ui: embedpdf opened A-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of A-restore.pdf in 517 ms
+warraq: second launch file = Some("D:\\a\\_temp\\reopen-pdfs\\B-restore.pdf")
+warraq: startup file = Some("D:\\a\\_temp\\reopen-pdfs\\B-restore.pdf")
+warraq: read D:\a\_temp\reopen-pdfs\B-restore.pdf -> 2478 bytes
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #2, 2478 bytes, 6 page(s)
+warraq: rendered #2 page 0 at 0.3800475x, 289288 bytes
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened B-restore.pdf
+warraq: second launch file = Some("D:\\a\\_temp\\reopen-pdfs\\C-restore.pdf")
+warraq: startup file = Some("D:\\a\\_temp\\reopen-pdfs\\C-restore.pdf")
+warraq: read D:\a\_temp\reopen-pdfs\C-restore.pdf -> 2118 bytes
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #3, 2118 bytes, 5 page(s)
+warraq: ui: embedpdf drew 7 tiles of B-restore.pdf in 513 ms
+warraq: rendered #3 page 0 at 0.3800475x, 289288 bytes
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened C-restore.pdf
+warraq: ui: embedpdf drew 7 tiles of C-restore.pdf in 534 ms
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #4, 3198 bytes, 8 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened A-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of A-restore.pdf in 519 ms
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #5, 2478 bytes, 6 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened B-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of B-restore.pdf in 531 ms
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #6, 2118 bytes, 5 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened C-restore.pdf
+warraq: ui: embedpdf drew 7 tiles of C-restore.pdf in 502 ms
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #7, 3198 bytes, 8 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened A-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of A-restore.pdf in 531 ms
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #8, 2478 bytes, 6 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened B-restore.pdf
+warraq: window main closed: freed 1 document(s)
+[1110/105425.433:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412
+warraq: no pdfium.dll found next to the app; falling back to the pure-Rust renderer
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: read D:\a\_temp\reopen-pdfs\B-restore.pdf -> 2478 bytes
+warraq: opened #1, 2478 bytes, 6 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf ready
+warraq: ui: embedpdf opened B-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of B-restore.pdf in 530 ms
+warraq: read D:\a\_temp\reopen-pdfs\C-restore.pdf -> 2118 bytes
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #2, 2118 bytes, 5 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened C-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of C-restore.pdf in 502 ms
+warraq: read D:\a\_temp\reopen-pdfs\A-restore.pdf -> 3198 bytes
+warraq: forms.fix_appearances on no document: 1 blob(s) back
+warraq: file.rebase on no document: 1 blob(s) back
+warraq: opened #3, 3198 bytes, 8 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf opened A-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of A-restore.pdf in 526 ms
+warraq: window main closed: freed 1 document(s)
+[1110/105443.878:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412
+warraq: no pdfium.dll found next to the app; falling back to the pure-Rust renderer
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: read D:\a\_temp\reopen-pdfs\A-restore.pdf -> 3198 bytes
+warraq: opened #1, 3198 bytes, 8 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf ready
+warraq: ui: embedpdf opened A-restore.pdf
+warraq: ui: embedpdf drew 5 tiles of A-restore.pdf in 536 ms
+warraq: window main closed: freed 1 document(s)
+[1110/105452.596:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412
+warraq: no pdfium.dll found next to the app; falling back to the pure-Rust renderer
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: read D:\a\_temp\reopen-pdfs\B-restore.pdf -> 2478 bytes
+warraq: opened #1, 2478 bytes, 6 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf ready
+warraq: ui: embedpdf opened B-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of B-restore.pdf in 551 ms
+warraq: window main closed: freed 1 document(s)
+[1110/105501.333:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412
+warraq: no pdfium.dll found next to the app; falling back to the pure-Rust renderer
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: read D:\a\_temp\reopen-pdfs\B-restore.pdf -> 2478 bytes
+warraq: opened #1, 2478 bytes, 6 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf ready
+warraq: ui: embedpdf opened B-restore.pdf
+warraq: ui: embedpdf drew 8 tiles of B-restore.pdf in 545 ms
+warraq: window main closed: freed 1 document(s)
+[1110/105509.128:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412
