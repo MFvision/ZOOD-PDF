@@ -1,0 +1,11 @@
+warraq: core engine = hayro
+warraq: command line file = None
+warraq: the UI asked which engine it got
+warraq: startup file = None
+warraq: read D:\a\_temp\ring-check\sample.pdf -> 1590 bytes
+warraq: opened #1, 1590 bytes, 1 page(s)
+warraq: forms.inspect on no document: 0 blob(s) back
+warraq: ui: embedpdf ready
+warraq: ui: embedpdf opened sample.pdf
+warraq: ui: embedpdf drew 2 tiles of sample.pdf in 533 ms
+warraq: ask: E_MIC: there is no microphone
