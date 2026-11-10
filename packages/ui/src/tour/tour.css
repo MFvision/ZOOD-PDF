@@ -3356,7 +3356,7 @@ html[data-look="mono"] .wn-card-icon {
 }
 
 .wn-arrow:disabled {
-  background: var(--tertiary-fill, rgb(128 128 128 / 0.18));
+  background: var(--tertiary-fill, rgb(128 128 128 / 18%));
   color: var(--tertiary-label, var(--secondary-label));
 }
 
@@ -3398,7 +3398,7 @@ html[data-look="mono"] .wn-card-icon {
   }
 }
 
-@media (max-width: 820px) {
+@media (width <= 820px) {
   .wn-main {
     grid-template-columns: 1fr;
     overflow: auto;

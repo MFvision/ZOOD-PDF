@@ -23,7 +23,7 @@
   border: 0.5px solid var(--separator);
   border-radius: 12px;
   background: var(--window-background);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 8%), 0 1px 3px rgb(0 0 0 / 6%);
   user-select: none;
 }
 
@@ -40,7 +40,7 @@
   inline-size: 7px;
   block-size: 7px;
   border-radius: 50%;
-  background: var(--quaternary-label, rgb(128 128 128 / 0.35));
+  background: var(--quaternary-label, rgb(128 128 128 / 35%));
 }
 
 .tp-toolbar {
@@ -57,7 +57,7 @@
   inline-size: 12px;
   block-size: 8px;
   border-radius: 3px;
-  background: var(--tertiary-label, rgb(128 128 128 / 0.45));
+  background: var(--tertiary-label, rgb(128 128 128 / 45%));
 }
 
 .tp-toolbar b {
@@ -79,13 +79,13 @@
   inline-size: min(150px, 80%);
   border-radius: 4px 4px 0 0;
   background: #fff;
-  box-shadow: 0 0 0 0.5px var(--separator), 0 2px 6px rgb(0 0 0 / 0.08);
+  box-shadow: 0 0 0 0.5px var(--separator), 0 2px 6px rgb(0 0 0 / 8%);
 }
 
 .tp-page span {
   block-size: 5px;
   border-radius: 3px;
-  background: rgb(0 0 0 / 0.12);
+  background: rgb(0 0 0 / 12%);
 }
 
 .tp-page span:nth-child(2n) {
@@ -207,7 +207,7 @@
   z-index: 2;
   cursor: grabbing;
   transform: translate(var(--dx), var(--dy)) scale(1.04);
-  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.18));
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 18%));
   transition: none;
 }
 
@@ -224,7 +224,7 @@
   inline-size: 34px;
   block-size: 16px;
   border-radius: 5px 5px 0 0;
-  background: var(--tertiary-fill, rgb(128 128 128 / 0.18));
+  background: var(--tertiary-fill, rgb(128 128 128 / 18%));
 }
 
 .tp-tab.is-live {
