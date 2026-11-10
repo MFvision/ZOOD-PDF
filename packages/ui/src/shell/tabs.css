@@ -518,3 +518,14 @@
     display: none;
   }
 }
+
+/* The macOS app: tabs along the very top share that strip with the traffic
+   lights (tauri.conf.json places them there), which macOS keeps on the left
+   in either reading direction, as the toolbar leaves room for them. */
+.shell[data-native-menu] > .tab-bar:first-child:not(.tab-bar-side) {
+  padding-inline-start: var(--traffic-lights);
+}
+
+[dir="rtl"] .shell[data-native-menu] > .tab-bar:first-child:not(.tab-bar-side) {
+  padding-inline: var(--space-3) var(--traffic-lights);
+}
