@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import standardStamps from '../../public/stamps/en/manifest.json';
 import { isTauriHost, uiLog } from '../core/host-tauri';
 import type { Lang } from '../i18n/messages';
-import { pageRequests } from '../home/pendingPage';
+import { holdPages, pageRequests, releasePages } from '../home/pendingPage';
 import { requestOpenLink } from '../links/openLink';
 import { capability, disabledCategories, focusPagesIfIdle, holdReadingEdge, scrollToStart, setZoom, watchZoom } from './embedControl';
 import { applyOpenSettings, applyOpenZoom, pagePanelOpen, rememberedZoom, rememberZoom, setNightReading, setPagePanel, setSpreadDirection, spreadsRightToLeft } from './embedSettings';
@@ -223,6 +223,12 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
     const keptZoom = same ? rememberedZoom(currentName) : null;
     const keptPanel = same ? pagePanelOpen(registry) : null;
     const requests = pageRequests();
+    // A file coming on screen: a page asked for (a tab reopened where it was
+    // left, a search hit) waits until its opening zoom is set, or the zoom
+    // would undo it. Let go of below once the view has settled, or at most
+    // a few seconds on.
+    const arriving = !same;
+    if (arriving) holdPages(OPEN_SETTLE_MS + 4000);
     try {
       // A copy: the engine may take the buffer over, and Warraq keeps its own.
       const response = await manager
@@ -244,6 +250,7 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       onOpened?.(current);
     } catch (error) {
       uiLog(`embedpdf could not open ${currentName}: ${JSON.stringify(error)}`);
+      if (arriving) releasePages();
       onError?.(!same);
       return;
     }
@@ -267,6 +274,9 @@ export function EmbedViewer({ bytes, name, password, theme, lang, markupBar = fa
       // After EmbedPDF's own first layout, which sets its starting zoom.
       setTimeout(() => {
         if (shownRef.current !== currentName) return;
+        // Once the zoom below is set (and the start, 60 ms on): a page asked
+        // for can be gone to.
+        setTimeout(() => shownRef.current === currentName && releasePages(), 120);
         try {
           if (again) applyOpenZoom(registry, 'remember', currentName);
           else {

@@ -38,7 +38,8 @@ import {
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, NO_TOGGLES, addRedactionMarks, capability, disabledCategories, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions, watchToggles } from '../embed/embedControl';
+import type { PageInView } from '../embed/embedControl';
+import { EMBED_COMMANDS, NO_TOGGLES, addRedactionMarks, capability, disabledCategories, pageInView, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions, watchToggles } from '../embed/embedControl';
 import type { RedactionMark, ViewCommand, ViewToggles } from '../embed/embedControl';
 import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
@@ -68,7 +69,7 @@ import type { OcrLanguage } from '../ocr/engine';
 import { PLAIN_READING, recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope, ReadOptions } from '../ocr/run';
 import { runSelfCheck } from '../ocr/selfCheck';
-import { requestPage } from '../home/pendingPage';
+import { requestPage, wantedPage } from '../home/pendingPage';
 import { MAX_TABS, addToGroup, groupTabs as groupTabList, insertAfter, isGroupColour, moveTab as moveTabIn, neighbourOf, pruneGroups, tabOf, ungroupAll, ungroupTab } from './tabs';
 import type { DocTab, TabGroup } from './tabs';
 
@@ -303,8 +304,10 @@ export interface AppServices {
   printing: PrintProgress | null;
   /** Stops preparing a print by pages. */
   cancelPrint: () => void;
-  /** Brings a page (one-based) to the top of the view on screen. */
-  goToPage: (page: number) => void;
+  /** Brings a page (one-based) to the top of the view on screen; smoothly unless told `instant`. */
+  goToPage: (page: number, behavior?: ScrollBehavior) => void;
+  /** The page the view on screen really shows, and every page partly on screen; null while no view can say (EmbedPDF not ready). */
+  pageInView: () => PageInView | null;
   /** Organize pages: one change to the pages of the open document; `blobs` go with it to the core. `false` if it failed. */
   organizePages: (
     op: OrganizeOp,
@@ -1193,23 +1196,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   // The main window's tabs, kept for the next start, a moment after each
-  // change (and the page the one in front is on). Never before the last
-  // session was read back: the empty start would write over it.
+  // change (and the page the one in front is on: the page it is still on its
+  // way to, while it is). Never before the last session was read back: the
+  // empty start would write over it. Sent only when something changed, and
+  // once more, at once, when the window goes away (closed, or the app quit).
   const currentPage = state.currentPage;
-  useEffect(() => {
+  const sessionSent = useRef('');
+  const writeSession = useCallback(() => {
     if (!sessionReady.current || !isTauriHost() || (currentWindowLabel() ?? 'main') !== 'main') return;
-    const timer = setTimeout(() => {
-      const live = activeTabRef.current;
-      const kept = tabsRef.current.filter((tab) => tab.path);
-      const active = kept.findIndex((tab) => tab.key === live);
-      void saveSession({
-        tabs: kept.map((tab) => ({ path: tab.path!, page: tab.key === live ? stateRef.current.currentPage : tab.page, group: tab.group ?? null })),
-        groups: groupsRef.current.map(({ id, name, colour, collapsed }) => ({ id, name, colour, collapsed })),
-        active: active < 0 ? null : active,
-      });
-    }, 700);
+    const live = activeTabRef.current;
+    const kept = tabsRef.current.filter((tab) => tab.path);
+    const active = kept.findIndex((tab) => tab.key === live);
+    const session = {
+      tabs: kept.map((tab) => ({ path: tab.path!, page: tab.key === live ? (wantedPage() ?? stateRef.current.currentPage) : tab.page, group: tab.group ?? null })),
+      groups: groupsRef.current.map(({ id, name, colour, collapsed }) => ({ id, name, colour, collapsed })),
+      active: active < 0 ? null : active,
+    };
+    const text = JSON.stringify(session);
+    if (text === sessionSent.current) return;
+    sessionSent.current = text;
+    void saveSession(session);
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(writeSession, 150);
     return () => clearTimeout(timer);
-  }, [tabs, activeTab, groups, currentPage]);
+  }, [tabs, activeTab, groups, currentPage, writeSession]);
+  useEffect(() => {
+    window.addEventListener('pagehide', writeSession);
+    window.addEventListener('beforeunload', writeSession);
+    return () => {
+      window.removeEventListener('pagehide', writeSession);
+      window.removeEventListener('beforeunload', writeSession);
+    };
+  }, [writeSession]);
 
   // A file named on the command line, opened once. The host hands it over
   // only the first time it is asked, so a reload does not reopen it. A PDF
@@ -2364,13 +2383,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [embedShowing, embedToggles, zoomMode, leftOpen, findOpen],
   );
 
-  const goToPage = useCallback((page: number) => {
+  const goToPage = useCallback((page: number, behavior?: ScrollBehavior) => {
     const registry = embedRef.current;
     // EmbedPDF's view not attached yet: nothing can move. Saying the page
     // changed anyway would tell a waiting search hit it had arrived.
     if (embedShowingRef.current) {
-      if (registry) scrollToPage(registry, page);
+      if (registry) scrollToPage(registry, page, behavior);
     } else dispatch({ type: 'SCROLL_TO_PAGE', page });
+  }, []);
+
+  const pageInViewNow = useCallback((): PageInView | null => {
+    if (embedShowingRef.current) return embedRef.current ? pageInView(embedRef.current) : null;
+    const page = stateRef.current.currentPage;
+    return warraqOwnsDocument(stateRef.current) ? { page, visible: [page] } : null;
   }, []);
 
   const canUndo = organizing
@@ -2563,6 +2588,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       printing,
       cancelPrint,
       goToPage,
+      pageInView: pageInViewNow,
       organizePages,
       extractPages,
       insertPagesFromFile,
@@ -2650,6 +2676,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       printing,
       cancelPrint,
       goToPage,
+      pageInViewNow,
       organizePages,
       extractPages,
       insertPagesFromFile,

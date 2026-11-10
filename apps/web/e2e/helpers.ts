@@ -332,3 +332,23 @@ export async function embedDocument(page: Page): Promise<{ id: string; pages: nu
     return { id: manager?.getActiveDocumentId() ?? '', pages: manager?.getActiveDocument()?.pages.length ?? 0 };
   });
 }
+
+/**
+ * The page EmbedPDF's view really shows, one-based, from where its pages are
+ * scrolled to (for a file whose `pages` are all one size): not the page it
+ * reports, which is the page it was last sent to even when the view did not
+ * move.
+ */
+export async function pageOnScreen(page: Page, pages: number): Promise<number> {
+  return page.evaluate((count) => {
+    const root = document.querySelector('embedpdf-container')?.shadowRoot;
+    if (!root) return 0;
+    let scroller: HTMLElement | null = null;
+    for (const el of root.querySelectorAll<HTMLElement>('*')) {
+      if (el.scrollHeight > el.clientHeight + 100 && (!scroller || el.scrollHeight > scroller.scrollHeight)) scroller = el;
+    }
+    if (!scroller) return 0;
+    const span = scroller.scrollHeight / count;
+    return Math.floor((scroller.scrollTop + span / 2) / span) + 1;
+  }, pages);
+}

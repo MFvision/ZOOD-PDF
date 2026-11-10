@@ -22,6 +22,7 @@ interface Scroll {
   getCurrentPage(): number;
   getPageChangeState(): { isChanging: boolean; targetPage?: number };
   scrollToPage(options: { pageNumber: number; behavior?: ScrollBehavior }): void;
+  getMetrics(): { currentPage: number; visiblePages: number[] };
   onPageChange: Hook<{ pageNumber: number; totalPages: number }>;
 }
 
@@ -174,8 +175,29 @@ export function printAllowed(registry: PluginRegistry): boolean {
   return document.isOwnerUnlocked === true || (document.permissions & PRINT_PERMISSION) !== 0;
 }
 
-export function scrollToPage(registry: PluginRegistry, page: number): void {
-  capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page });
+export function scrollToPage(registry: PluginRegistry, page: number, behavior?: ScrollBehavior): void {
+  capability<Scroll>(registry, 'scroll')?.scrollToPage({ pageNumber: page, ...(behavior ? { behavior } : {}) });
+}
+
+/**
+ * The page the view really shows, from where it is scrolled to: not the page
+ * EmbedPDF was last sent to, which it reports at once, even when the view
+ * was not ready to move (a file still coming on screen) and stayed on page 1.
+ * Null when it cannot tell. `visible`: every page any of which is on screen.
+ */
+export interface PageInView {
+  page: number;
+  visible: number[];
+}
+
+export function pageInView(registry: PluginRegistry): PageInView | null {
+  try {
+    const metrics = capability<Scroll>(registry, 'scroll')?.getMetrics();
+    if (!metrics || typeof metrics.currentPage !== 'number' || metrics.currentPage < 1) return null;
+    return { page: metrics.currentPage, visible: Array.isArray(metrics.visiblePages) ? metrics.visiblePages : [metrics.currentPage] };
+  } catch {
+    return null;
+  }
 }
 
 /**

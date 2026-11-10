@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { INVOICE, chooseTool, corpus, openPdf, test } from './helpers';
+import { INVOICE, chooseTool, corpus, documentStatus, openPdf, pageOnScreen, test } from './helpers';
 
 /**
  * Document tabs: a second PDF opens beside the first, and pages dragged
@@ -99,4 +99,35 @@ test('tabs gather in a named group, fold, move, and go down the side', async ({ 
   await page.getByRole('menu').getByRole('menuitem', { name: 'Show tabs along the top' }).click();
   await expect(page.locator('.tab-bar-side')).toHaveCount(0);
   await expect(tabs).toHaveCount(3);
+});
+
+/**
+ * The page a tab was left on is the page shown when it comes back, not only
+ * the page the box says: EmbedPDF reports a page it is sent to at once, and
+ * a file still coming on screen was sent there before its opening zoom,
+ * which put the view back on page 1 (Ship's check of 0.4.36, a tab reopened
+ * at start). Read from where the pages are scrolled to.
+ */
+test('a tab comes back on the page it was left on, really shown', async ({ page, stayLocal: _ }) => {
+  await page.goto('/');
+  await openPdf(page, corpus('generated/perf-text-100-pages.pdf'));
+  await expect(documentStatus(page)).toContainText('Page 1 of 100');
+  await page.getByRole('menubar').getByRole('menuitem', { name: 'Edit', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Go to page…' }).click();
+  await page.getByLabel('Page number (1–100)').fill('40');
+  await page.getByRole('button', { name: 'Go', exact: true }).click();
+  await expect.poll(() => pageOnScreen(page, 100), { timeout: 15_000 }).toBe(40);
+
+  const tabs = page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab');
+  await page.locator('input[type="file"]').first().setInputFiles(INVOICE);
+  await expect(tabs).toHaveCount(2);
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+
+  await tabs.nth(0).click();
+  await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+  await expect(documentStatus(page)).toContainText('Page 40 of 100', { timeout: 15_000 });
+  await expect.poll(() => pageOnScreen(page, 100), { timeout: 15_000 }).toBe(40);
+  // And it stays there once the view has settled.
+  await page.waitForTimeout(1500);
+  expect(await pageOnScreen(page, 100)).toBe(40);
 });
