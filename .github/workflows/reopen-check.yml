@@ -1,9 +1,11 @@
 # Reopen where you left off, tried in the released app before it goes to
 # everyone: the pre-release's own Windows installer and Mac disk image (not a
-# fresh build), installed on a clean Windows and a clean Mac, files opened,
-# pages turned, a tab group made, the app quit and started again
-# (scripts/ci/reopen/). Each job writes what it saw, with screenshots and the
-# app's session.json, to the `ci-logs-reopen-windows` and
+# fresh build), installed on a clean Windows and a clean Mac and used as a
+# person uses it (scripts/ci/reopen/): files opened, pages turned, tabs
+# switched, the app closed and started again, a tab group, a file deleted.
+# The page a person sees is read from the screen (each sample page has its own
+# colour), not only from the page box. Each job writes what it saw, with
+# screenshots and the app's session.json, to the `ci-logs-reopen-windows` and
 # `ci-logs-reopen-mac` branches, so it can be read with nothing but git.
 #
 # Run it by pushing to the `ship/reopen-check` branch with VERSION set to the
@@ -44,19 +46,12 @@ jobs:
           if (-not $exe) { Get-ChildItem "$env:LOCALAPPDATA" -Directory | Format-Table Name | Out-String | Write-Host; throw 'the installed app was not found' }
           Write-Host "installed: $($exe.FullName)"
           "APP_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      - name: get Playwright (to read the app's window over DevTools)
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
-          npm init -y > /dev/null
-          npm install --no-audit --no-fund playwright-core@1.63.0
       - name: reopen where you left off
         id: reopen
         continue-on-error: true
         shell: bash
         run: |
-          node scripts/ci/reopen/make-pdfs.mjs "$RUNNER_TEMP/reopen-pdfs"
-          node scripts/ci/reopen/windows.mjs --app "$APP_EXE" --pdfs "$RUNNER_TEMP/reopen-pdfs" --out reopen-out --playwright "$RUNNER_TEMP/pw/node_modules/playwright-core"
+          node scripts/ci/reopen/windows.mjs --app "$APP_EXE" --pdfs "$RUNNER_TEMP/reopen-pdfs" --out reopen-out
       - name: record the outcome
         if: always()
         shell: bash
@@ -98,7 +93,6 @@ jobs:
         id: reopen
         continue-on-error: true
         run: |
-          node scripts/ci/reopen/make-pdfs.mjs "$RUNNER_TEMP/reopen-pdfs"
           node scripts/ci/reopen/mac.mjs --app "$HOME/Applications/ZOOD PDF.app" --pdfs "$RUNNER_TEMP/reopen-pdfs" --out reopen-out
       - name: record the outcome
         if: always()
