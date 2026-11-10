@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import en from '../i18n/en.json';
 import ar from '../i18n/ar.json';
-import { newChapters, newSince, tourChapters } from './chapters';
+import { latestChapters, newChapters, newSince, tourChapters } from './chapters';
 
 describe('welcome tour', () => {
   it('shows the quick tools and the phone remote only in the desktop app', () => {
     expect(tourChapters(false).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'ai', 'support', 'done']);
-    expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'quick', 'reach', 'sort', 'remote', 'ai', 'support', 'done']);
+    expect(tourChapters(true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'tabs', 'folders', 'quick', 'reach', 'sort', 'remote', 'ai', 'support', 'done']);
   });
 
   it('teaches Ask ZOOD only where it is in the build', () => {
-    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'folders', 'quick', 'ask', 'quickask', 'reach', 'sort', 'remote', 'ai', 'support', 'done']);
+    expect(tourChapters(true, true).map((c) => c.id)).toEqual(['welcome', 'look', 'film', 'basics', 'tabs', 'folders', 'quick', 'ask', 'quickask', 'reach', 'sort', 'remote', 'ai', 'support', 'done']);
     expect(tourChapters(false, true).map((c) => c.id)).not.toContain('ask');
   });
 
@@ -38,24 +38,32 @@ describe('welcome tour', () => {
     // Never seen, or seen before Ask ZOOD: the whole tour.
     expect(newChapters(0, true, true)).toBeNull();
     expect(newChapters(1, false, false)).toBeNull();
-    expect(newChapters(12, true, true)).toEqual(['sort', 'remote']);
+    expect(newChapters(12, true, true)).toEqual(['tabs', 'sort', 'remote']);
     // Version 14: the shelf the dropped files now stay on.
-    expect(newChapters(13, true, true)).toEqual(['sort', 'remote']);
+    expect(newChapters(13, true, true)).toEqual(['tabs', 'sort', 'remote']);
     // Version 15: the tiles and Put away.
-    expect(newChapters(14, true, true)).toEqual(['sort', 'remote']);
+    expect(newChapters(14, true, true)).toEqual(['tabs', 'sort', 'remote']);
     // Version 16: the clipboard, To phone and two computers.
-    expect(newChapters(15, true, true)).toEqual(['remote']);
+    expect(newChapters(15, true, true)).toEqual(['tabs', 'remote']);
     expect(newChapters(15, false, false)).toEqual([]);
     expect(newChapters(12, false, false)).toEqual([]);
-    expect(newChapters(11, true, true)).toEqual(['reach', 'sort', 'remote']);
-    expect(newChapters(10, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
-    expect(newChapters(9, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
-    expect(newChapters(8, true, true)).toEqual(['folders', 'reach', 'sort', 'remote']);
-    expect(newChapters(6, true, true)).toEqual(['folders', 'reach', 'sort', 'remote', 'ai', 'support']);
-    expect(newChapters(4, true, true)).toEqual(['folders', 'ask', 'quickask', 'reach', 'sort', 'remote', 'ai', 'support']);
+    expect(newChapters(11, true, true)).toEqual(['tabs', 'reach', 'sort', 'remote']);
+    expect(newChapters(10, true, true)).toEqual(['tabs', 'folders', 'reach', 'sort', 'remote']);
+    expect(newChapters(9, true, true)).toEqual(['tabs', 'folders', 'reach', 'sort', 'remote']);
+    expect(newChapters(8, true, true)).toEqual(['tabs', 'folders', 'reach', 'sort', 'remote']);
+    expect(newChapters(6, true, true)).toEqual(['tabs', 'folders', 'reach', 'sort', 'remote', 'ai', 'support']);
+    expect(newChapters(4, true, true)).toEqual(['tabs', 'folders', 'ask', 'quickask', 'reach', 'sort', 'remote', 'ai', 'support']);
     expect(newChapters(6, false, false)).toEqual(['folders', 'ai', 'support']);
+    // Version 17: tabs as a browser has them (desktop only).
+    expect(newChapters(16, true, true)).toEqual(['tabs']);
+    expect(newChapters(16, false, false)).toEqual([]);
     // On the web a tour seen at 11 has nothing new: it does not open.
     expect(newChapters(11, false, false)).toEqual([]);
+  });
+
+  it("names what the latest update brought for Help › What's new", () => {
+    expect(latestChapters(true, true)).toEqual(['tabs']);
+    expect(latestChapters(false, false)).toEqual(['folders']);
   });
 
   it('has every chapter in both languages', () => {

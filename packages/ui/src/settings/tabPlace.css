@@ -1,0 +1,319 @@
+/* Settings › Viewing › Tabs (TabPlacePicture.tsx): the window in little, the tabs dragged where they go. */
+
+.tp {
+  display: grid;
+  gap: var(--space-3);
+  inline-size: 100%;
+  max-inline-size: 360px;
+}
+
+.tp-window {
+  position: relative;
+  display: grid;
+  grid-template-areas:
+    'title title'
+    'top top'
+    'tools tools'
+    'under under'
+    'side page';
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 16px auto 22px auto 1fr;
+  block-size: 196px;
+  overflow: hidden;
+  border: 0.5px solid var(--separator);
+  border-radius: 12px;
+  background: var(--window-background);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.06);
+  user-select: none;
+}
+
+.tp-titlebar {
+  grid-area: title;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding-inline: 8px;
+  background: var(--toolbar-background);
+}
+
+.tp-titlebar i {
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: var(--quaternary-label, rgb(128 128 128 / 0.35));
+}
+
+.tp-toolbar {
+  grid-area: tools;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding-inline: 8px;
+  border-block: 0.5px solid var(--separator);
+  background: var(--toolbar-background);
+}
+
+.tp-toolbar i {
+  inline-size: 12px;
+  block-size: 8px;
+  border-radius: 3px;
+  background: var(--tertiary-label, rgb(128 128 128 / 0.45));
+}
+
+.tp-toolbar b {
+  margin-inline-start: auto;
+  inline-size: 34px;
+  block-size: 9px;
+  border-radius: 5px;
+  background: var(--accent);
+  opacity: 0.8;
+}
+
+.tp-page {
+  grid-area: page;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  margin: 10px auto 0;
+  padding: 12px 12px 0;
+  inline-size: min(150px, 80%);
+  border-radius: 4px 4px 0 0;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px var(--separator), 0 2px 6px rgb(0 0 0 / 0.08);
+}
+
+.tp-page span {
+  block-size: 5px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.12);
+}
+
+.tp-page span:nth-child(2n) {
+  inline-size: 72%;
+}
+
+/* The three places the tabs can go. Empty ones are quiet outlines that light up while the tabs move. */
+.tp-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tertiary-label, var(--secondary-label));
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background var(--duration-quick, 120ms) ease,
+    min-block-size var(--duration-standard, 220ms) ease,
+    min-inline-size var(--duration-standard, 220ms) ease;
+}
+
+.tp-slot-top {
+  grid-area: top;
+  min-block-size: 6px;
+}
+
+.tp-slot-toolbar {
+  grid-area: under;
+  min-block-size: 6px;
+}
+
+.tp-slot-side {
+  grid-area: side;
+  min-inline-size: 8px;
+}
+
+.tp-slot.is-here.tp-slot-top,
+.tp-slot.is-here.tp-slot-toolbar {
+  min-block-size: 24px;
+  justify-content: flex-start;
+  background: var(--toolbar-background);
+}
+
+.tp-slot.is-here.tp-slot-side {
+  min-inline-size: 76px;
+  align-items: flex-start;
+  border-inline-end: 0.5px solid var(--separator);
+  background: var(--toolbar-background);
+}
+
+.tp-slot-hint {
+  position: absolute;
+  inset: 2px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1.5px dashed transparent;
+  border-radius: 6px;
+  padding: 2px;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--duration-quick, 120ms) ease;
+}
+
+.tp-slot:not(.is-here):hover,
+.tp-slot:not(.is-here):focus-visible,
+.tp-window.is-dragging .tp-slot:not(.is-here) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.tp-window.is-dragging .tp-slot-top:not(.is-here),
+.tp-window.is-dragging .tp-slot-toolbar:not(.is-here),
+.tp-slot-top:not(.is-here):hover,
+.tp-slot-toolbar:not(.is-here):hover {
+  min-block-size: 20px;
+}
+
+.tp-window.is-dragging .tp-slot-side:not(.is-here),
+.tp-slot-side:not(.is-here):hover {
+  min-inline-size: 60px;
+}
+
+.tp-window.is-dragging .tp-slot-hint,
+.tp-slot:hover .tp-slot-hint,
+.tp-slot:focus-visible .tp-slot-hint {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent);
+  opacity: 1;
+}
+
+.tp-slot.is-over {
+  background: color-mix(in srgb, var(--accent) 20%, transparent) !important;
+}
+
+.tp-slot:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* The tabs themselves: a group label and three tabs, the one in front white. */
+.tp-strip {
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  padding: 4px 8px 0;
+  cursor: grab;
+  touch-action: none;
+  transition: transform var(--duration-standard, 220ms) var(--ease-out, ease);
+}
+
+.tp-strip.is-lifted {
+  z-index: 2;
+  cursor: grabbing;
+  transform: translate(var(--dx), var(--dy)) scale(1.04);
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.18));
+  transition: none;
+}
+
+.tp-chip {
+  align-self: center;
+  inline-size: 12px;
+  block-size: 12px;
+  border-radius: 50%;
+  background: var(--group);
+}
+
+.tp-tab {
+  position: relative;
+  inline-size: 34px;
+  block-size: 16px;
+  border-radius: 5px 5px 0 0;
+  background: var(--tertiary-fill, rgb(128 128 128 / 0.18));
+}
+
+.tp-tab.is-live {
+  background: var(--window-background);
+  box-shadow: 0 -0.5px 0 var(--separator), 0.5px 0 0 var(--separator), -0.5px 0 0 var(--separator);
+}
+
+.tp-tab[data-colour]::after {
+  position: absolute;
+  inset-inline: 4px;
+  inset-block-end: 0;
+  block-size: 2px;
+  border-radius: 2px;
+  background: var(--group);
+  content: '';
+}
+
+.tp-slot-side .tp-strip {
+  flex-direction: column;
+  align-items: stretch;
+  inline-size: 100%;
+  padding: 6px;
+}
+
+.tp-slot-side .tp-chip {
+  align-self: flex-start;
+}
+
+.tp-slot-side .tp-tab {
+  inline-size: auto;
+  block-size: 13px;
+  border-radius: 4px;
+}
+
+.tp-slot-side .tp-tab[data-colour] {
+  margin-inline-start: 5px;
+}
+
+.tp-slot-side .tp-tab[data-colour]::after {
+  inset-inline: -4px auto;
+  inset-block: 2px;
+  inline-size: 2px;
+  block-size: auto;
+}
+
+.tp-under {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tp-caption {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: var(--text-footnote);
+}
+
+.tp-auto {
+  display: inline-flex;
+  flex: none;
+  gap: 5px;
+  align-items: center;
+  block-size: 28px;
+  padding-inline: 10px 12px;
+  border: 0.5px solid var(--separator);
+  border-radius: 999px;
+  background: var(--control-background, transparent);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--text-footnote);
+  transition:
+    background var(--duration-quick, 120ms) ease,
+    color var(--duration-quick, 120ms) ease;
+}
+
+.tp-auto.is-on {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+}
+
+.tp-auto:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tp.is-still .tp-slot,
+.tp.is-still .tp-strip,
+.tp.is-still .tp-auto {
+  transition: none;
+}

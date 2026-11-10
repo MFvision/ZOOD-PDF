@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, KeyboardEvent } from 'react';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Dialog } from '../components/Dialog';
 import { Icon } from '../components/Icon';
 import { ZoodMark } from '../components/ZoodMark';
@@ -23,6 +23,7 @@ import { PhoneScene } from './phoneScene';
 import { SupportScene } from './supportScene';
 import { FoldersScene } from './foldersScene';
 import { SortScene } from './sortScene';
+import { TabsScene } from './tabsScene';
 import { showHomeView } from '../home/homeView';
 import { openSupportAt } from '../support/open';
 import './tour.css';
@@ -83,17 +84,20 @@ export function WelcomeTour() {
   }, [desktop, ask, dispatch]);
 
   const open = dialog === 'tour';
+  // The whole tour, or (after an update, or from Help › What's new) only what is new: then it is "What's new".
+  const [news, setNews] = useState(false);
   // Finished, skipped or closed: seen, so it does not open by itself again.
   const close = () => {
     writeJson(SEEN_KEY, { seen: true, version: TOUR_VERSION });
     dispatch({ type: 'DIALOG', dialog: null });
   };
   return (
-    <Dialog open={open} title={t('tour.title')} onClose={close} className="tour-dialog" closeOnBackdrop={false}>
+    <Dialog open={open} title={t(news ? 'whatsNew.title' : 'tour.title')} onClose={close} className={news ? 'tour-dialog is-news' : 'tour-dialog'} closeOnBackdrop={false}>
       {open ? (
         <TourBook
           desktop={desktop}
           ask={ask}
+          onNews={setNews}
           onClose={close}
           onSettings={(section) => openSettingsAt(section, () => dispatch({ type: 'DIALOG', dialog: 'settings' }))}
           onSupport={() => openSupportAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'support' }))}
@@ -108,7 +112,23 @@ export function WelcomeTour() {
   );
 }
 
-function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: { desktop: boolean; ask: boolean; onClose: () => void; onSettings: (section: SectionId) => void; onSupport: () => void; onFolders: () => void }) {
+function TourBook({
+  desktop,
+  ask,
+  onNews,
+  onClose,
+  onSettings,
+  onSupport,
+  onFolders,
+}: {
+  desktop: boolean;
+  ask: boolean;
+  onNews: (news: boolean) => void;
+  onClose: () => void;
+  onSettings: (section: SectionId) => void;
+  onSupport: () => void;
+  onFolders: () => void;
+}) {
   const { t, dir } = useI18n();
   // The whole tour, or only the chapters an update brought.
   const [{ chapters, whole }] = useState(() => {
@@ -117,6 +137,7 @@ function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: {
     const some = only ? all.filter((chapter) => only.includes(chapter.id)) : [];
     return some.length > 0 ? { chapters: some, whole: false } : { chapters: all, whole: true };
   });
+  useEffect(() => onNews(!whole), [whole, onNews]);
   // A chapter asked for, else (the whole tour) where it was left.
   const [at, setAt] = useState(() => {
     const id = takeStartAt() ?? (whole ? readPlace() : null);
@@ -164,9 +185,42 @@ function TourBook({ desktop, ask, onClose, onSettings, onSupport, onFolders }: {
     }
   };
 
+  // "Try it now": straight to the real thing, where a chapter has one place to try it.
+  const tryIt: Partial<Record<ChapterId, () => void>> = {
+    tabs: () => onSettings('viewing'),
+    folders: onFolders,
+    support: onSupport,
+  };
+
   const NextArrow = dir === 'rtl' ? ArrowLeft : ArrowRight;
   // --heading: the side the next chapter comes in from, mirrored for right-to-left.
   const style = { '--chapter-hue': chapter.hue, '--heading': dir === 'rtl' ? -heading : heading } as CSSProperties;
+
+  if (!whole) {
+    return (
+      <WhatsNew
+        chapters={chapters}
+        at={at}
+        go={go}
+        onKeyDown={onKeyDown}
+        style={style}
+        onClose={onClose}
+        tryIt={tryIt}
+        scene={
+          <Scene
+            chapter={chapter}
+            progress={progress}
+            onProgress={(patch) => setProgress((before) => ({ ...before, ...patch }))}
+            onSettings={onSettings}
+            onSupport={onSupport}
+            onFolders={onFolders}
+            onChapter={(id) => go(chapters.findIndex((one) => one.id === id))}
+            has={(id) => chapters.some((one) => one.id === id)}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <div className="tour" style={style} onKeyDown={onKeyDown}>
@@ -279,6 +333,8 @@ function Scene({
       return <FilmScene onWatched={() => onProgress({ film: true })} />;
     case 'basics':
       return <BasicsScene />;
+    case 'tabs':
+      return <TabsScene onSettings={onSettings} />;
     case 'folders':
       return <FoldersScene onOpen={onFolders} />;
     case 'quick':
@@ -300,4 +356,103 @@ function Scene({
     case 'done':
       return <DoneScene progress={progress} onChapter={(id) => has(id) && onChapter(id)} />;
   }
+}
+
+/**
+ * After an update (and from Help › What's new): only what is new, laid out
+ * as a browser's "What's new" page. The feature's name, what it does and
+ * "Try it now" on the leading side; its moving scene on a tinted stage
+ * beside it; and along the foot, a card for each new thing, in its own
+ * colour, to go from one to the next. Arrow keys turn them too.
+ */
+function WhatsNew({
+  chapters,
+  at,
+  go,
+  onKeyDown,
+  style,
+  onClose,
+  tryIt,
+  scene,
+}: {
+  chapters: Chapter[];
+  at: number;
+  go: (index: number) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
+  style: CSSProperties;
+  onClose: () => void;
+  tryIt: Partial<Record<ChapterId, () => void>>;
+  scene: ReactNode;
+}) {
+  const { t, dir } = useI18n();
+  const chapter = chapters[Math.min(at, chapters.length - 1)]!;
+  const last = at >= chapters.length - 1;
+  const action = tryIt[chapter.id];
+  const Back = dir === 'rtl' ? ChevronRight : ChevronLeft;
+  const Forward = dir === 'rtl' ? ChevronLeft : ChevronRight;
+  return (
+    <div className="wn" style={style} onKeyDown={onKeyDown}>
+      <div className="wn-head">
+        <ZoodMark size={22} loop />
+        <span className="wn-head-sub">{t('whatsNew.updated')}</span>
+      </div>
+      <section key={chapter.id} className="wn-main" aria-labelledby="wn-title">
+        <div className="wn-text">
+          <p className="wn-eyebrow">
+            {chapter.icon ? <Icon of={chapter.icon} size={14} /> : <ZoodMark size={14} />}
+            <span>{t(chapter.label)}</span>
+          </p>
+          <h3 id="wn-title" className="wn-title">
+            {t(chapter.title)}
+          </h3>
+          <p className="wn-body">{t(chapter.body)}</p>
+          <div className="wn-actions">
+            {action && (
+              <button
+                type="button"
+                className="icon-btn icon-btn-labeled icon-btn-primary wn-try"
+                onClick={() => {
+                  onClose();
+                  action();
+                }}
+              >
+                <span>{t('whatsNew.try')}</span>
+                <Icon of={ArrowUpRight} size={14} mirror />
+              </button>
+            )}
+            <button type="button" className={action ? 'icon-btn icon-btn-labeled wn-next' : 'icon-btn icon-btn-labeled icon-btn-primary wn-next'} onClick={last ? onClose : () => go(at + 1)}>
+              {last ? t('whatsNew.done') : t('tour.next')}
+            </button>
+          </div>
+        </div>
+        <div className="wn-stage">{scene}</div>
+      </section>
+      <nav className="wn-cards" aria-label={t('whatsNew.all')}>
+        <button type="button" className="wn-arrow" aria-label={t('tour.back')} disabled={at === 0} onClick={() => go(at - 1)}>
+          <Icon of={Back} size={18} />
+        </button>
+        <ol className="wn-card-list">
+          {chapters.map((one, index) => (
+            <li key={one.id}>
+              <button
+                type="button"
+                className={index === at ? 'wn-card is-current' : 'wn-card'}
+                aria-current={index === at ? 'step' : undefined}
+                style={{ '--card-hue': one.hue } as CSSProperties}
+                onClick={() => go(index)}
+              >
+                <span className="wn-card-label">{t(one.label)}</span>
+                <span className="wn-card-icon" aria-hidden="true">
+                  {one.icon ? <Icon of={one.icon} size={22} /> : <ZoodMark size={22} />}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <button type="button" className="wn-arrow" aria-label={t('tour.next')} disabled={last} onClick={() => go(at + 1)}>
+          <Icon of={Forward} size={18} />
+        </button>
+      </nav>
+    </div>
+  );
 }

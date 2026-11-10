@@ -21,7 +21,12 @@ export type OpenIn = 'tabs' | 'windows';
 /** The menu bar in the window: drop-down menus, every command as a button, or chosen ones as buttons beside the menus. */
 export type MenuBarStyle = 'menus' | 'all' | 'custom';
 export type TabBar = 'always' | 'several';
-export type TabPosition = 'top' | 'toolbar';
+/**
+ * Where the document tabs are: above the toolbar, under it, down the side
+ * (as a browser's vertical tabs), or Auto: along the top while they fit,
+ * down the side once there are many (`shell/tabPlace.ts`).
+ */
+export type TabPosition = 'top' | 'toolbar' | 'side' | 'auto';
 export type ReadingDirection = 'document' | 'rtl' | 'ltr';
 export type NightReading = 'off' | 'on' | 'dark';
 /** The home sidebar's tools: every tool in one long list (as Acrobat's All tools), or under eight headings with a short menu each. */
@@ -128,7 +133,7 @@ export type DropItem = (typeof DROP_ITEMS)[number];
 export const DROP_ROW_MAX = { big: 4, small: DROP_ITEMS.length, pills: 5 } as const;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  startWith: 'home',
+  startWith: 'reopen',
   icons: 'color',
   iconSize: 'medium',
   accent: 'look',
@@ -252,7 +257,7 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     openZoom: oneOf(s.openZoom, ['fit-width', 'fit-page', 'actual', 'remember'] as const, d.openZoom),
     openIn: oneOf(s.openIn, ['tabs', 'windows'] as const, d.openIn),
     tabBar: oneOf(s.tabBar, ['always', 'several'] as const, d.tabBar),
-    tabPosition: oneOf(s.tabPosition, ['top', 'toolbar'] as const, d.tabPosition),
+    tabPosition: oneOf(s.tabPosition, ['top', 'toolbar', 'side', 'auto'] as const, d.tabPosition),
     pagePanel: bool(s.pagePanel, d.pagePanel),
     menuBar: oneOf(s.menuBar, ['menus', 'all', 'custom'] as const, d.menuBar),
     menuBarItems: Array.isArray(s.menuBarItems) ? names(s.menuBarItems, 40) : d.menuBarItems,
@@ -290,6 +295,23 @@ export function sanitizeSettings(raw: unknown): AppSettings {
 }
 
 let current: AppSettings = sanitizeSettings(readJson<unknown>(KEY, {}));
+
+/**
+ * Once, with the tabs that come back (0.4.36): "When ZOOD opens" moves to
+ * Last documents for everyone, as the owner asked ("even if you leave the
+ * application and come back to it, you will open the same files"). Until
+ * then Home was the default, and every settings object written kept it, so
+ * a stored Home cannot tell a choice from the default. Chosen again after
+ * this, it stays.
+ */
+const REOPEN_MOVED = 'zood.settings.reopen';
+if (!readJson<boolean>(REOPEN_MOVED, false)) {
+  if (current.startWith !== 'reopen') {
+    current = { ...current, startWith: 'reopen' };
+    writeJson(KEY, current);
+  }
+  writeJson(REOPEN_MOVED, true);
+}
 const listeners = new Set<() => void>();
 
 export function getSettings(): AppSettings {

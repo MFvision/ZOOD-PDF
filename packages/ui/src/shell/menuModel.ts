@@ -10,7 +10,8 @@ import { useT } from '../i18n/useT';
 import { TOOLS } from '../tools/tools';
 import { askAvailable } from '../ask/settings';
 import { remoteAvailable } from '../remote/host';
-import { openTourAt } from '../tour/openAt';
+import { openTourAt, openTourWith } from '../tour/openAt';
+import { latestChapters } from '../tour/chapters';
 import { openRemoteSheet } from '../remote/store';
 import { openSupportAt } from '../support/open';
 import { startPresenting } from '../remote/useRemoteController';
@@ -355,6 +356,8 @@ export function useMenuModel(): MenuModel[] {
         { id: 'report', label: t('help.report'), onSelect: () => openSupportAt('report', () => dispatch({ type: 'DIALOG', dialog: 'support' })) },
         { id: 'ideas', label: t('help.ideas'), onSelect: () => openSupportAt('ideas', () => dispatch({ type: 'DIALOG', dialog: 'support' })) },
         { id: 'tour', label: t('help.tour'), separatorBefore: true, onSelect: () => dispatch({ type: 'DIALOG', dialog: 'tour' }) },
+        // What the latest update brought, laid out as "What's new", whenever it is wanted again.
+        { id: 'whats-new', label: t('help.whatsNew'), onSelect: () => openTourWith(latestChapters(askAvailable(), isTauriHost()), () => dispatch({ type: 'DIALOG', dialog: 'tour' })) },
         // Ask ZOOD's keys work in every app, so they have their own way in: the tour's practice.
         ...(askAvailable() ? [{ id: 'ask-keys', label: t('help.askKeys'), onSelect: () => openTourAt('ask', () => dispatch({ type: 'DIALOG', dialog: 'tour' })) }] : []),
         // The tour's other chapters (Show me and Do it for me, quick asks,

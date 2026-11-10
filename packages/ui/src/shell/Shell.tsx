@@ -52,6 +52,8 @@ import { useNativeMenu } from './useNativeMenu';
 import { useShellMenuSync } from '../quick/QuickSettings';
 import { RemoteLayer } from '../remote/RemoteLayer';
 import { TabBar } from './TabBar';
+import { AUTO_SIDE_MIN_WIDTH, tabPlace } from './tabPlace';
+import { useMediaQuery } from './useMediaQuery';
 import { useWorkbench } from './workbench';
 import { WorkbenchBar } from './WorkbenchBar';
 import { QuickBar, WorkbenchRail } from './WorkbenchRail';
@@ -120,6 +122,9 @@ export function Shell() {
   }, [dragging, intent]);
 
   const workbench = useWorkbench();
+  // Settings › Viewing › Tabs: above the toolbar, under it, or down the side (Auto chooses by how many).
+  const wide = useMediaQuery(`(min-width: ${AUTO_SIDE_MIN_WIDTH}px)`);
+  const place = tabPlace(settings.tabPosition, services.tabs.length, wide ? AUTO_SIDE_MIN_WIDTH : 0);
   // The Workbench look's Home tab: the home screen over the open documents.
   const homeOver = state.view === 'viewer' && state.homeShown;
   const isViewer = state.view === 'viewer' && !homeOver;
@@ -146,20 +151,20 @@ export function Shell() {
       <NativeMenu enabled={nativeMenu} />
       <AskBridge nativeMenu={nativeMenu} />
       <PendingPage />
-      <div className="shell" data-tabs={settings.tabPosition} data-native-menu={nativeMenu || undefined} data-view={homeOver ? 'home' : state.view}>
+      <div className="shell" data-tabs={place} data-native-menu={nativeMenu || undefined} data-view={homeOver ? 'home' : state.view}>
         {!nativeMenu && <MenuBar />}
         {workbench ? (
           // Workbench: the tabs, with Home first, at the very top; the mode bar in the toolbar's place.
           <>
-            <TabBar />
+            {place !== 'side' && <TabBar />}
             <WorkbenchBar />
           </>
         ) : (
           <>
-            {isViewer && settings.tabPosition === 'top' && <TabBar />}
+            {isViewer && place === 'top' && <TabBar />}
             {/* The home screen has its own top bar; the macOS app keeps this strip as its title bar. */}
             {(isViewer || hasNativeMenuBar()) && <Toolbar />}
-            {isViewer && settings.tabPosition === 'toolbar' && <TabBar />}
+            {isViewer && place === 'toolbar' && <TabBar />}
           </>
         )}
         {warraqView && !organizing && state.find.open && <FindBar />}
@@ -198,6 +203,8 @@ export function Shell() {
           </div>
         )}
         <div className="shell-body" data-tool={state.rightPane.activeTool ?? undefined}>
+          {/* Down the side, as a browser's vertical tabs: the leading edge, before every pane. */}
+          {place === 'side' && (isViewer || workbench) && <TabBar vertical />}
           {/* Workbench: the tools down the leading side, the document's panes on the trailing one. */}
           {workbench && inspector && (
             <>

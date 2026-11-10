@@ -32,7 +32,7 @@ const MENU: ReadonlyArray<readonly [string, TKey, TKey]> = [
   ['right-pane', 'view.rightPane', 'menu.view'], ['markup', 'shell.markup', 'menu.view'], ['read-aloud', 'readAloud.label', 'menu.view'],
   ['present', 'present.start', 'menu.tools'], ['phone-remote', 'remote.menu', 'menu.tools'],
   ['support', 'help.support', 'menu.help'], ['report', 'help.report', 'menu.help'], ['ideas', 'help.ideas', 'menu.help'],
-  ['tour', 'help.tour', 'menu.help'], ['ask-keys', 'help.askKeys', 'menu.help'], ['ask-guide', 'help.askGuide', 'menu.help'],
+  ['tour', 'help.tour', 'menu.help'], ['whats-new', 'help.whatsNew', 'menu.help'], ['ask-keys', 'help.askKeys', 'menu.help'], ['ask-guide', 'help.askGuide', 'menu.help'],
   ['quick-asks', 'help.quickAsks', 'menu.help'], ['always-ready', 'help.reach', 'menu.help'], ['ai-chat', 'help.aiChat', 'menu.help'],
   ['shortcuts', 'help.shortcuts', 'menu.help'],
 ];

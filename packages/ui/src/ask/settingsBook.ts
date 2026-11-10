@@ -301,6 +301,8 @@ export const SETTINGS_BOOK: readonly SettingEntry[] = [
     choices: [
       { value: 'top', label: 'prefs.tabPosition.top', words: ['top', 'at the top', 'الاعلي', 'فوق'] },
       { value: 'toolbar', label: 'prefs.tabPosition.toolbar', words: ['under the toolbar', 'below the toolbar', 'toolbar', 'تحت شريط الادوات', 'تحت'] },
+      { value: 'side', label: 'prefs.tabPosition.side', words: ['on the side', 'down the side', 'side', 'sideways', 'vertical', 'vertically', 'left', 'على الجنب', 'جانب', 'بالجنب', 'عموديه', 'عمودي', 'على الجانب'] },
+      { value: 'auto', label: 'prefs.tabPosition.auto', words: ['auto', 'automatic', 'automatically', 'تلقائي', 'تلقائيا'] },
     ],
     names: ['tab position', 'tabs position', 'tabs', 'تبويبات', 'where the tabs are', 'tabs sit', 'موضع التبويبات', 'مكان التبويبات'],
   },

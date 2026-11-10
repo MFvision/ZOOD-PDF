@@ -38,6 +38,7 @@ pub mod recent;
 pub mod remote;
 pub mod ring;
 pub mod save;
+pub mod session;
 pub mod share;
 pub mod shelf;
 pub mod shell_menu;
@@ -369,6 +370,7 @@ pub fn run() {
         .manage(profile::ProfileState::default())
         .manage(fonts::FontState::default())
         .manage(recent::RecentState::default())
+        .manage(session::SessionState::default())
         .manage(places::PlacesState::default())
         .manage(updates::UpdateState::default())
         .manage(updates::UnsavedState::default())
@@ -520,6 +522,8 @@ pub fn run() {
             recent::recent_remember,
             recent::recent_path,
             recent::recent_forget,
+            session::session_save,
+            session::session_load,
             places::library_places_remember,
             places::library_places_forget,
             updates::update_check,

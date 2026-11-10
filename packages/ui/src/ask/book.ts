@@ -85,6 +85,7 @@ export const BOOK_WORDS: Readonly<Record<string, string>> = {
   report: 'report a problem, report a bug, something is broken, send a complaint / الابلاغ عن مشكله، ابلغ عن مشكله، بلغ عن مشكله، فيه مشكله، شكوي',
   ideas: 'suggest an idea, i have an idea, send feedback, feature request / اقتراح فكره، عندي اقتراح، عندي فكره، اقترح',
   tour: 'the tour, tutorial, welcome tour, start the tour, show me around / الجوله التعريفيه، الجوله، الشرح، ابدا الجوله',
+  'whats-new': "what's new, whats new, what is new, what changed, new features / ما الجديد، وش الجديد، ايش الجديد، الميزات الجديده",
   'ask-keys': 'ask zood keys lesson, learn the ask zood keys / درس مفاتيح اسال زود',
   shortcuts: 'keyboard shortcuts, list of shortcuts / اختصارات لوحه المفاتيح، الاختصارات',
   home: 'home screen, go home, back to home, main screen / الشاشه الرئيسيه، الرئيسيه، ارجع للرئيسيه، روح للرئيسيه',

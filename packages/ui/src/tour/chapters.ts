@@ -1,4 +1,4 @@
-import { BellRing, Clapperboard, FolderInput, FolderOpen, FolderTree, Hand, Keyboard, LifeBuoy, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
+import { BellRing, Clapperboard, FolderInput, FolderOpen, FolderTree, Hand, Keyboard, Layers, LifeBuoy, MousePointerClick, Palette, PartyPopper, Smartphone, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TKey } from '../i18n/messages';
 
@@ -10,7 +10,7 @@ import type { TKey } from '../i18n/messages';
  * from start to end (Monochrome turns the hues grey).
  */
 
-export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'folders' | 'quick' | 'ask' | 'quickask' | 'reach' | 'sort' | 'remote' | 'ai' | 'support' | 'done';
+export type ChapterId = 'welcome' | 'look' | 'film' | 'basics' | 'tabs' | 'folders' | 'quick' | 'ask' | 'quickask' | 'reach' | 'sort' | 'remote' | 'ai' | 'support' | 'done';
 
 export interface Chapter {
   id: ChapterId;
@@ -30,6 +30,7 @@ const ALL: readonly Chapter[] = [
   { id: 'look', icon: Palette, label: 'tour.ch.look', title: 'tour.look.title', body: 'tour.look.body', hue: '#8e5bd8' },
   { id: 'film', icon: Clapperboard, label: 'tour.ch.film', title: 'tour.film.title', body: 'tour.film.body', hue: '#e0603d' },
   { id: 'basics', icon: Hand, label: 'tour.ch.basics', title: 'tour.basics.title', body: 'tour.basics.body', hue: '#2f7de1' },
+  { id: 'tabs', icon: Layers, label: 'tour.ch.tabs', title: 'tour.tabs.title', body: 'tour.tabs.body', hue: '#2f6fe0', desktopOnly: true, since: 17 },
   { id: 'folders', icon: FolderOpen, label: 'tour.ch.folders', title: 'tour.folders.title', body: 'tour.folders.body', hue: '#3c6db0', since: 11 },
   { id: 'quick', icon: MousePointerClick, label: 'tour.ch.quick', title: 'tour.quick.title', body: 'tour.quick.body', hue: '#e09a1a', desktopOnly: true },
   { id: 'ask', icon: Keyboard, label: 'tour.ch.ask', title: 'tour.ask.title', body: 'tour.ask.body', hue: '#d4467e', desktopOnly: true, askOnly: true, since: 5 },
@@ -47,7 +48,7 @@ export function tourChapters(desktop: boolean, ask = false): Chapter[] {
 }
 
 /** The tour as it was last seen: a newer tour opens once more on its own, at what is new. */
-export const TOUR_VERSION = 16;
+export const TOUR_VERSION = 17;
 /**
  * Where a tour seen before opens, by the version it was seen at: Ask ZOOD
  * came in version 3, one tap to talk (with its setup) in version 4,
@@ -61,7 +62,8 @@ export const TOUR_VERSION = 16;
  * the shelf those files now stay on, and in version 15 its tiles (Web,
  * Send, Print) and Put away, and in version 16 the phone chapter again:
  * the shared clipboard, files to the phone from the drop panel, and one
- * mouse for two computers. Folders comes
+ * mouse for two computers, and in version 17 tabs as a browser has them
+ * (groups, top or side, back after a restart). Folders comes
  * right after the basics, before every later chapter, on every platform.
  */
 export function newSince(version: number, ask: boolean, desktop = true): ChapterId {
@@ -83,4 +85,11 @@ export function newChapters(version: number, ask: boolean, desktop: boolean): Ch
   return tourChapters(desktop, ask)
     .filter((chapter) => (chapter.since ?? 0) > version)
     .map((chapter) => chapter.id);
+}
+
+/** What the latest update brought, for Help › What's new: the chapters of the newest tour version here. */
+export function latestChapters(ask: boolean, desktop: boolean): ChapterId[] {
+  const chapters = tourChapters(desktop, ask);
+  const newest = Math.max(0, ...chapters.map((chapter) => chapter.since ?? 0));
+  return chapters.filter((chapter) => (chapter.since ?? 0) === newest && newest > 0).map((chapter) => chapter.id);
 }
