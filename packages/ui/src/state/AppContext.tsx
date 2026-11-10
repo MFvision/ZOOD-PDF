@@ -13,8 +13,12 @@ import { getSharedCoreClient } from '../core/client';
 import { installDesktopFileBridge } from '../core/desktopFiles';
 import { CREATE_ACCEPT, CREATE_EXTENSIONS } from '../create/createPdf';
 import {
+  currentWindowLabel,
   forgetRecentPath,
   isTauriHost,
+  loadSession,
+  readChosenFile,
+  saveSession,
   keepNativePath,
   nativePathOf,
   openDocumentWindow,
@@ -34,7 +38,8 @@ import {
 import type { PickedFile } from '../core/host-tauri';
 import type { CoreClient, RemoteDocument } from '../core/client';
 import type { PluginRegistry } from '@embedpdf/react-pdf-viewer';
-import { EMBED_COMMANDS, NO_TOGGLES, addRedactionMarks, capability, disabledCategories, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions, watchToggles } from '../embed/embedControl';
+import type { PageInView } from '../embed/embedControl';
+import { EMBED_COMMANDS, NO_TOGGLES, addRedactionMarks, capability, disabledCategories, pageInView, printAllowed, runCommand, scrollToPage, setKeyboard, watch, watchPendingRedactions, watchToggles } from '../embed/embedControl';
 import type { RedactionMark, ViewCommand, ViewToggles } from '../embed/embedControl';
 import { installViewText } from '../embed/embedText';
 import { uuidV4 } from '@embedpdf/models';
@@ -64,9 +69,9 @@ import type { OcrLanguage } from '../ocr/engine';
 import { PLAIN_READING, recognizeFile } from '../ocr/run';
 import type { OcrProgress, OcrScope, ReadOptions } from '../ocr/run';
 import { runSelfCheck } from '../ocr/selfCheck';
-import { requestPage } from '../home/pendingPage';
-import { MAX_TABS, insertAfter, neighbourOf, tabOf } from './tabs';
-import type { DocTab } from './tabs';
+import { requestPage, wantedPage } from '../home/pendingPage';
+import { MAX_TABS, addToGroup, groupTabs as groupTabList, insertAfter, isGroupColour, moveTab as moveTabIn, neighbourOf, pruneGroups, tabOf, ungroupAll, ungroupTab } from './tabs';
+import type { DocTab, TabGroup } from './tabs';
 
 /** What Scan & OCR did. */
 export interface OcrOutcome {
@@ -234,9 +239,24 @@ export interface AppServices {
   /** The documents open, in order (`tabs.ts`); the live one has no parked file. */
   tabs: readonly DocTab<SaveTarget>[];
   activeTab: number | null;
-  /** Shows a parked tab where it was left. */
+  /** Shows a parked tab where it was left (a tab brought back from the last run is read first). */
   activateTab: (key: number) => void;
   closeTab: (key: number) => void;
+  /** A tab's file as it is now: the live one's edits included, a parked one's as left, a restored one's read from disk. */
+  tabBytes: (key: number) => Promise<ArrayBuffer | null>;
+  /** The tab groups (`tabs.ts`), in no particular order: the tabs' order places them. */
+  groups: readonly TabGroup[];
+  /** Puts these tabs in a new group, and gives its id. */
+  groupTabs: (keys: readonly number[]) => number | null;
+  addTabToGroup: (key: number, group: number) => void;
+  removeTabFromGroup: (key: number) => void;
+  /** Every tab of the group out of it; the group goes, the tabs stay. */
+  ungroup: (group: number) => void;
+  updateGroup: (group: number, patch: Partial<Pick<TabGroup, 'name' | 'colour' | 'collapsed'>>) => void;
+  /** Closes every tab of the group, asking about unsaved work as one tab's close does. */
+  closeGroup: (group: number) => Promise<void>;
+  /** Tab `key` to `index` (counted without it), in `group` or none. */
+  moveTab: (key: number, index: number, group: number | null) => void;
   /**
    * Copies pages (0-based) of the live document to the end of a parked
    * tab's, or, with `null`, into a new tab of their own.
@@ -284,8 +304,10 @@ export interface AppServices {
   printing: PrintProgress | null;
   /** Stops preparing a print by pages. */
   cancelPrint: () => void;
-  /** Brings a page (one-based) to the top of the view on screen. */
-  goToPage: (page: number) => void;
+  /** Brings a page (one-based) to the top of the view on screen; smoothly unless told `instant`. */
+  goToPage: (page: number, behavior?: ScrollBehavior) => void;
+  /** The page the view on screen really shows, and every page partly on screen; null while no view can say (EmbedPDF not ready). */
+  pageInView: () => PageInView | null;
   /** Organize pages: one change to the pages of the open document; `blobs` go with it to the core. `false` if it failed. */
   organizePages: (
     op: OrganizeOp,
@@ -526,12 +548,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTabState] = useState<number | null>(null);
   const activeTabRef = useRef<number | null>(null);
   const nextTabKey = useRef(1);
+  // Tab groups: a tab names its group; a group with no tab left goes.
+  const [groups, setGroups] = useState<TabGroup[]>([]);
+  const groupsRef = useRef<TabGroup[]>([]);
+  const nextGroupId = useRef(1);
   const commitTabs = useCallback((next: DocTab<SaveTarget>[], live: number | null) => {
     tabsRef.current = next;
     activeTabRef.current = live;
     setTabs(next);
     setActiveTabState(live);
+    const kept = pruneGroups(next, groupsRef.current);
+    if (kept !== groupsRef.current) {
+      groupsRef.current = kept;
+      setGroups(kept);
+    }
   }, []);
+  const commitGroups = useCallback(
+    (next: { tabs: DocTab<SaveTarget>[]; groups: TabGroup[] }) => {
+      groupsRef.current = next.groups;
+      setGroups(next.groups);
+      commitTabs(next.tabs, activeTabRef.current);
+    },
+    [commitTabs],
+  );
+  /** The session (`session.rs`) is written only once the last one was read back, or it would be lost. */
+  const sessionReady = useRef(false);
   /** The live document's file as it is now, edits and marks included; set once `readFile` exists below. */
   const liveBytes = useRef<() => Promise<ArrayBuffer | null>>(async () => null);
   // A file opened from a cloud drive is saved back to it (`cloud/`).
@@ -640,11 +681,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (switching === undefined) {
         const open = tabOf(tabsRef.current, { name: file.name, size: file.size, path: nativePathOf(file) });
         if (open) {
-          if (open.key === activeTabRef.current || !open.parked) return;
+          if (open.key === activeTabRef.current) return;
+          if (open.parked) {
+            file = open.parked;
+            password = open.password;
+          } else if (!open.lazy) return;
+          // A tab brought back from the last run, not read yet: this file is it,
+          // read just now (or work brought back after a crash, still unsaved).
           switching = open.key;
-          file = open.parked;
-          password = open.password;
-          options = { recent: false, tab: open.key };
+          options = { recent: false, tab: open.key, ...(options?.unsaved ? { unsaved: true } : {}) };
         } else if (getSettings().openIn === 'windows' && documentRef.current && nativePathOf(file) && (await openDocumentWindow(nativePathOf(file)!))) {
           // Settings › Viewing: a second document gets a window of its own.
           return;
@@ -690,7 +735,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         let live: number;
         if (switching !== undefined && tabList.some((tab) => tab.key === switching)) {
           const back = tabList.find((tab) => tab.key === switching)!;
-          tabList = tabList.map((tab) => (tab.key === switching ? { ...tab, parked: null } : tab));
+          tabList = tabList.map((tab) => (tab.key === switching ? { ...tab, parked: null, lazy: false, edited: tab.edited || options?.unsaved === true } : tab));
           live = switching;
           setSaveTarget(back.save);
           if (back.page > 1) requestPage(back.page);
@@ -698,7 +743,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           live = nextTabKey.current++;
           // Without a tab to go back to, the live document is let go of here.
           if (!parked) tabList = tabList.filter((tab) => tab.key !== activeTabRef.current);
+          // Opened from a tab in a group, it joins that group, as a browser's
+          // new tab does; else it would split the group in two.
+          const from = tabList.find((tab) => tab.key === activeTabRef.current);
+          const inGroup = from?.group;
           tabList = insertAfter(tabList, activeTabRef.current, {
+            ...(inGroup !== undefined ? { group: inGroup } : {}),
             key: live,
             name: file.name,
             path: nativePathOf(file),
@@ -837,14 +887,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSaveTarget(null);
   }, [forgetLayerView, setSaveTarget]);
 
-  const activateTab = useCallback(
-    (key: number) => {
-      const tab = tabsRef.current.find((t) => t.key === key);
-      if (!tab?.parked || key === activeTabRef.current) return;
-      void openFile(tab.parked, tab.password, { recent: false, tab: key });
+  /**
+   * Shows tab `key`: a parked one as it was left; one brought back from the
+   * last run read from its file first. A file gone since (moved, renamed,
+   * deleted) loses its tab with a message that names it, and, when nothing
+   * is on screen, the tab beside it is tried instead.
+   */
+  const showTab = useCallback(
+    async (first: number) => {
+      let key: number | null = first;
+      for (let tries = 0; key !== null && tries <= MAX_TABS; tries += 1) {
+        const tab = tabsRef.current.find((t) => t.key === key);
+        if (!tab || key === activeTabRef.current) return;
+        if (tab.parked) {
+          await openFile(tab.parked, tab.password, { recent: false, tab: key });
+          return;
+        }
+        if (!tab.lazy || !tab.path) return;
+        const picked = await readChosenFile(tab.path).catch(() => null);
+        // Still there, and not closed while it was read.
+        if (picked && tabsRef.current.some((t) => t.key === key)) {
+          await openFile(keepNativePath(new File([picked.bytes], picked.name, { type: 'application/pdf' }), tab.path), undefined, { recent: false, tab: key });
+          return;
+        }
+        if (picked) return;
+        const list = tabsRef.current;
+        const next: number | null = neighbourOf(list, key);
+        commitTabs(
+          list.filter((t) => t.key !== key),
+          activeTabRef.current,
+        );
+        if (activeTabRef.current === null && !documentRef.current && tabsRef.current.length === 0) dispatch({ type: 'DOCUMENT_CLOSED' });
+        dispatch({ type: 'DOCUMENT_FAILED', error: 'tabs.gone', name: tab.name });
+        // With a document on screen, the person stays where they are.
+        key = activeTabRef.current === null && !documentRef.current ? next : null;
+      }
     },
-    [openFile],
+    [commitTabs, openFile],
   );
+
+  const activateTab = useCallback((key: number) => void showTab(key), [showTab]);
+
+  const tabBytes = useCallback(async (key: number): Promise<ArrayBuffer | null> => {
+    if (key === activeTabRef.current) return liveBytes.current().catch(() => null);
+    const tab = tabsRef.current.find((t) => t.key === key);
+    if (tab?.parked) return tab.parked.arrayBuffer();
+    if (tab?.lazy && tab.path) return readChosenFile(tab.path).then((picked) => picked.bytes, () => null);
+    return null;
+  }, []);
 
   const closeTabNow = useCallback(
     (key: number) => {
@@ -859,15 +949,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const next = list.find((tab) => tab.key === neighbourOf(list, key));
       const rest = list.filter((tab) => tab.key !== key);
       releaseDocument();
-      if (next?.parked) {
+      if (next?.parked || next?.lazy) {
         commitTabs(rest, null);
-        void openFile(next.parked, next.password, { recent: false, tab: next.key });
+        void showTab(next.key);
         return;
       }
       commitTabs([], null);
       dispatch({ type: 'DOCUMENT_CLOSED' });
     },
-    [commitTabs, openFile, releaseDocument],
+    [commitTabs, showTab, releaseDocument],
   );
 
   // Closing a tab with work not saved asks first: Save, Close without saving,
@@ -1000,31 +1090,195 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [openFile, requestOpenFile],
   );
 
+  // Tab groups (`tabs.ts`), as a browser has them.
+  const groupTabs = useCallback(
+    (keys: readonly number[]) => {
+      const id = nextGroupId.current++;
+      const next = groupTabList(tabsRef.current, groupsRef.current, keys, id);
+      if (!next.groups.some((group) => group.id === id)) return null;
+      commitGroups(next);
+      return id;
+    },
+    [commitGroups],
+  );
+  const addTabToGroup = useCallback(
+    (key: number, group: number) => commitGroups(addToGroup(tabsRef.current, groupsRef.current, key, group)),
+    [commitGroups],
+  );
+  const removeTabFromGroup = useCallback((key: number) => commitGroups(ungroupTab(tabsRef.current, groupsRef.current, key)), [commitGroups]);
+  const ungroup = useCallback((group: number) => commitGroups(ungroupAll(tabsRef.current, groupsRef.current, group)), [commitGroups]);
+  const updateGroup = useCallback(
+    (id: number, patch: Partial<Pick<TabGroup, 'name' | 'colour' | 'collapsed'>>) => {
+      const groups = groupsRef.current.map((group) =>
+        group.id === id
+          ? {
+              ...group,
+              ...(patch.name !== undefined ? { name: patch.name.slice(0, 60) } : {}),
+              ...(patch.colour !== undefined && isGroupColour(patch.colour) ? { colour: patch.colour } : {}),
+              ...(patch.collapsed !== undefined ? { collapsed: patch.collapsed } : {}),
+            }
+          : group,
+      );
+      commitGroups({ tabs: tabsRef.current, groups });
+    },
+    [commitGroups],
+  );
+  const moveTab = useCallback(
+    (key: number, index: number, group: number | null) => {
+      const next = moveTabIn(tabsRef.current, key, index, group);
+      commitGroups({ tabs: next, groups: pruneGroups(next, groupsRef.current) });
+    },
+    [commitGroups],
+  );
+  const closeGroup = useCallback(
+    async (id: number) => {
+      // The ones in the background first, the one on screen last: each close
+      // of the live tab would otherwise bring the next of them on screen.
+      const keys = tabsRef.current.filter((tab) => tab.group === id).map((tab) => tab.key);
+      const ordered = [...keys.filter((key) => key !== activeTabRef.current), ...keys.filter((key) => key === activeTabRef.current)];
+      for (const key of ordered) {
+        await closeTab(key);
+        // Cancelled at the unsaved-work question: the rest stay open.
+        if (tabsRef.current.some((tab) => tab.key === key)) return;
+      }
+    },
+    [closeTab],
+  );
+
+  /**
+   * The tabs of the last run, back as they were (`session.rs`): order,
+   * groups, the page each was on. Only the one in front is read now (unless
+   * a file opened from outside takes the front); the others when they are
+   * first shown. Desktop main window only, and only with Settings › General
+   * › "When ZOOD opens: Last documents".
+   */
+  const restoreSession = useCallback(
+    async (openFront: boolean) => {
+      if (getSettings().startWith !== 'reopen' || !isTauriHost() || (currentWindowLabel() ?? 'main') !== 'main') return;
+      if (tabsRef.current.length > 0) return;
+      const kept = await loadSession();
+      if (!kept || kept.tabs.length === 0 || tabsRef.current.length > 0) return;
+      const ids = new Map<number, number>();
+      const restoredGroups: TabGroup[] = [];
+      for (const group of kept.groups) {
+        if (!isGroupColour(group.colour) || ids.has(group.id)) continue;
+        const id = nextGroupId.current++;
+        ids.set(group.id, id);
+        restoredGroups.push({ id, name: String(group.name ?? '').slice(0, 60), colour: group.colour, collapsed: group.collapsed === true });
+      }
+      const restored: DocTab<SaveTarget>[] = [];
+      for (const tab of kept.tabs.slice(0, MAX_TABS)) {
+        if (typeof tab.path !== 'string' || !tab.path || restored.some((one) => one.path === tab.path)) continue;
+        const group = typeof tab.group === 'number' ? ids.get(tab.group) : undefined;
+        restored.push({
+          key: nextTabKey.current++,
+          name: tab.path.split(/[\\/]/).pop() || tab.path,
+          path: tab.path,
+          size: 0,
+          parked: null,
+          page: Number.isInteger(tab.page) && tab.page > 0 ? tab.page : 1,
+          edited: false,
+          save: null,
+          lazy: true,
+          ...(group !== undefined ? { group } : {}),
+        });
+      }
+      if (restored.length === 0 || tabsRef.current.length > 0) return;
+      groupsRef.current = restoredGroups;
+      setGroups(restoredGroups);
+      commitTabs(restored, null);
+      if (!openFront) return;
+      const at = typeof kept.active === 'number' ? kept.active : 0;
+      const front = restored[Math.min(Math.max(at, 0), restored.length - 1)];
+      if (front) await showTab(front.key);
+    },
+    [commitTabs, showTab],
+  );
+
+  // The main window's tabs, kept for the next start, a moment after each
+  // change (and the page the one in front is on: the page it is still on its
+  // way to, while it is). Never before the last session was read back: the
+  // empty start would write over it. Sent only when something changed, and
+  // once more, at once, when the window goes away (closed, or the app quit).
+  const currentPage = state.currentPage;
+  const sessionSent = useRef('');
+  const writeSession = useCallback(() => {
+    if (!sessionReady.current || !isTauriHost() || (currentWindowLabel() ?? 'main') !== 'main') return;
+    const live = activeTabRef.current;
+    const kept = tabsRef.current.filter((tab) => tab.path);
+    const active = kept.findIndex((tab) => tab.key === live);
+    const session = {
+      tabs: kept.map((tab) => ({ path: tab.path!, page: tab.key === live ? (wantedPage() ?? stateRef.current.currentPage) : tab.page, group: tab.group ?? null })),
+      groups: groupsRef.current.map(({ id, name, colour, collapsed }) => ({ id, name, colour, collapsed })),
+      active: active < 0 ? null : active,
+    };
+    const text = JSON.stringify(session);
+    if (text === sessionSent.current) return;
+    sessionSent.current = text;
+    void saveSession(session);
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(writeSession, 150);
+    return () => clearTimeout(timer);
+  }, [tabs, activeTab, groups, currentPage, writeSession]);
+  useEffect(() => {
+    window.addEventListener('pagehide', writeSession);
+    window.addEventListener('beforeunload', writeSession);
+    return () => {
+      window.removeEventListener('pagehide', writeSession);
+      window.removeEventListener('beforeunload', writeSession);
+    };
+  }, [writeSession]);
+
   // A file named on the command line, opened once. The host hands it over
   // only the first time it is asked, so a reload does not reopen it. A PDF
   // double-clicked while the app runs comes the same way, announced by the
-  // host: the open window takes it rather than a second one starting.
+  // host: the open window takes it rather than a second one starting. At
+  // start, the last run's tabs come back first, and the file opened from
+  // outside goes in front of them.
+  const startedOnce = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   useEffect(() => {
     let cancelled = false;
-    const take = () =>
-      void takeStartupFile()
-        .then(async (picked) => {
-          if (!picked || cancelled) return;
-          // A quick "Sign" opens the file at Fill & sign; "Ask ZOOD" from the drop zone, at the AI.
-          const tool = await takeStartupTool();
-          await openFile(toFile(picked));
-          if ((tool === 'fillSign' || tool === 'ai') && !cancelled) dispatch({ type: 'SET_ACTIVE_TOOL', tool });
-          // The drop zone's Print tile: the PDF it made, straight to the print dialog.
-          if (tool === 'print' && !cancelled) void printFileRef.current();
-        })
-        .catch(() => {});
-    take();
+    const handle = (picked: PickedFile | null, live: () => boolean = () => !cancelled) =>
+      void (async () => {
+        if (!picked || !live()) return;
+        // A quick "Sign" opens the file at Fill & sign; "Ask ZOOD" from the drop zone, at the AI.
+        const tool = await takeStartupTool();
+        await openFile(toFile(picked));
+        if ((tool === 'fillSign' || tool === 'ai') && live()) dispatch({ type: 'SET_ACTIVE_TOOL', tool });
+        // The drop zone's Print tile: the PDF it made, straight to the print dialog.
+        if (tool === 'print' && live()) void printFileRef.current();
+      })().catch(() => {});
+    const take = () => void takeStartupFile().then(handle, () => {});
+    if (startedOnce.current) take();
+    else {
+      startedOnce.current = true;
+      void (async () => {
+        const picked = await takeStartupFile().catch(() => null);
+        try {
+          await restoreSession(!picked);
+        } catch {
+          // A session that cannot be read back is no session: the app starts as it always did.
+        } finally {
+          sessionReady.current = true;
+        }
+        // Not this effect's run: the start's own file must not be lost to a re-render.
+        handle(picked, () => mounted.current);
+      })();
+    }
     const stop = onOpenFileRequest(take);
     return () => {
       cancelled = true;
       stop();
     };
-  }, [openFile]);
+  }, [openFile, restoreSession]);
 
   const attachEmbed = useCallback((registry: PluginRegistry) => {
     embedRef.current = registry;
@@ -1735,18 +1989,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const from = stateRef.current.document;
       if (!live || !from || pages.length === 0) return;
       const target = key === null ? null : tabsRef.current.find((tab) => tab.key === key);
-      if (key !== null && !target?.parked) return;
+      if (key !== null && !target?.parked && !target?.lazy) return;
       try {
         const { blobs } = await live.call<{ pageCount: number }>('pages.extract', { pages: [...pages] });
         const extracted = blobs[0];
         if (!extracted) throw new Error('E_EXTRACT: nothing came back');
-        if (!target?.parked) {
+        if (!target) {
           // Onto "+": the pages as a document of their own, in a new tab.
           const name = extractedFileName(from.name, pages.map((page) => page + 1));
           await openFile(new File([extracted], name, { type: 'application/pdf' }), undefined, { recent: false, unsaved: true });
           return;
         }
-        const own = await target.parked.arrayBuffer();
+        // A tab brought back from the last run and not shown yet is read from its file.
+        const own = target.parked ? await target.parked.arrayBuffer() : await tabBytes(target.key);
+        if (!own) throw new Error('E_READ: the tab\'s file could not be read');
         const { blobs: made } = await client.callStatic<{ pageCount: number }>(
           'pages.combine',
           { passwords: [target.password ?? null, null] },
@@ -1756,7 +2012,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!joined) throw new Error('E_COMBINE: nothing came back');
         const file = keepNativePath(new File([joined], target.name, { type: 'application/pdf' }), target.path);
         commitTabs(
-          tabsRef.current.map((tab) => (tab.key === target.key ? { ...tab, parked: file, edited: true } : tab)),
+          tabsRef.current.map((tab) => (tab.key === target.key ? { ...tab, parked: file, lazy: false, edited: true } : tab)),
           activeTabRef.current,
         );
         dispatch({ type: 'TOAST', key: 'tabs.copied' });
@@ -1764,7 +2020,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'DOCUMENT_FAILED', error: 'tabs.copyFailed' });
       }
     },
-    [client, commitTabs, openFile],
+    [client, commitTabs, openFile, tabBytes],
   );
 
   const markForRedaction = useCallback((marks: readonly RedactionMark[]): number => {
@@ -2127,13 +2383,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [embedShowing, embedToggles, zoomMode, leftOpen, findOpen],
   );
 
-  const goToPage = useCallback((page: number) => {
+  const goToPage = useCallback((page: number, behavior?: ScrollBehavior) => {
     const registry = embedRef.current;
     // EmbedPDF's view not attached yet: nothing can move. Saying the page
     // changed anyway would tell a waiting search hit it had arrived.
     if (embedShowingRef.current) {
-      if (registry) scrollToPage(registry, page);
+      if (registry) scrollToPage(registry, page, behavior);
     } else dispatch({ type: 'SCROLL_TO_PAGE', page });
+  }, []);
+
+  const pageInViewNow = useCallback((): PageInView | null => {
+    if (embedShowingRef.current) return embedRef.current ? pageInView(embedRef.current) : null;
+    const page = stateRef.current.currentPage;
+    return warraqOwnsDocument(stateRef.current) ? { page, visible: [page] } : null;
   }, []);
 
   const canUndo = organizing
@@ -2299,6 +2561,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeTab,
       activateTab,
       closeTab,
+      tabBytes,
+      groups,
+      groupTabs,
+      addTabToGroup,
+      removeTabFromGroup,
+      ungroup,
+      updateGroup,
+      closeGroup,
+      moveTab,
       copyPagesToTab,
       requestOpenFile,
       openRecent,
@@ -2317,6 +2588,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       printing,
       cancelPrint,
       goToPage,
+      pageInView: pageInViewNow,
       organizePages,
       extractPages,
       insertPagesFromFile,
@@ -2377,6 +2649,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeTab,
       activateTab,
       closeTab,
+      tabBytes,
+      groups,
+      groupTabs,
+      addTabToGroup,
+      removeTabFromGroup,
+      ungroup,
+      updateGroup,
+      closeGroup,
+      moveTab,
       copyPagesToTab,
       requestOpenFile,
       openRecent,
@@ -2395,6 +2676,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       printing,
       cancelPrint,
       goToPage,
+      pageInViewNow,
       organizePages,
       extractPages,
       insertPagesFromFile,

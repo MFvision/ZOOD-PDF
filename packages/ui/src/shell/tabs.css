@@ -111,6 +111,389 @@
   color: var(--secondary-label);
 }
 
+/* ------------------------------------------------------------ tab groups */
+
+/* A group's colour, as a browser's: one token each, lighter on dark. */
+[data-colour] {
+  --group: #8a8f98;
+}
+[data-colour='blue'] { --group: #2f6fe0; }
+[data-colour='red'] { --group: #d93a32; }
+[data-colour='yellow'] { --group: #d99a06; }
+[data-colour='green'] { --group: #1f8a4c; }
+[data-colour='pink'] { --group: #d4467e; }
+[data-colour='purple'] { --group: #8150d8; }
+[data-colour='cyan'] { --group: #128ea6; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) [data-colour='grey'] { --group: #a7adb7; }
+  :root:not([data-theme='light']) [data-colour='blue'] { --group: #7aa7f5; }
+  :root:not([data-theme='light']) [data-colour='red'] { --group: #f27b74; }
+  :root:not([data-theme='light']) [data-colour='yellow'] { --group: #f2c64d; }
+  :root:not([data-theme='light']) [data-colour='green'] { --group: #5ac98a; }
+  :root:not([data-theme='light']) [data-colour='pink'] { --group: #f286b0; }
+  :root:not([data-theme='light']) [data-colour='purple'] { --group: #b393f5; }
+  :root:not([data-theme='light']) [data-colour='cyan'] { --group: #5cc9de; }
+}
+:root[data-theme='dark'] [data-colour='grey'] { --group: #a7adb7; }
+:root[data-theme='dark'] [data-colour='blue'] { --group: #7aa7f5; }
+:root[data-theme='dark'] [data-colour='red'] { --group: #f27b74; }
+:root[data-theme='dark'] [data-colour='yellow'] { --group: #f2c64d; }
+:root[data-theme='dark'] [data-colour='green'] { --group: #5ac98a; }
+:root[data-theme='dark'] [data-colour='pink'] { --group: #f286b0; }
+:root[data-theme='dark'] [data-colour='purple'] { --group: #b393f5; }
+:root[data-theme='dark'] [data-colour='cyan'] { --group: #5cc9de; }
+
+/* The group's label: a coloured pill, its name, or how many tabs when folded. */
+.tab-group-chip {
+  display: inline-flex;
+  flex: none;
+  align-self: center;
+  align-items: center;
+  gap: 5px;
+  max-inline-size: 160px;
+  block-size: 24px;
+  padding-inline: 8px 10px;
+  margin-inline: 4px 2px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--group) 18%, transparent);
+  color: color-mix(in srgb, var(--group) 70%, var(--label));
+  font: inherit;
+  font-size: var(--text-caption-1, 12px);
+  font-weight: 600;
+  cursor: default;
+  transition:
+    background var(--duration-quick, 120ms) ease,
+    transform var(--duration-quick, 120ms) ease;
+}
+
+.tab-group-chip:hover {
+  background: color-mix(in srgb, var(--group) 28%, transparent);
+}
+
+.tab-group-chip:active {
+  transform: scale(0.96);
+}
+
+.tab-group-chip.is-collapsed {
+  background: var(--group);
+  color: #fff;
+}
+
+.tab-group-chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.tab-group-dot {
+  flex: none;
+  inline-size: 9px;
+  block-size: 9px;
+  border-radius: 50%;
+  background: var(--group);
+}
+
+.tab-group-chip.is-collapsed .tab-group-dot {
+  background: #fff;
+}
+
+.tab-group-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-group-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+/* A grouped tab carries its group's colour along its foot. */
+.tab.in-group {
+  position: relative;
+}
+
+.tab.in-group::after {
+  position: absolute;
+  inset-inline: 6px;
+  inset-block-end: 0;
+  block-size: 2.5px;
+  border-radius: 2px;
+  background: var(--group);
+  content: '';
+}
+
+/* A tab brought back from the last run, not read yet: slightly quieter until it is shown. */
+.tab.is-asleep .tab-title {
+  opacity: 0.78;
+}
+
+/* Dragging: the tab lifted, and a line where it would land. */
+.tab-bar.is-dragging {
+  cursor: grabbing;
+}
+
+.tab.is-lifted {
+  opacity: 0.55;
+}
+
+.tab[data-landing] {
+  position: relative;
+}
+
+.tab[data-landing]::before {
+  position: absolute;
+  z-index: 1;
+  inset-block: 4px;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  content: '';
+}
+
+.tab[data-landing='before']::before {
+  inset-inline-start: -2px;
+}
+
+.tab[data-landing='after']::before {
+  inset-inline-end: -2px;
+}
+
+.tab-group-chip.is-drop-target {
+  outline: 2px solid var(--group);
+  outline-offset: 2px;
+}
+
+/* The group editor (a popover by its label). */
+.tab-group-editor-body {
+  display: grid;
+  gap: var(--space-3);
+  inline-size: 244px;
+  padding: var(--space-3);
+}
+
+.tab-group-input {
+  inline-size: 100%;
+  block-size: 32px;
+  padding-inline: var(--space-2);
+  border: 0.5px solid var(--separator);
+  border-radius: var(--radius-8);
+  background: var(--control-background, var(--window-background));
+  color: var(--label);
+  font: inherit;
+}
+
+.tab-group-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+}
+
+.tab-group-colours {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+
+.tab-group-swatch {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 50%;
+  background: var(--group);
+  transition: transform var(--duration-quick, 120ms) ease;
+}
+
+.tab-group-swatch:hover {
+  transform: scale(1.12);
+}
+
+.tab-group-swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--window-background),
+    0 0 0 4px var(--group);
+}
+
+.tab-group-swatch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.tab-group-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.tab-group-actions .prefs-button {
+  flex: 1;
+}
+
+/* -------------------------------------------- down the side (vertical tabs) */
+
+.tab-bar-side {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  inline-size: 228px;
+  min-block-size: 0;
+  padding: var(--space-2);
+  border-block-end: 0;
+  border-inline-end: 0.5px solid var(--separator);
+  overflow: hidden;
+  transition: inline-size var(--duration-standard, 220ms) var(--ease-out, ease);
+}
+
+.tab-bar-side.is-slim {
+  inline-size: 52px;
+  padding-inline: 6px;
+}
+
+.tab-bar-side .tab-list {
+  flex-direction: column;
+  flex: 0 1 auto;
+  gap: 2px;
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.tab-bar-side .tab {
+  flex: none;
+  min-inline-size: 0;
+  block-size: 34px;
+  border-radius: var(--radius-8);
+}
+
+.tab-bar-side .tab.is-live {
+  box-shadow: 0 0 0 0.5px var(--separator), 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.tab-bar-side .tab-name {
+  padding-inline: var(--space-2) var(--space-1);
+  font-size: var(--text-subheadline, 13px);
+}
+
+.tab-bar-side .tab-icon {
+  flex: none;
+  color: var(--secondary-label);
+}
+
+.tab-bar-side .tab-name > .tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-bar-side .tab-close {
+  opacity: 0;
+}
+
+.tab-bar-side .tab:hover .tab-close,
+.tab-bar-side .tab.is-live .tab-close,
+.tab-bar-side .tab-close:focus-visible {
+  opacity: 0.7;
+}
+
+/* Down the side, a grouped tab is indented under its label, the colour down its edge. */
+.tab-bar-side .tab.in-group {
+  margin-inline-start: 10px;
+}
+
+.tab-bar-side .tab.in-group::after {
+  inset-inline: -7px auto;
+  inset-block: 6px;
+  inline-size: 2.5px;
+  block-size: auto;
+}
+
+.tab-bar-side .tab-group-chip {
+  align-self: stretch;
+  justify-content: flex-start;
+  max-inline-size: none;
+  block-size: 28px;
+  margin: 4px 0 0;
+  border-radius: var(--radius-8);
+}
+
+.tab-bar-side .tab[data-landing]::before {
+  inset-block: auto;
+  inset-inline: 4px;
+  inline-size: auto;
+  block-size: 3px;
+}
+
+.tab-bar-side .tab[data-landing='before']::before {
+  inset-block-start: -2px;
+}
+
+.tab-bar-side .tab[data-landing='after']::before {
+  inset-block-end: -2px;
+}
+
+.tab-bar-side .tab-new {
+  align-self: stretch;
+  inline-size: auto;
+  block-size: 32px;
+  margin: 2px 0 0;
+}
+
+.tab-slim {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: flex-end;
+  inline-size: 28px;
+  block-size: 28px;
+  border: 0;
+  border-radius: var(--radius-6);
+  background: none;
+  color: var(--secondary-label);
+}
+
+.tab-slim:hover {
+  background: var(--secondary-fill);
+}
+
+.tab-slim:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* Narrow: each tab is its icon (its name in the tooltip), each group its dot and count. */
+.tab-bar-side.is-slim .tab-slim {
+  align-self: center;
+}
+
+.tab-bar-side.is-slim .tab-title,
+.tab-bar-side.is-slim .tab-edited {
+  display: none;
+}
+
+.tab-bar-side.is-slim .tab-name {
+  justify-content: center;
+  padding: 0;
+}
+
+.tab-bar-side.is-slim .tab.in-group {
+  margin-inline-start: 4px;
+}
+
+.tab-bar-side.is-slim .tab.in-group::after {
+  inset-inline: -4px auto;
+}
+
+.tab-bar-side.is-slim .tab-group-chip {
+  justify-content: center;
+  padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-bar-side,
+  .tab-group-chip,
+  .tab-group-swatch {
+    transition: none;
+  }
+}
+
 /* By touch, every target is 44 points. */
 @media (pointer: coarse) {
   .tab-bar {
@@ -130,7 +513,19 @@
 }
 
 @media print {
-  .tab-bar {
+  .tab-bar,
+  .tab-bar-side {
     display: none;
   }
+}
+
+/* The macOS app: tabs along the very top share that strip with the traffic
+   lights (tauri.conf.json places them there), which macOS keeps on the left
+   in either reading direction, as the toolbar leaves room for them. */
+.shell[data-native-menu] > .tab-bar:first-child:not(.tab-bar-side) {
+  padding-inline-start: var(--traffic-lights);
+}
+
+[dir="rtl"] .shell[data-native-menu] > .tab-bar:first-child:not(.tab-bar-side) {
+  padding-inline: var(--space-3) var(--traffic-lights);
 }

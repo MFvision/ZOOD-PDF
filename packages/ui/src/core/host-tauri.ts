@@ -305,6 +305,52 @@ export async function recentFolder(name: string): Promise<string | null> {
   return cut > 0 ? path.slice(0, cut) : null;
 }
 
+/* ----------------------------------------------------------------- session */
+
+/** One tab of the main window as it was left (`src-tauri/src/session.rs`). */
+export interface SessionTab {
+  path: string;
+  /** 1-based. */
+  page: number;
+  group?: number | null;
+}
+
+export interface SessionGroup {
+  id: number;
+  name: string;
+  colour: string;
+  collapsed: boolean;
+}
+
+export interface KeptSession {
+  tabs: SessionTab[];
+  groups: SessionGroup[];
+  /** The index in `tabs` of the one in front. */
+  active?: number | null;
+}
+
+/** Keeps the main window's tabs for the next start. The host leaves out a file the person did not choose. Never fails the caller. */
+export function saveSession(session: KeptSession): Promise<void> {
+  if (!internals()) return Promise.resolve();
+  return invoke('session_save', { session }).then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
+/** The main window's tabs as they were left, with only the files still there; null in a browser or on failure. */
+export async function loadSession(): Promise<KeptSession | null> {
+  if (!internals()) return null;
+  const session = (await invoke('session_load').catch(() => null)) as KeptSession | null;
+  if (!session || !Array.isArray(session.tabs)) return null;
+  return { tabs: session.tabs, groups: Array.isArray(session.groups) ? session.groups : [], active: session.active ?? null };
+}
+
+/** A file the host already let this window read (a restored tab's), read again. */
+export async function readChosenFile(path: string): Promise<PickedFile> {
+  return { name: baseName(path), bytes: toArrayBuffer(await readFile(path)), path };
+}
+
 /* -------------------------------------------------------------- quick tools */
 
 /** What a quick tools window works on (`src-tauri/src/quick.rs`). */

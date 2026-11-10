@@ -196,14 +196,14 @@ export function AiPanel() {
       },
       kept: keptOnDevice(),
       makeRunner,
-      // Every open tab: the live one as it stands now, the parked ones as they were left.
+      // Every open tab: the live one as it stands now, the parked ones as they were left (a restored one read from its file).
       openDocuments: async (onPage, signal) => {
         const services = latest.current;
         const read: SourceDoc[] = [];
         for (const tab of services.tabs) {
           if (signal.aborted) break;
           const live = tab.key === services.activeTab;
-          const bytes = live ? await services.currentFileBytes() : await tab.parked?.arrayBuffer();
+          const bytes = live ? await services.currentFileBytes() : await services.tabBytes(tab.key);
           if (!bytes) continue;
           const doc = await readBytes(services.client, bytes, live ? services.documentPassword : tab.password, onPage, signal).catch(() => null);
           if (doc) read.push({ key: String(tab.key), name: tab.name, doc });

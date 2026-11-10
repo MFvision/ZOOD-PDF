@@ -38,6 +38,7 @@ import { readQuickPreferences, writeQuickPreferences } from '../quick/QuickSetti
 import { formatShortcut, hasNativeMenuBar, isApplePlatform, toAccelerator, useMenuModel } from '../shell/menuModel';
 import type { MenuItemModel } from '../shell/menuModel';
 import { VoiceSettings } from '../speech/VoiceSettings';
+import { TabPlacePicture } from './TabPlacePicture';
 import { useAppDispatch, useAppState, useServices } from '../state/AppContext';
 import { BASE_LOOK_IDS, PREMIUM_LOOK_IDS } from '../state/preferences';
 import { PREMIUM_THEMES } from '../styles/premiumThemes';
@@ -415,15 +416,9 @@ export function ViewingPage() {
           ]}
           onChange={(tabBar) => set({ tabBar })}
         />
-        <Choice
-          label={t('prefs.tabPosition')}
-          value={settings.tabPosition}
-          options={[
-            { value: 'top', label: t('prefs.tabPosition.top') },
-            { value: 'toolbar', label: t('prefs.tabPosition.toolbar') },
-          ]}
-          onChange={(tabPosition) => set({ tabPosition })}
-        />
+        <Row label={t('prefs.tabPosition')} hint={t('prefs.tabPlace.hint')} stacked>
+          <TabPlacePicture value={settings.tabPosition} onChange={(tabPosition) => set({ tabPosition })} />
+        </Row>
         <Toggle label={t('prefs.pagePanel')} hint={t('prefs.pagePanelHint')} checked={settings.pagePanel} onChange={(pagePanel) => set({ pagePanel })} />
         <Toggle label={t('prefs.toolsPanel')} hint={t('prefs.toolsPanelHint')} checked={settings.toolsPanel} onChange={(toolsPanel) => set({ toolsPanel })} />
       </Group>

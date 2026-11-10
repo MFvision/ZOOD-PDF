@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { History, X } from 'lucide-react';
-import { currentWindowLabel, isTauriHost, keepNativePath, openRecentFile } from '../core/host-tauri';
+import { currentWindowLabel, keepNativePath } from '../core/host-tauri';
 import { Icon } from '../components/Icon';
 import { useI18n } from '../i18n/useT';
 import { hasUnsavedEdits } from '../state/appReducer';
 import { useAppState, useServices } from '../state/AppContext';
-import { readJson, writeJson } from '../state/preferences';
 import { useSettings } from '../state/settings';
 import { clearRecovery, dropRecovery, isSaved, keepRecovery, pendingRecoveries, recoveryKey, RUN } from './versions';
 import type { Recovery } from './versions';
@@ -16,11 +15,9 @@ import type { Recovery } from './versions';
  * - Autosave: every one or five minutes, a copy of each document with
  *   unsaved work is kept on this device (`versions.ts`), and taken away
  *   once it is saved or closed. After a crash the next start offers it back.
- * - "When the app opens: Last documents": the documents open when the app
- *   closed (the desktop knows where each is) open again.
+ * ("When the app opens: Last documents" is the session's: `state/AppContext.tsx`
+ *   and `src-tauri/src/session.rs`.)
  */
-
-const SESSION_KEY = 'zood.session';
 
 /** The main window's: a document window is one file, and not the session. */
 const isMainWindow = () => (currentWindowLabel() ?? 'main') === 'main';
@@ -79,28 +76,8 @@ export function HistoryEffects() {
     const now = services.tabs.map((tab) => tab.key);
     for (const gone of previousKeys.current.filter((key) => !now.includes(key))) void dropRecovery(recoveryKey(gone));
     previousKeys.current = now;
-    // The session, for "Last documents": the files the desktop can find again.
-    if (isMainWindow() && isTauriHost()) writeJson(SESSION_KEY, services.tabs.filter((tab) => tab.path).map((tab) => tab.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- by the tabs' keys
   }, [tabKeys]);
-
-  // Last documents, once, at start, unless a file was opened from outside.
-  useEffect(() => {
-    if (settings.startWith !== 'reopen' || !isTauriHost() || !isMainWindow()) return;
-    const names = readJson<unknown>(SESSION_KEY, []);
-    if (!Array.isArray(names) || names.length === 0) return;
-    const timer = setTimeout(() => {
-      if (servicesRef.current.tabs.length > 0) return;
-      void (async () => {
-        for (const name of names.filter((n): n is string => typeof n === 'string').slice(0, 8)) {
-          const picked = await openRecentFile(name).catch(() => null);
-          if (picked) await servicesRef.current.openFile(keepNativePath(new File([picked.bytes], picked.name, { type: 'application/pdf' }), picked.path ?? undefined));
-        }
-      })();
-    }, 600);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- at start only
-  }, []);
 
   if (offers.length === 0) return null;
   const first = offers[0]!;

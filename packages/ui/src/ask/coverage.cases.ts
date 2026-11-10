@@ -64,7 +64,7 @@ export const PHRASES: Array<[string, string]> = [
   ['turn on dark mode', 'book:theme-dark|setting:theme=dark'], ['switch to english', 'setting:lang=en'], ['change the language to arabic', 'setting:lang=ar'],
   ['make the icons bigger', 'setting:iconSize=large'], ['turn off animations', 'setting:reduceMotion=on'], ['reduce transparency', 'setting:reduceTransparency'],
   ['change the accent colour to green', 'setting:accent=green'], ['use the glass look', 'setting:look=glass'], ['turn off coloured icons', 'setting:icons=off'],
-  ['open documents in new windows', 'setting:openIn=windows'], ['put the tabs under the toolbar', 'setting:tabPosition=toolbar'], ['turn on night reading', 'setting:nightReading=on'],
+  ['open documents in new windows', 'setting:openIn=windows'], ['put the tabs under the toolbar', 'setting:tabPosition=toolbar'], ['show the tabs on the side', 'setting:tabPosition=side'], ["show me what's new", 'book:whats-new'], ['وش الجديد', 'book:whats-new'], ['خل التبويبات على الجنب', 'setting:tabPosition=side'], ['turn on night reading', 'setting:nightReading=on'],
   ['read right to left', 'setting:readingDirection=rtl'], ['hide the greeting', 'setting:greeting=off'], ['change my name', 'setting:userName'],
   ['show 50 recent files', 'setting:recentLimit=50'], ['turn off the ring', 'setting:ring=off'], ['make the ring bigger', 'setting:ringSize=large'],
   ['change the ring shortcut', 'setting:ringShortcut'], ['start zood at login', 'setting:background=on'], ['stop talking back', 'setting:talkBack=never'],

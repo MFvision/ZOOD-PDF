@@ -3132,3 +3132,279 @@ html[data-reduce-motion="on"] .mock[data-phase="2"] .mock-line-edit > span {
     animation: none;
   }
 }
+
+/* ---- What's new (Tour.tsx, WhatsNew) ----------------------------------------------
+ * After an update: a browser's "What's new" page. The feature's name and words
+ * beside its moving scene on a tinted stage, and a row of coloured cards along the
+ * foot, one per new thing.
+ */
+.dialog.tour-dialog.is-news {
+  inline-size: min(calc(100vw - 32px), 1080px);
+  block-size: min(calc(100dvh - var(--sheet-top, var(--toolbar-h)) - 24px), 720px);
+}
+
+.wn {
+  --hue: var(--chapter-hue, var(--accent));
+
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  block-size: 100%;
+  padding: 0 var(--space-6) var(--space-5);
+}
+
+html[data-look="mono"] .wn {
+  --hue: var(--label);
+}
+
+.wn-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding-block-end: var(--space-3);
+  border-block-end: 0.5px solid var(--separator);
+}
+
+.tour-dialog.is-news .dialog-header h2 {
+  font-size: var(--text-title-2, 22px);
+  font-weight: 700;
+}
+
+.wn-head-sub {
+  color: var(--secondary-label);
+  font-size: var(--text-footnote);
+}
+
+.wn-main {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.75fr) minmax(0, 1.6fr);
+  gap: var(--space-6);
+  align-items: stretch;
+  min-block-size: 0;
+}
+
+.wn-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  min-block-size: 0;
+}
+
+.wn-eyebrow {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  align-self: flex-start;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hue) 14%, transparent);
+  color: color-mix(in srgb, var(--hue) 80%, var(--label));
+  font-size: var(--text-footnote);
+  font-weight: 600;
+}
+
+.wn-title {
+  margin: 0;
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.wn-body {
+  margin: 0;
+  color: var(--secondary-label);
+  font-size: var(--text-body, 15px);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+.wn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+.wn-try {
+  border-radius: 999px;
+}
+
+.wn-next {
+  border-radius: 999px;
+}
+
+/* The scene, on a stage tinted with the feature's own colour. */
+.wn-stage {
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--space-5);
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 90% at 85% 0%, color-mix(in srgb, var(--hue) 22%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--hue) 9%, var(--window-background)), var(--window-background));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--hue) 30%, var(--separator));
+}
+
+.wn-stage .tour-split {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.2fr);
+  gap: var(--space-5);
+}
+
+.wn-stage .tour-stage {
+  background: transparent;
+}
+
+/* The cards along the foot, each in its feature's colour. */
+.wn-cards {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.wn-card-list {
+  display: flex;
+  flex: 1;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 2px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.wn-card-list > li {
+  flex: 0 0 auto;
+}
+
+.wn-card {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+  justify-content: space-between;
+  inline-size: 168px;
+  block-size: 64px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card-hue) 16%, var(--window-background));
+  color: var(--label);
+  font: inherit;
+  text-align: start;
+  transition:
+    transform var(--duration-quick, 120ms) var(--ease-out, ease),
+    box-shadow var(--duration-quick, 120ms) ease,
+    background var(--duration-quick, 120ms) ease;
+}
+
+.wn-card:hover {
+  background: color-mix(in srgb, var(--card-hue) 24%, var(--window-background));
+  transform: translateY(-2px);
+}
+
+.wn-card.is-current {
+  background: color-mix(in srgb, var(--card-hue) 30%, var(--window-background));
+  box-shadow: 0 0 0 2px var(--card-hue);
+}
+
+.wn-card:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.wn-card-label {
+  align-self: flex-start;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.wn-card-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 34px;
+  block-size: 34px;
+  border-radius: 10px;
+  background: var(--card-hue);
+  color: #fff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--card-hue) 35%, transparent);
+}
+
+html[data-look="mono"] .wn-card,
+html[data-look="mono"] .wn-card-icon {
+  --card-hue: var(--secondary-label);
+}
+
+.wn-arrow {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--hue);
+  color: #fff;
+  transition: opacity var(--duration-quick, 120ms) ease, transform var(--duration-quick, 120ms) ease;
+}
+
+.wn-arrow:disabled {
+  background: var(--tertiary-fill, rgb(128 128 128 / 18%));
+  color: var(--tertiary-label, var(--secondary-label));
+}
+
+.wn-arrow:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+.wn-arrow:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wn-main > .wn-text > * {
+    animation: tour-rise 420ms var(--ease-out) backwards;
+  }
+
+  .wn-main > .wn-text > *:nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .wn-main > .wn-text > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .wn-main > .wn-text > *:nth-child(4) {
+    animation-delay: 180ms;
+  }
+
+  .wn-main > .wn-stage {
+    animation: wn-stage-in 520ms var(--ease-out) backwards;
+  }
+}
+
+@keyframes wn-stage-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--heading, 1) * 24px)) scale(0.98);
+  }
+}
+
+@media (width <= 820px) {
+  .wn-main {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .wn-stage .tour-split {
+    grid-template-columns: 1fr;
+  }
+}
