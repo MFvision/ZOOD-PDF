@@ -147,12 +147,21 @@ export function footer() {
     links.push(
       `<li><a href="${SITE.sourceUrl}" rel="noopener">${escape(t(FOOTER.source))}</a></li>`,
     );
+  const get = DOWNLOADS.map(
+    (d) =>
+      `<li><a href="${escape(d.href)}" rel="noopener"${d.store ? '' : ' download'}>${escape(t(d.short ?? d.label))}</a></li>`,
+  );
   el.innerHTML = `<div class="footer-in">
-    <a class="brand" href="${urlFor(lang)}" aria-label="${escape(t(SITE.name))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
-    <p>${escape(t(FOOTER.tagline))}</p>
-    <nav aria-label="${FOOTER.links.map((l) => escape(t(l.label))).join(' · ')}"><ul>${links.join('')}</ul></nav>
-    <p>${escape(t(FOOTER.copyright))}</p>
-    <p>${escape(t(FOOTER.marks))}</p>
+    <div class="footer-brand">
+      <a class="brand" href="${urlFor(lang)}" aria-label="${escape(t(SITE.name))}"><span class="logo" aria-hidden="true"></span><span class="logo-pdf" aria-hidden="true">PDF</span></a>
+      <p>${escape(t(FOOTER.tagline))}</p>
+    </div>
+    <nav class="footer-col" aria-label="${escape(t(FOOTER.getTitle))}"><h2>${escape(t(FOOTER.getTitle))}</h2><ul>${get.join('')}</ul></nav>
+    <nav class="footer-col" aria-label="${FOOTER.links.map((l) => escape(t(l.label))).join(' · ')}"><h2>${escape(t(FOOTER.moreTitle))}</h2><ul>${links.join('')}</ul></nav>
+    <div class="footer-base">
+      <p>${escape(t(FOOTER.copyright))}</p>
+      <p>${escape(t(FOOTER.marks))}</p>
+    </div>
   </div>`;
   return el;
 }
@@ -191,6 +200,40 @@ function visitorSystem() {
   return '';
 }
 
+// The download rows: a plain picture of the device (never a company's mark),
+// the version read from the release link itself, and an arrow saying whether
+// the button saves a file or opens a store.
+const dlSvg = (cls, body) =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const DL_ICONS = {
+  windows: dlSvg(
+    'dl-icon',
+    '<rect x="3" y="4" width="18" height="12" rx="1.6"/><path d="M8.5 20h7M12 16v4"/>',
+  ),
+  mac: dlSvg(
+    'dl-icon',
+    '<rect x="4.5" y="5" width="15" height="10" rx="1.6"/><path d="M2.5 18.5h19"/>',
+  ),
+  ios: dlSvg(
+    'dl-icon',
+    '<rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.8 5h2.4"/>',
+  ),
+  android: dlSvg(
+    'dl-icon',
+    '<rect x="7" y="2.5" width="10" height="19" rx="2.4"/><path d="M10.5 18.8h3"/>',
+  ),
+  save: dlSvg('dl-go', '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>'),
+  away: dlSvg(
+    'dl-go',
+    '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  ),
+};
+function downloadSub(d) {
+  if (d.store) return t(UI.dlFree);
+  const v = /\/desktop-v(\d+\.\d+\.\d+)\//.exec(d.href)?.[1];
+  return v ? `${t(UI.dlVersion)} ${v} · ${t(UI.dlFree)}` : t(UI.dlFree);
+}
+
 function chapterBody(c, index) {
   const heading = index === 0 ? 'h1' : 'h2';
   const id = `h-${c.id}`;
@@ -210,7 +253,7 @@ function chapterBody(c, index) {
     body += `<ul class="downloads">${list
       .map(
         (d, k) => `<li style="--li:${k}"${d.id === mine ? ' class="mine"' : ''}>
-        <a href="${escape(d.href)}" rel="noopener"${d.store ? '' : ' download'}><span>${escape(t(d.label))}</span>${d.id === mine ? `<span class="tag">${escape(t(d.store ? UI.yoursPhone : UI.yours))}</span>` : ''}</a>
+        <a href="${escape(d.href)}" rel="noopener"${d.store ? '' : ' download'}>${DL_ICONS[d.id] ?? ''}<span class="dl-words"><span class="dl-name">${escape(t(d.label))}</span><span class="dl-sub">${escape(downloadSub(d))}</span></span>${d.id === mine ? `<span class="tag">${escape(t(d.store ? UI.yoursPhone : UI.yours))}</span>` : ''}${d.store ? DL_ICONS.away : DL_ICONS.save}</a>
         <p class="first-run"><strong>${escape(t(d.store ? UI.firstOpen : UI.firstRun))}:</strong> ${escape(t(d.steps))}</p>
         ${d.sha256 ? `<details class="sum"><summary>${escape(t(UI.checksum))}</summary><code class="ltr">${escape(d.sha256)}</code></details>` : ''}
       </li>`,
@@ -223,8 +266,6 @@ function chapterBody(c, index) {
       .join('')}</div>`;
   }
   if (c.note) body += `<p class="note">${escape(t(c.note))}${escape(t(c.note.on))}.</p>`;
-  if (c.facts)
-    body += `<ul class="facts">${c.facts.map((f) => `<li>${f.icon ? ICONS[f.icon] : ''}${escape(t(f))}</li>`).join('')}</ul>`;
   if (c.cta || c.more) body += '<div class="actions">';
   if (c.cta) body += fabricButton(c.cta.href, escape(t(c.cta[visitorSystem()] ?? c.cta.label)));
   if (c.more) {
@@ -234,6 +275,9 @@ function chapterBody(c, index) {
     body += `<a class="text-link" href="${href}">${escape(t(c.more.label))}</a>`;
   }
   if (c.cta || c.more) body += '</div>';
+  // The promises sit under the button, so the button stays in the first screen.
+  if (c.facts)
+    body += `<ul class="facts">${c.facts.map((f) => `<li>${f.icon ? ICONS[f.icon] : ''}${escape(t(f))}</li>`).join('')}</ul>`;
   if (c.devices?.length) {
     body += `<p class="sr-only">${c.devices.map((d) => escape(t(UI.screen)) + escape(t(SCREENS.alt[d.screen]))).join('. ')}</p>`;
   }
@@ -389,7 +433,13 @@ function startStory() {
     stage.querySelector('.desk-pattern'),
     new URL('../assets/brand/pattern.svg', import.meta.url).href,
   );
-  document.body.append(footer());
+  const foot = footer();
+  document.body.append(foot);
+  // The chapter dots would sit over the footer's words: hide them there.
+  if ('IntersectionObserver' in window)
+    new IntersectionObserver(([e]) =>
+      document.documentElement.classList.toggle('at-end', e.isIntersecting),
+    ).observe(foot);
 
   const sections = [...main.querySelectorAll('[data-chapter]')];
   const rooms = story.flatMap((c, k) => (ROOMS[c.kind] ? [[k, ROOMS[c.kind].frame]] : []));
