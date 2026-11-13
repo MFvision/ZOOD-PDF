@@ -36,6 +36,8 @@ export const UI = {
   yoursPhone: { ar: 'لجوالك', en: 'For your phone' },
   firstOpen: { ar: 'التنزيل', en: 'Getting it' },
   checksum: { ar: 'تحقّق من الملف (SHA-256)', en: 'Check the file (SHA-256)' },
+  dlFree: { ar: 'مجاني', en: 'Free' },
+  dlVersion: { ar: 'الإصدار', en: 'Version' },
   firstRun: { ar: 'أول تشغيل', en: 'The first time you open it' },
   where: { ar: 'متوفر في: ', en: 'Available on: ' },
   noscript: {
@@ -83,8 +85,11 @@ export const CHAPTERS = [
       { icon: 'account', ar: 'بلا حساب', en: 'No account' },
       { icon: 'ads', ar: 'بلا إعلانات', en: 'No ads' },
       { icon: 'offline', ar: 'يعمل دون إنترنت', en: 'Works offline' },
-      { icon: 'ai', ar: 'ذكاء اصطناعي على جهازك', en: 'AI on your computer' },
-      { icon: 'computer', ar: 'ويندوز وماك', en: 'Windows and Mac' },
+      {
+        icon: 'computer',
+        ar: 'ويندوز وماك وآيفون وأندرويد',
+        en: 'Windows, Mac, iPhone and Android',
+      },
     ],
     // The button names the visitor's own computer when it can tell (main.js).
     cta: {
@@ -440,6 +445,7 @@ export const DOWNLOADS = [
   {
     id: 'ios',
     label: { ar: 'آيفون وآيباد من App Store', en: 'iPhone and iPad on the App Store' },
+    short: { ar: 'آيفون وآيباد', en: 'iPhone and iPad' },
     href: APP_STORE_URL,
     store: true,
     steps: {
@@ -450,6 +456,7 @@ export const DOWNLOADS = [
   {
     id: 'android',
     label: { ar: 'أندرويد من Google Play', en: 'Android on Google Play' },
+    short: { ar: 'أندرويد', en: 'Android' },
     href: PLAY_STORE_URL,
     store: true,
     steps: {
@@ -767,6 +774,8 @@ export const DESK = {
 };
 
 export const FOOTER = {
+  getTitle: { ar: 'حمّل التطبيق', en: 'Get the app' },
+  moreTitle: { ar: 'المساعدة والقانون', en: 'Help and legal' },
   tagline: {
     ar: 'محرّر PDF مفتوح، بلا حساب، عربي أولًا.',
     en: 'An open, account-free, Arabic-first PDF editor.',
