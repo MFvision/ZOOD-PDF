@@ -328,3 +328,20 @@ on disk, names can't climb), `sort/plan.test.ts`, `sort/voice.test.ts`. **Not tr
 Windows or a Mac**: on Windows the zone also comes down for a rubber-band selection dragged to the
 top from Explorer (the watcher cannot tell it from a file drag); it goes away when the button is
 let go.
+
+## CLAUDE.md rewritten as the full working guide (2026-11-13)
+`CLAUDE.md` now covers what the product is and how it is built, a map of the folders, the
+commands, the coding and design rules, the mistakes to avoid and a checklist before calling a
+job done. Its commands were run in a Linux cloud session on `app` at desktop 0.4.37: lint,
+1,317 unit tests, the typecheck, 642 engine tests, the wasm32 check, the engine built to
+WebAssembly without the optimizer, and one browser spec (Compress, 3 tests). **Not run:** the
+desktop host, the iPhone app and Android (they cannot be built on Linux), and the other 55
+browser specs (nothing in the app changed). Found on the way:
+- **GitHub's default branch is still `claude/zood-pdf-foundation-nh5t9y`**, an older rebuild
+  with no shared history, so a new cloud session starts on the wrong tree and never sees
+  `CLAUDE.md`. **Waiting on the owner:** GitHub › Settings › General › Default branch › `app`
+  (`docs/updates.md` asks for the same, for the Run workflow buttons).
+- **Rust 1.100's clippy fails one line of the engine** (`warraq-pdf/src/create.rs:749`,
+  `needless_range_loop`), so the `rust` check is red on every pull request until that line
+  iterates with `.iter().enumerate()`; with that change the engine's clippy passes. The
+  desktop crate was not checked under 1.100.
