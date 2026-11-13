@@ -746,8 +746,8 @@ impl<'a> Typesetter<'a> {
         // document prefers them.
         let mut best = 0;
         let mut most = 0;
-        for k in 0..self.faces.len() {
-            let n = covered(&self.faces[k]);
+        for (k, face) in self.faces.iter().enumerate() {
+            let n = covered(face);
             if n > most {
                 (best, most) = (k, n);
             }
