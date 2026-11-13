@@ -1,5 +1,7 @@
 # STATUS — Warraq
 
+*Last updated 2026-10-31 (the Scan & OCR row). This is a dated log and nothing later is in it: for where things stand now, read `docs/HANDOVER.md`.*
+
 *Updated 2026-10-11: the AI tool is a chat over the whole document, on the web and the desktop. The owner's report from the Windows build — "only 4,000 characters", no summary of the whole document, "the answer doesn't appear", "there is no chat" — is answered in "The assistant: a chat over the whole document", below: the cause (the on-device budget was counted in characters, the model's window in tokens, and the host refused what overflowed), what replaced the one-shot form, how it is proven, and what the small model still does badly, measured on this Mac. **Windows itself was not run here.**
 Before that, 2026-09-26: the app is local-first. The AI tool's default provider is now **On this device** — llama.cpp inside the app (Metal on the Mac, the processor on Windows, WebAssembly in a browser) with Qwen2.5-Instruct, downloaded once on a click and verified, never in the installer — with every AI action running on it, passages retrieved through a Library index for long documents, and form autofill from a profile kept encrypted (Keychain / Credential Manager / WebCrypto); and the page is read aloud with the system's own voices, the sentence marked on the page in both views. Measured on this Mac below ("Local-first AI, measured"); `docs/local-ai.md` has the design.
 Before that, 2026-09-20: an adversarial review of the Apple-style redesign found ten distinct problems —

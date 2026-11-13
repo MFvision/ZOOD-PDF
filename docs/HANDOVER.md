@@ -1,9 +1,65 @@
-# Hand-over — where things stand (2026-10-19)
+# Hand-over — where things stand (2026-11-13)
 
-Written at the end of a very long first conversation so the next one can start fresh. Keep
-this file current at the end of every job.
+Keep this file current at the end of every job. Read `CLAUDE.md` first; the workflows are described
+in `docs/ci.md` and releasing the desktop app in `docs/updates.md`.
 
-## What the owner has in hand
+**How to read this file.** The sections above "History" were written on 2026-11-13 from the GitHub
+releases, the release branches and the tree, and each line says where it comes from. Everything under
+"History" was written between 2026-10-18 and 2026-10-24, at the end of the jobs it describes. It is
+kept as written and was not checked again: the builds, pull requests and "waiting" items it names
+are of those days.
+
+## What the owner has in hand (2026-11-13)
+
+| Platform | Latest | Where this comes from, and what could not be confirmed |
+|---|---|---|
+| Windows and Mac | **ZOOD PDF 0.4.37**, on the stable channel since 2026-11-10. Windows: https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.37/ZOOD-PDF-Setup-0.4.37.exe. Mac (Apple silicon only): https://github.com/MFvision/ZOOD-PDF/releases/download/desktop-v0.4.37/ZOOD-PDF-0.4.37-mac.dmg. A copy already installed offers the update by itself | The GitHub release `desktop-v0.4.37`, marked Latest. The branches `release/desktop-v0.4.37` and `release/stable-v0.4.37` are both at commit `aff89ce6`. The `latest.json` on the `updates-stable` release is the same file as 0.4.37's (same SHA-256). The head of `app` (`de3ba2a7`, PR #126) holds the same files as `aff89ce6`. **Not confirmed**: whether these installers are code-signed and the Mac app notarized (that depends on repository secrets, `docs/updates.md`), and which version is on the owner's own computers |
+| Windows test build | `windows-20261110-1036`, from the same commit: https://github.com/MFvision/ZOOD-PDF/releases/download/windows-20261110-1036/ZOOD-PDF-Setup.exe. Unsigned, version 0.1.0, never offered as an update | The pre-release of that name. `status.txt` on the `ci-logs` branch: status success, and the ring, remote, quick, ask, perf and screenshot checks all success, finished 2026-11-10 11:19 UTC |
+| Android | Ten pre-releases, `android-0.1.0-2` to `android-0.1.0-12`, from 2026-11-05 to 2026-11-10, each with an `.apk` (installs on a phone directly) and an `.aab` (for Google Play). The newest one built from `app` is `android-0.1.0-11` (build 1011, commit `de3ba2a7`): https://github.com/MFvision/ZOOD-PDF/releases/tag/android-0.1.0-11. `android-0.1.0-12` (build 1012) is a few minutes newer but was built from the website branch `claude/landing-website-4c204h` | The notes and files of those two releases: both say "Signed with the upload key", and both carry the pictures the emulator took. **Not confirmed**: whether any build has been sent to Google Play (a push never sends one; only a run by hand with a track chosen does, `docs/ci.md`), and whether the Google Play page the website links to is live |
+| iPhone and iPad | The website links to the App Store page, https://apps.apple.com/app/id6816571917, and says "On the App Store now, free" | `website/js/story.js` and `website/js/phone-app.js`; the same app id is in `scripts/ios/asc-release.py`. **Not confirmed**: that the page is live, and which version and build are on it. The tree does not record it, and the App Store could not be reached from the session that wrote this. The TestFlight build named under History (`202610191832`) is of 2026-10-19 |
+| Website | https://pdf.zoodrealty.com, published from `website/` on `app`. Last published on 2026-11-06, from commit `c36e497`. **Its Windows and Mac buttons still download 0.4.35**, not 0.4.37 | The `hostinger` branch (its last commit is "Website from c36e497") and `DOWNLOADS` in `website/js/story.js`. **Not confirmed**: what Hostinger serves; the site could not be reached from the session that wrote this |
+| Web app and Chrome extension | No hosted copy and no store listing that the tree shows. CI builds both on every pull request and keeps them as the artifacts `warraq-web` and `warraq-extension` | `.github/workflows/ci.yml` |
+| Microsoft Store | No Store package in the 0.4.37 release | The release's files have no `.msix`; `desktop-release.yml` makes one only when the `STORE_PUBLISHER` variable is set. The plan is in `docs/store.md` |
+
+## The desktop releases so far
+
+Read from the GitHub releases and the `release/desktop-v*` and `release/stable-v*` branches.
+
+- **43 versions were built**, 0.1.1 to 0.4.37. Each has a branch `release/desktop-v<version>` at the
+  commit it was built from.
+- **35 were released to the stable channel**, and each of those has a branch
+  `release/stable-v<version>` too: 0.1.3
+  and 0.2.0 (2026-10-20), 0.4.3 to 0.4.32 (2026-10-22 to 2026-10-31), 0.4.34 and 0.4.35 (2026-11-01),
+  and 0.4.37 (2026-11-10).
+- **Eight stayed testing builds** and never reached installed apps: 0.1.1, 0.1.2, 0.3.0, 0.4.0,
+  0.4.1, 0.4.2, 0.4.33 and 0.4.36.
+
+What each version changed is not written in this file. Each release names the commit it was built
+from, and `docs/STATUS.md` stops at 2026-10-31.
+
+## To check next (not confirmed on 2026-11-13)
+
+1. **The website's download buttons.** `DOWNLOADS` in `website/js/story.js` names 0.4.35 for Windows
+   and Mac, with that version's checksums, and its Windows note says the app is "not signed yet".
+   For 0.4.37 the files are `ZOOD-PDF-Setup-0.4.37.exe` (SHA-256
+   `8399f0f69f4135f947555ff5f243382fc900539e060b6ef19cb8106c67f1cc18`) and `ZOOD-PDF-0.4.37-mac.dmg`
+   (SHA-256 `a4e22612671dfbca4b85f7a6f79b7a5aa007d8bcaf87c0455ec7d301b9cf331b`), as GitHub reports
+   them for the release.
+2. **The store pages.** Ask the owner, or open them: is the App Store page live and with which
+   version, and is the Android app on Google Play or only in the pre-releases above?
+3. **The "Waiting on the owner" list under History** (Mac signing, the TestFlight group, the Huwiya
+   licence, the cloud drives' client IDs, the support relay). Nobody has recorded here which of them
+   were done. Two have left traces in the tree: `desktop-release.yml` now carries app IDs for
+   OneDrive and Google Drive and signs and notarizes the Mac app when its secrets are set, and the
+   desktop app's content policy allows `https://pdf.zoodrealty.com/api/support/`. Whether the
+   secrets are set and the relay is uploaded cannot be read from the tree.
+
+## History (written 2026-10-18 to 2026-10-24; not checked again)
+
+The first line of this file used to read: "Written at the end of a very long first conversation so
+the next one can start fresh."
+
+### What the owner had in hand on 2026-10-19
 
 | Platform | Latest build | What is in it |
 |---|---|---|
@@ -24,7 +80,7 @@ paragraph keeps its colour; Automatic font (A own font → B installed → C ope
 one-time question → D closest bundled; B and C on desktop/web only); the AI assistant as a
 chat with whole-document Analyze (desktop/web).
 
-## Waiting on the owner
+### Waiting on the owner (as it stood on 2026-10-21)
 - **Mac signing (agreed for 2026-10-21)**: the desktop-v0.2.0 dmg is ad-hoc signed and its
   signature is incomplete ("code has no resources"), so other Macs will call it damaged. He
   creates a *Developer ID Application* certificate in Xcode (Settings → Apple Accounts → team
@@ -41,7 +97,7 @@ chat with whole-document Analyze (desktop/web).
    an app.
 4. For Google Drive / OneDrive: his developer client IDs, when he wants that job.
 
-## The Windows pilot (done 2026-10-18, PR #2, draft until the owner approves)
+### The Windows pilot (done 2026-10-18, PR #2, draft until the owner approves)
 PDFs get a document icon (`ZoodPDF.Document`, set by `src-tauri/windows/hooks.nsh`; shown once
 the app is Windows' default for PDFs), recent and starred files reopen by path
 (`src-tauri/src/recent.rs`), and a second launch hands its PDF to the open window
@@ -52,7 +108,7 @@ focus and the read-aloud highlight (EmbedPDF 2.x counts pages from zero).
 Weekly usage: 23% before; the after figure could not be read from a cloud session (no
 `get_usage` there) — read it in the Claude app.
 
-## Added to PR #2 on 2026-10-19 (the owner asked for it all in one PR)
+### Added to PR #2 on 2026-10-19 (the owner asked for it all in one PR)
 - **Quick tools without opening the app** (idea from Filee, no code taken): right-click files
   in Explorer (`src-tauri/src/shell_menu.rs`, HKCU keys, written at every start in the UI's
   language) or Finder (a Services entry, `Info.plist` + `shell_menu.rs`) → a small window
@@ -78,7 +134,7 @@ Weekly usage: 23% before; the after figure could not be read from a cloud sessio
 - **Not tested on real Windows or a Mac**: the right-click menu, the ring, background mode and
   the tray. They compile for both and their logic has unit tests.
 
-## The owner's test of that build (2026-10-19) and what changed
+### The owner's test of that build (2026-10-19) and what changed
 - **The ring did not open** for him (he tried Ctrl, Command and Shift). It now accepts Ctrl
   or Shift on Windows and Option or Command on a Mac, and the window is made a few seconds
   after start so the first drag finds it ready. On a Mac it no longer uses an NSEvent monitor
@@ -101,7 +157,7 @@ Weekly usage: 23% before; the after figure could not be read from a cloud sessio
   `export.lines`). "Text only, flowing" keeps the old export. Checked in LibreOffice, **not in
   Microsoft Word**.
 
-## Quick tools, second round (2026-10-19 evening, the owner's rules)
+### Quick tools, second round (2026-10-19 evening, the owner's rules)
 The owner's rules (team memory `quick-tools-ux`): **no confirm pop-ups**. A tool that needs
 nothing more runs the moment it is picked, and a window opens only for a password, pages, a paper
 size or a mark's text, **with a live preview of the pages**.
@@ -128,7 +184,7 @@ size or a mark's text, **with a live preview of the pages**.
   owner chose "website for now". The website videos and the explainer video belong to the
   website thread.
 
-## iPhone Duo (folding iPhone), 2026-10-21
+### iPhone Duo (folding iPhone), 2026-10-21
 Apple's folding iPhone (announced 2026-09-09, in shops 2026-10-23): a 5.4" outer screen that
 behaves like any iPhone (compact) and a 7.6" inner screen (about 626 x 890 points) that reports a
 regular size class both ways. The app adapts by size and width, not by device:
@@ -146,7 +202,7 @@ regular size class both ways. The app adapts by size and width, not by device:
   `ArrangementView`); they need Xcode 27.1, and the layouts above work without them.
 - Not tried on a real Duo or its simulator.
 
-## Welcome tour and app motion (2026-10-21)
+### Welcome tour and app motion (2026-10-21)
 The owner found the old tour boring and two-coloured and wanted it to train people. Desktop
 and web: `tour/` is now a large sheet with chapters down the side (`chapters.ts`; scenes in
 `scenes.tsx`): language, look and light/dark chosen in it, the website's film
@@ -160,13 +216,13 @@ is the brand mark with a loop. Everything stops under Reduce Motion (system or S
 iOS: six tour screens (a Make it yours screen and a phone-remote screen) with motion,
 **written without an iOS compiler** — run `scripts/ios/build.sh` before TestFlight.
 
-## After that
+### After that (as it stood on 2026-10-21)
 As he chooses, from the study's top ten (sizes there are PdfCraft's formula and run
 high; our desktop jobs took 1–1.5 h of real time each): large-format printing (A0/A1 at true
 scale, tiling), autosave and crash recovery, command search (Ctrl/⌘+K), and measuring. (The Workbench theme and the theme choice on
 desktop and web are done.)
 
-## Ask ZOOD taps (2026-10-21, stacked on PR #8; idea from Sentient OS, AGPL, no code taken)
+### Ask ZOOD taps (2026-10-21, stacked on PR #8; idea from Sentient OS, AGPL, no code taken)
 - **Double tap** the tap key (right Ctrl; right Command on a Mac; Settings can pick right Alt/Option
   or right Shift) in any app: `src/ask/tap.rs` reads key states every 12 ms (a modifier alone can't
   be a global shortcut; a key held with anything else is never a tap). The focused window is
@@ -182,7 +238,7 @@ desktop and web are done.)
 - Tests: `apps/web/e2e/ask-tap.mjs` (real OCR in Chromium). **Not tried on real Windows or a Mac**:
   the key watcher, window capture, paste and focus hand-back compile for both (checked standalone).
 
-## Teaching the Ask ZOOD keys (2026-10-21)
+### Teaching the Ask ZOOD keys (2026-10-21)
 The owner: the keys are important and no one knows them. Desktop on Windows/Mac only (where
 Ask ZOOD is): a tour chapter **Ask ZOOD** (`tour/askScene.tsx`) shows the keyboard's bottom row
 with the person's key lit, then three practice tabs that react to the real keys: double tap
@@ -196,7 +252,7 @@ practice button; `ask/ReadyHint.tsx` shows a one-time card the first time Ask ZO
 iOS: nothing (Ask ZOOD is not on iPhone/iPad). **Not tried on real Windows or a Mac** (the pause
 and the page's view of right Ctrl/Command).
 
-## One tap to talk, with the screen glowing (2026-10-21, stacked on PR #18)
+### One tap to talk, with the screen glowing (2026-10-21, stacked on PR #18)
 The owner: voice took too many steps (permissions, a download, holding three keys). Like
 Claude's Mac app (Caps Lock once to start, again to stop), **one tap of the Ask key** (right
 Ctrl / right ⌘) now listens until the next tap, or until the person goes quiet
@@ -214,7 +270,7 @@ registry) and tells the host to listen. Input Monitoring matters on a Mac: witho
 with the right ⌘ reads as a tap. Tour version 4 re-shows the Ask chapter, whose first tab is
 now "Tap once: talk" with a pretend glowing screen. **Not tried on real Windows or a Mac.**
 
-## Ask ZOOD talks back, shows, explains and does (2026-10-21)
+### Ask ZOOD talks back, shows, explains and does (2026-10-21)
 The owner's go on the notch/Sentient OS doc (all four now). **Talk back**: answers are said in
 the Read aloud engines (`speech/engines.ts`: Mac AVSpeech through the host incl. Premium
 voices, Windows' own natural voices e.g. Kareem, Web Speech elsewhere), the voice and speed
@@ -235,7 +291,7 @@ window; Help › "Ask ZOOD: Show Me, Explain and Do It" opens it. The quick-acti
 an `organize` act and a quick decider at the top of `respond` (separate files). **Not tried on
 real Windows or a Mac; coordinates depend on the vision model's accuracy.**
 
-## Help & Support (2026-10-21)
+### Help & Support (2026-10-21)
 The owner wants support with no staff, no accounts and no paid servers. F1, Help › Help &
 Support, Settings › Support and a tour chapter (tour version 7) open `support/SupportCenter.tsx`.
 **Ask** searches 24 bilingual guides (`support/articles.ts`) and FAQ. **Show me** and **Do it
@@ -253,7 +309,7 @@ English (63 pictures each), and three steps move (editing a paragraph, organizin
 ring). They are taken by `scripts/support/make-shots.mjs`; how to retake them is in
 `docs/support/README.md`. Retake the affected pictures whenever a screen in a guide changes.
 
-## Known open problems
+### Known open problems (as they stood in October 2026)
 - **iPhone UI tests**: 6 of 55 failing at the last full run, each a test reaching for a
   control below the fold or a duplicate identifier (theme picker ×2, Protect's Remove, form
   fields bar, AI autofill's Fill, batch save) — recordings showed the app working for three
@@ -268,13 +324,13 @@ ring). They are taken by `scripts/support/make-shots.mjs`; how to retake them is
   Options offered to the owner: a larger on-device model, or his own Claude key.
 - Convert failed for the owner once on Windows — not reproduced (ask which file and format).
 
-## Housekeeping
+### Housekeeping (as it stood in October 2026)
 - The GitHub repository is **public** since 2026-10-11 (the owner's choice).
 - Xcode's Apple account signs out from time to time; the owner signs back in.
 - Old agent worktrees under `.claude/worktrees/` can be removed once merged; two named
   ones (`frosty-bartik-…`, `wonderful-thompson-…`) belong to the owner's other sessions.
 
-## Quick asks and tidying (2026-10-21; idea from the Pragmatic Coder video on Jev, no code taken)
+### Quick asks and tidying (2026-10-21; idea from the Pragmatic Coder video on Jev, no code taken)
 The owner: a quick action ("make these smaller", "organize my Downloads") should not need a 3 GB
 model thinking. Ask ZOOD now has a **quick lane**: a small decision model, Jev-Style 0.8B
 Decision v3 (Apache-2.0, a Qwen3.5-0.8B fine-tune, 529 MB Q4_K_M, pinned in `models.json` with
@@ -298,7 +354,7 @@ and Help › Quick asks and tidying. Tests: `quick.test.ts`, `decide.rs` and `ti
 (apply and undo on a real folder), and an ignored real-model test (`real_model_picks_the_quick_actions`,
 see `docs/local-ai.md`). **Not tried on real Windows or a Mac** (the cloud CPU only).
 
-## Sort with ZOOD: files thrown on ZOOD (2026-10-24; the owner's idea)
+### Sort with ZOOD: files thrown on ZOOD (2026-10-24; the owner's idea)
 The owner wanted a reason for ZOOD to keep running in the background: gather messy files and
 let ZOOD organise them. While the app runs, a drag of files **with no key held** (from File
 Explorer or the desktop on Windows, any file drag on a Mac) brings **ZOOD's drop zone** down from
